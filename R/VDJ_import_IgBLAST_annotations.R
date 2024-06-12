@@ -10,12 +10,12 @@
 #' @return The VDJ dataframe with the appended IgBLAST annotations and alignments.
 #' @examples
 #' \dontrun{
-#' VDJ <- import_igblast_annotations <- function(VDJ,
+#' VDJ <- import_IgBLAST_annotations <- function(VDJ,
 #'                                               VDJ.directory)
 #'}
 
 
-VDJ_import_igblast_annotations <- function(VDJ,
+VDJ_import_IgBLAST_annotations <- function(VDJ,
                                            VDJ.directory,
                                            file.path.list,
                                            method){

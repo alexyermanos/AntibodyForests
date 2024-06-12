@@ -5,7 +5,7 @@
 #' @param sequence.columns string or vector of strings - denotes the sequence column(s) in the VDJ dataframe that contain the sequences that will be used to infer B cell lineage trees. Nodes in the trees will represent unique combinations of the selected sequences. Defaults to 'c("VDJ_sequence_nt_trimmed", "VJ_sequence_nt_trimmed")'.
 #' @param germline.columns string or vector of strings - denotes the germline column(s) in the VDJ dataframe that contain the sequences that will be used as starting points of the trees. The columns should be in the same order as in 'sequence.columns'. Defaults to 'c("VDJ_germline_nt_trimmed", "VJ_germline_nt_trimmed")'.
 #' @param concatenate.sequences bool - if TRUE, sequences from multiple sequence columns are concatenated into one sequence for single distance matrix calculations / multiple sequence alignments, else, a distance matrix is calculated / multiple sequence alignment is performed for each sequence column separately. Defaults to FALSE. 
-#' @param node.features string or vector of strings - denotes the column name(s) in the VDJ dataframe from which the node features should be extracted (which can, for example, be used for plotting of lineage trees later on).
+#' @param node.features string or vector of strings - denotes the column name(s) in the VDJ dataframe from which the node features should be extracted (which can, for example, be used for plotting of lineage trees later on). Defaults to 'isotype'' (if present).
 #' @param construction.method string - denotes the approach and algorithm that will be used to convert the distance matrix or multiple sequence alignment into a lineage tree. There are two approaches two construct a lineage tree: a tree can be constructed from a network/graph (phylo.network) or from a phylogenetic tree (phylo.tree). There are three algorithm options that take a pairwise distance matrix as input: 'phylo.network.default', 'phylo.network.mst', and 'phylo.tree.nj'. There are two algorithm options that take a multiple sequence alignment as input: 'phylo.tree.ml', and 'phylo.tree.mp'. Defaults to 'phylo.network.default' (mst-like algorithm).
 #' 'phylo.network.default': mst-like tree evolutionary network algorithm in which the germline node is positioned at the top of the tree, and nodes with the minimum distance to any existing node in the tree are linked iteratively.
 #' 'phylo.network.mst'    : minimum spanning tree (MST) algorithm from 'ape::mst()' constructs networks with the minimum sum of edge lengths/weights, which involves iteratively adding edges to the network in ascending order of edge weights, while ensuring that no cycles are formed, after which the network is reorganized into a germline-rooted lineage tree.
@@ -135,8 +135,10 @@ AntibodyForests <- function(VDJ,
   # If the 'concatenate.sequences' parameter is missing, it is set to FALSE
   if(missing(concatenate.sequences)){concatenate.sequences <- FALSE}
   
-  # If no columns are specified in 'node.features', it defaults to an empty vector
-  if(missing(node.features)){node.features <- c()}
+  # If no columns are specified in the 'node.features' parameter and the VDJ dataframe contains an 'isotype' column, it defaults to 'isotype'
+  if(missing(node.features) && "isotype" %in% colnames(VDJ)){node.features <- "isotype"}
+  # If no columns are specified in the 'node.features' parameter and the VDJ dataframe does not contain an 'isotype' column, it defaults to an empty vector
+  if(missing(node.features) && !"isotype" %in% colnames(VDJ)){node.features <- c()}
   # If 'node.features' contains columns that are not present in the 'VDJ' dataframe, a message is returned and execution is stopped
   if(!all(node.features %in% colnames(VDJ))){stop("ERROR: Not all columns in 'node.features' could be found in the input VDJ dataframe.")}
   

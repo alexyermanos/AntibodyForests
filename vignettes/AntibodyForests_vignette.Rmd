@@ -1,0 +1,1716 @@
+---
+title: 'AntibodyForests vignette: a comprehensive guide for importing 10x single-cell V(D)J sequencing data, building lineage trees, and comparing trees within and across repertoires'
+author: "Valentijn Tromp & Daphne van Ginneken"
+date: "12-06-2024"
+output:
+  html_document:
+    theme: flatly
+    highlight: pygments
+    toc: true
+    toc_float: true
+---
+
+```{r setup, echo = FALSE, eval = TRUE}
+# Set working directory
+knitr::opts_knit$set(root.dir = "C:/Users/Valen/OneDrive/Documenten/Studie/Master Infection and Immunity/Major Research Project - Alex Yermanos/Computations/vignettes/")
+# Set global options
+knitr::opts_chunk$set(eval = TRUE, include = TRUE, echo = TRUE, message = FALSE, warning = FALSE, error = FALSE)
+knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 60), tidy = TRUE)
+# Define custom hooks for handling errors, warnings, and messages during knitting
+knitr::knit_hooks$set(
+   error = function(x, options){
+     paste('\n\n<div class="alert alert-danger">',
+           gsub('##', '\n', gsub('^##\ Error', '**Error**', x)),
+           '</div>', sep = '\n')},
+   warning = function(x, options){
+     paste('\n\n<div class="alert alert-warning">',
+           gsub('##', '\n', gsub('^##\ Warning:', '**Warning**', x)),
+           '</div>', sep = '\n')},
+   message = function(x, options){
+     paste('\n\n<div class="alert alert-info">',
+           gsub('##', '\n', x),
+           '</div>', sep = '\n')})
+```
+
+<style>
+#TOC::before {
+  content: "";
+  display: block;
+  height: 150px;
+  background-image: url("imgs/main/logo.png");
+  background-size: contain;
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+</style>
+
+```{r load-scripts, include = FALSE}
+# Source AntibodyForests scripts
+source("../scripts/VDJ_build.R")
+source("../scripts/VDJ_import_IgBLAST_annotations.R")
+source("../scripts/VDJ_to_AIRR.R")
+source("../scripts/AntibodyForests.R")
+source("../scripts/AntibodyForests_sync.R")
+source("../scripts/AntibodyForests_plot.R")
+```
+<br>
+
+## Introduction
+
+<div class=text-justify>
+
+This vignette provides a detailed explanation of the main functions from the AntibodyForests package, including the `VDJ_build()`, `AntibodyForests()`, and `AntibodyForests_compare()` functions. These functions are designed for importing single-cell V(D)J sequencing data from 10x Genomics, constructing lineage trees, and eventually comparing the structure of these trees within and across repertoires. This comparisons can be performed on sequence level, functional level, and evolutionary level. Throughout this vignette, the dataset outlined by [Neumeier et al. (2022)](https://doi.org/10.1073/pnas.2113766119) will be used.  
+<br>
+![Analysis workflow of the AntibodyForests package](imgs/main/workflow.png)  
+<br>
+</div>
+
+
+## Installation
+
+<div class=text-justify>
+
+The AntibodyForests package integrates functions from various packages to provide a comprehensive toolkit for analyzing antibody sequence data. To ensure smooth execution of its functions, it's essential to have certain packages installed. The code below automates this process by checking for the required packages and installing them if necessary. Additionally, it sources the latest versions of the AntibodyForests package scripts from its GitHub repository, enabling you to access the most up-to-date functionalities.
+```{r installation, eval = FALSE}
+# List of CRAN packages required to run all functions
+CRAN_packages <- c("alakazam", "ape", "base",
+                   "base64enc", "BiocManager", "dplyr", 
+                   "grDevices", "gtools", "igraph", 
+                   "jsonlite", "knitr", "parallel", 
+                   "phangorn", "scales", "stats", 
+                   "stringdist", "stringr", "utils")
+
+# List of Bioconductor packages required to run all functions
+Bioconductor_packages <- c("Biostrings", "msa")
+
+# Iterate through packages
+for(package in c(CRAN_packages, Bioconductor_packages)){
+  # Check if the current packages is already installed
+  if(!requireNamespace(package, quietly = TRUE)){
+    # Install CRAN packages if not installed
+    if(package %in% CRAN_packages){install.packages(package)}
+    # Install Bioconductor packages if not installed
+    if(package %in% Bioconductor_packages){BiocManager::install(package)}
+  }
+}
+
+# GitHub repository URL for AntibodyForests package scripts
+GitHub_repository <- "https://github.com/alexyermanos/AntibodyForests/raw/main/R/"
+
+# Source the most recent versions of the scripts from the AntibodyForests package
+source(paste0(GitHub_repository, "AntibodyForests.R"))
+source(paste0(GitHub_repository, "AntibodyForests_plot.R"))
+source(paste0(GitHub_repository, "AntibodyForests_sync.R"))
+source(paste0(GitHub_repository, "VDJ_build.R"))
+source(paste0(GitHub_repository, "VDJ_import_IgBLAST_annotations.R"))
+source(paste0(GitHub_repository, "VDJ_to_AIRR.R"))
+```
+<br>
+</div>
+
+
+## Quick start
+
+<div class=text-justify>
+
+
+```{r quick-start, eval = FALSE}
+# Import 10x Genomics output files into VDJ dataframe and only keep cells with one VDJ and one VJ transcript
+# For each clone, trim germline sequence and replace CDR3 region in germline with most-frequently observed CDR3 sequence
+VDJ_OVA <- VDJ_build(VDJ.directory = "data/OVA_scRNA-seq_data/VDJ/",
+                     remove.divergent.cells = TRUE,
+                     complete.cells.only = TRUE,
+                     trim.germlines = TRUE)
+
+# Build lineage trees for all clones present in the VDJ dataframe with the maximum parsimony (MP) algorithm
+AntibodyForests_OVA_mp <- AntibodyForests(VDJ = VDJ_OVA,
+                                          construction.method = "phylo.tree.mp")
+```
+<br>
+</div>
+
+
+## 1. Import 10x output into VDJ dataframe with the `VDJ_build()` function
+
+### Summary  
+
+<div class=text-justify>
+
+The **`VDJ_build()`** function imports Cell Ranger output into an R dataframe, priming the data for downstream analyses. It is optimized for Cell Ranger v7 and older versions and is suitable for B and T cell repertoires. Upon execution, the function generates a VDJ dataframe where VDJ and VJ transcripts are paired (if present) in each row, with each row representing a single cell. Post VDJ dataframe construction, a table is displayed on the console, delineating the number of filtered cells, contingent upon the `remove.divergent.cells` and `complete.cells.only` parameters.  
+<br>
+For seamless integration with functions such as the `AntibodyForests()` function (discussed next), it is strongly recommended to set the `remove.divergent.cells` and `complete.cells.only` parameters to TRUE. Cells with more than one VDJ or VJ transcript, referred to as 'divergent cells', typically represent doublets that may arise during the single-cell sorting, or show dual expression of kappa and lambda light chains. Such occurrences are rare, accounting for only 0.2-0.5% of peripheral blood B cells, as reported by [Giachino et al. (1995)](https://doi.org/10.1084/jem.181.3.1245). Cells harboring both a single VDJ and a VJ transcript may be included for comprehensive downstream analyses.  
+<br>
+The output of 10x Genomics contains one output folder per run/sample. In each sample folder, the following files should be present in order to run the `VDJ_build()` function successfully. More information on the outputs of 10x Genomics can be found [on this page](https://www.10xgenomics.com/support/software/cell-ranger/latest/analysis/outputs/cr-5p-outputs-overview-vdj).  
+<br>
+
+* `filtered_contig_annotations.csv`  
+This CSV file contains the amino acid and nucleotide framework (FWRs) and complementarity determining regions (CDRs) of the contig sequences stored in the `filtered_contig.fasta` file. These annotations are required to obtain the trimmed V(D)J sequences.  
+* `filtered_contig.fasta`  
+This FASTA file contains the contig sequences from barcodes that passed the filtering steps. These contigs are annotated in the `filtered_contig_annotations.csv`.  
+* `consensus_annotations.csv`  
+This CSV file contains the amino acid and nucleotide framework (FWRs) and complementarity determining regions (CDRs) of the consensus sequences stored in the `consensus.fasta` file.  
+* `consensus.fasta`  
+This FASTA file contains the consensus sequence of each assembled contig, which is identical to the sequence of the most frequent exact subclonotype, in which an exact subclonotype is defined as a group of cells with identical V(D)J transcripts.  
+* `concat_ref.fasta`  
+This FASTA file contains the concatenated V(D)J reference segments for the segments detected on each consensus sequence. Note, these reference sequences serve as an **approximate** reference for each consensus sequence, and need to be aligned and trimmed in order to have the same length as the consensus sequence (see `trim.and.align` parameter).  
+<br>
+NOTE: In older versions of Cell Ranger (older than v6), the FWR1-4 and CDR1-3 regions are not annotated. In this scenario, the `all_contig_annotations.json` file will be employed to obtain the 'L-REGION+V-REGION' and 'J-REGION' annotations. The raw sequences can now be trimmed using the 'L-REGION+V-REGION' start and 'J-REGION' end indices. If the `all_contig_annotations.json` file is not found in the sample/run directory, the columns with the trimmed sequences will remain empty and a warning message is printed.  
+<br>
+
+</div>
+
+
+### Parameters  
+
+<div class=text-justify>
+
+`VDJ.directory`
+
+* **Description:** Path to the parent directory containing the output folders (one folder for each run/sample) of Cell Ranger (note: when specified, the `VDJ.sample.list` parameter should not be specified).  
+* **Example:** `"/path/to/VDJ/directory"`  
+* **Default:** *None*  
+<br>
+
+`VDJ.sample.list`
+
+* **Description:** Character vector of the paths to the output folders (one folder for each run/sample) of Cell Ranger (note: when specified, the `VDJ.directory` parameter should not be specified).  
+* **Example:** `c("/path/to/sample1", "/path/to/sample2")`  
+* **Default:** *None*  
+<br>
+
+`remove.divergent.cells`
+
+* **Description:** If `TRUE`, cells with more than one VDJ transcript or more than one VJ transcript will be excluded from the VDJ dataframe.  
+* **Default:** `FALSE`  
+<br>
+
+`complete.cells.only`
+
+* **Description:** If `TRUE`, only cells with both a VDJ transcript and a VJ transcript are included in the VDJ dataframe.  
+* **Default:** `FALSE`  
+<br>
+
+`trim.germlines`
+
+* **Description:** If `TRUE`, the raw germline sequence of each clone will be aligned with the consensus sequence of that clone serving as the reference sequence, utilizing the `Biostrings::pairwiseAlignment()` function. The alignment conducted will be of the 'global-local' type, therebyy trimming the raw germline sequence.  
+* **Default:** `FALSE`  
+<br>
+
+`fill.germline.CDR3`
+
+* **Description:** If TRUE, the trimmed germline sequence of each clone will be aligned with the most frequently observed sequence for the CDR3 region of that clone serving as the reference sequence, utilizing the `Biostrings::pairwiseAlignment()` function. The alignment conducted will be of the 'global-local' type, thereby selecting the CDR3 region from the trimmed germline sequence. After the alignment, the germline CDR3 sequence is replaced by the most frequently observed CDR3 sequence, in order to obtain germline sequences that are more likely to encode producible and productive antibodies.  
+* **Default:** `FALSE`  
+<br>
+
+`gap.opening.cost`
+
+* **Description:** The cost for opening a gap when aligning and trimming germline sequences using the consensus sequences. A cost of `Inf` will result in a gapless alignment.  
+* **Default:** `10`  
+<br>
+
+`gap.extension.cost`
+
+* **Description:** The cost for extending a gap in when aligning and trimming germline sequences. A cost of `Inf` will result in a gapless alignment.  
+* **Default:** `4`  
+<br>
+
+`parallel`
+
+* **Description:** If `TRUE`, the per-sample VDJ building process is executed in parallel using either the `parallel::parLapply()` function (on Windows) or the `parallel:mclapply()` function (on Linux/MacOS).  
+* **Default:** `FALSE`  
+<br>
+
+`num.cores`
+
+* **Description:** Number of cores to be used when the `parallel` parameter is set to `TRUE`.  
+* **Default:** All available cores - 1, or the number of samples in the VDJ dataframe (whichever is smaller)  
+<br>
+
+</div>
+
+
+### Examples {.tabset}
+
+<div class=text-justify>
+
+#### **Example 1**  
+In the example provided below, all transcripts are imported into the VDJ dataframe without undergoing any filtering steps. The resulting dataframe comprises a total of 22,425 cells. It is worth noting that individual cells may contain multiple VDJ and VJ transcripts within a single row, and a few cells may lack either the VDJ or VJ transcript. For instance, multiple cells of clonotype5 of S1 have multiple VJ transcripts, including those with barcodes ACATCAGAGCAATCTC, AGCAGCCTCTGTCTAT, and AGCGGTCGTCCAACTA. Additionally, multiple cells of clonotype10 of S1 lack a VDJ transcript, including those with barcodes AACTGGTGTGCCTGCA, AAGGAGCAGTACGTTC, and ACAGCCGAGACTAGAT.
+```{r vdj_build-example-1-code, results = "asis", message = TRUE}
+# Read in data without filtering divergent and incomplete cells
+VDJ_OVA <- VDJ_build(VDJ.directory = "../data/OVA_scRNA-seq_data/VDJ/",
+                     remove.divergent.cells = FALSE,
+                     complete.cells.only = FALSE)
+```
+<br>
+
+```{r vdj_build-example-1-message, echo = FALSE}
+# Print number of rows in the 'VDJ_OVA' dataframe
+message(paste("Total number of rows (i.e. cells) in the 'VDJ_OVA' dataframe:", nrow(VDJ_OVA)))
+```
+<br>
+
+An example VDJ dataframe is provided below, containing the data of clonotype 1-10 of all samples:
+```{r vdj_build-example-1-df, echo = FALSE}
+# Print first 10 clonotypes of all samples
+DT::datatable(data = VDJ_OVA[VDJ_OVA$clonotype_id %in% paste0("clonotype", 1:10), ],
+              rownames = FALSE,
+              options = list(scrollX = TRUE)
+)
+```
+<br>
+
+#### **Example 2**  
+In the upcoming example, cells with multiple VDJ or VJ transcripts, referred to as 'divergent cells', are filtered out. The left column of the printed table displays the count of divergent cells filtered out for each sample.  
+```{r vdj_build-example-2-code, results = "asis", message = TRUE}
+# Read in data with filtering divergent cells
+VDJ_OVA <- VDJ_build(VDJ.directory = "../data/OVA_scRNA-seq_data/VDJ/",
+                     remove.divergent.cells = TRUE,
+                     complete.cells.only = FALSE)
+```
+<br>
+
+```{r vdj_build-example-2-message, echo = FALSE}
+# Print number of rows in the 'VDJ_OVA' dataframe
+message(paste("Total number of rows (i.e. cells) in the 'VDJ_OVA' dataframe:", nrow(VDJ_OVA)))
+```
+<br>
+
+An example VDJ dataframe is provided below, containing the data of clonotype 1-10 of all samples:
+```{r vdj_build-example-2-df, echo = FALSE}
+# Print first 10 clonotypes of all samples
+DT::datatable(data = VDJ_OVA[VDJ_OVA$clonotype_id %in% paste0("clonotype", 1:10), ],
+              rownames = FALSE,
+              options = list(scrollX = TRUE)
+)
+```
+<br>
+
+#### **Example 3**  
+In the final example, divergent cells are filtered out, and only cells with both a VDJ and VJ transcript are included in the VDJ dataframe. The number of cells filtered out due to the lack of VDJ and VJ transcripts, referred to as 'incomplete cells', is shown in the right column of the printed table. Since a cell can have a double VDJ or VJ transcript or may lack a VDJ or VJ transcript, such a cell can be included in both the counts of 'divergent cells' and 'incomplete cells'. Note that, as a result, the sum of these counts may not exactly match the difference in the number of rows between the dataframes. Additionally, for each clone, the germline sequences are trimmed, and an additional germline sequence column is added in which the CDR3 region is replaced by the most frequently observed CDR3 sequence in that clone.
+```{r vdj_build-example-3-code, results = "asis", message = TRUE}
+# Read in data, keep only complete, non-divergent cells and trim germline sequences
+VDJ_OVA <- VDJ_build(VDJ.directory = "../data/OVA_scRNA-seq_data/VDJ/",
+                     remove.divergent.cells = TRUE,
+                     complete.cells.only = TRUE,
+                     trim.germlines = TRUE,
+                     fill.germline.CDR3 = TRUE)
+```
+<br>
+
+```{r vdj_build-example-3-message, echo = FALSE}
+# Print number of rows in the 'VDJ_OVA' dataframe
+message(paste("Total number of rows (i.e. cells) in the 'VDJ_OVA' dataframe:", nrow(VDJ_OVA)))
+```
+<br>
+
+An example VDJ dataframe is provided below, containing the data of clonotype 1-10 of all samples:
+```{r vdj_build-example-3-df, echo = FALSE}
+# Print first 10 clonotypes of all samples
+DT::datatable(data = VDJ_OVA[VDJ_OVA$clonotype_id %in% paste0("clonotype", 1:10), ],
+              rownames = FALSE,
+              options = list(scrollX = TRUE)
+)
+```
+<br>
+
+</div>
+
+
+## 2. Construct lineage trees in repertoire-wide manner with the `AntibodyForests()` function
+
+<div class=text-justify>
+
+### Summary  
+
+The **`AntibodyForests()`** function infers B/T cell evolutionary networks for all clonotypes in a VDJ dataframe, thereby providing insights into the evolutionary relationships between BCR/TCR sequences from each clonotype. Upon execution, the function generates an AntibodyForests object containing lineage trees, sequences, and other specified features for downstream analyses. The resulting object can be used for visualization, comparison, and further analysis of B cell repertoires.  
+<br>
+For all clonotypes, the unique (combination of) sequences are selected, which will be nodes in the lineage tree. Until now, five algorithms have been implemented to construct B cell lineage trees from this list of sequences. Three construction algorithms are based on a pairwise distance matrix: 'phylo.network.default', 'phylo.network.mst', and 'phylo.tree.nj'. If the `string.dist.metric` is specified, the distance matrices are calculated using the `stringdist::stringdistmatrix()` function; if the `dna.model` or `aa.model` is specified, the distance matrices are calculated using the `ape::dist.dna()` or `phangorn::dist.ml()` function, respectively. Two construction algorithms are based on a multiple sequence alignment (msa): 'phylo.tree.mp' and 'phylo.tree.ml'. The msa is created with the `msa::msa()` function. The five algorithms are explained in the description of the `construction.method` parameter below.  
+<br>
+In addition, there is also the option to import pre-constructed lineage trees from an IgPhyML output file into an AntibodyForests object, which enables to comparison of trees created with different construction methods on the same sequencing data in a repertoire-wide manner. IgPhyML is a command-line tool that infers maximum likelihood trees using a phylogenetic codon substitution model specific for antibody lineages, as explained by [Hoehn *et al.* (2017)](https://doi.org/10.1534/genetics.116.196303). Some functions have been included to create the appropriate input files from IgPhyML from 10x Genomics outputs, by running the IgBLAST tool and integrating the output with the VDJ dataframe. These function are discussed in the [supplementary of this vignette](#supplementary-i).
+<br>
+
+### Parameters
+
+`VDJ`
+
+* **Description:** VDJ dataframe as obtained from the `VDJ_build()` function or a dataframe that contain the columns specified in the `sequence.columns`, `germline.columns`, and `node.features` column.  
+* **Example:** `VDJ_df`  
+* **Default:** *None*  
+<br>
+
+`sequence.columns`
+
+* **Description:** Sequence column(s) in the VDJ dataframe that contain the sequences that will be used to infer B cell lineage trees. The sequences should be of the same type (DNA or protein), otherwise, an error message will be returned.  
+* **Example:** `c("VDJ_sequence_aa_trimmed", "VJ_sequence_aa_trimmed")`  
+* **Default:** `c("VDJ_sequence_nt_trimmed", "VJ_sequence_nt_trimmed")`  
+<br>
+
+`germline.columns`
+
+* **Description:** Germline column(s) in the VDJ dataframe that contain the sequences that will be the starting points (roots) of the trees. The germline columns should be in the corresponding order with the columns specified by the `sequence.columns' parameter, and should be of the same type. Note: if the germline sequences are not trimmed using the consensus sequences, the distance between the nodes and the germline node will be overestimated.  
+* **Example:** `c("VDJ_germline_aa_trimmed", "VJ_germline_aa_trimmed")`  
+* **Default:** `c("VDJ_germline_nt_trimmed", "VJ_germline_nt_trimmed")`  
+<br>
+
+`concatenate.sequences`
+
+* **Description:** If `TRUE`, sequences from multiple sequence columns are concatenated into one sequence for single distance matrix calculations/multiple sequence alignments. If `FALSE`, a distance matrix is calculated/multiple sequence alignment is performed for each sequence column separately.  
+* **Default:** `FALSE`  
+<br>
+
+`node.features`
+
+* **Description:** Column name(s) in the VDJ dataframe which should be imported into the AntibodyForests object, i.e. for plotting of lineage trees later on.  
+* **Example:** `c("VDJ_vgene", "VDJ_dgene", "VDJ_jgene", "isotype")`  
+* **Default:** `"isotype"` (if present)  
+<br>
+
+`string.dist.metric`
+
+* **Description:** Specifies the metric used to calculate pairwise string distances between sequences with the `stringdist::stringdistmatrix()` function. This parameter is applicable only when a pairwise DNA or protein distance matrix will be calculated and when the `dna.model` and `aa.model` parameters are not specified. Options include:  
+<br>
+  + `**"lv"**` (Levenshtein distance / edit distance)  
+  Measures the minimum number of single-element edits (insertions, deletions, or substitutions) required to transform one string into another. This metric is useful for comparing sequences with differing lengths or containing various types of mutations.  
+  <br>
+  + `**"dl"**` (Damerau-Levenshtein distance)  
+  Similar to Levenshtein distance but also allows transpositions of adjacent elements as a single-edit operation. It is particularly useful when dealing with typos or errors in sequences.  
+  <br>
+  + `**"osa"**` (Optimal String Alignment distance)  
+  Similar to Damerau-Levenshtein distance but does not allow applying multiple transformations on the same substring. It is useful for comparing sequences with similar but slightly different structures.  
+  <br>
+  + `**"hamming"**` (Hamming distance)  
+  Measures the number of positions at which corresponding elements differ between two strings. It is applicable only to strings of equal length and is useful for comparing sequences of the same length.  
+  <br>
+  + `**"lcs'**` (Longest Common Subsequence distance)  
+  Similar to Levenshtein distance but only allows insertions and deletions as single-edit operations. It is useful for comparing sequences with potential insertions or deletions.  
+  <br>
+  + `**"qgram"**` (Q-gram distance)  
+  Measures the number of distinct q-grams that appear in either string but not both. Q-grams are all possible substrings of length q in both strings, with q defaulting to 1. It is useful for comparing sequences based on shared substrings.  
+  <br>
+  + `**"cosine"**` (Cosine distance)  
+  Calculates the cosine similarity between sequences by converting them into vectors containing the frequency of all single elements. The cosine similarity is then subtracted from 1 to obtain the distance. It is useful for comparing sequences based on their frequency distributions.  
+  <br>
+  + `**"jaccard"**` (Jaccard distance)  
+  Measures the dissimilarity between sequences as 1 minus the Jaccard index, which calculates the size of the intersection of the two sets divided by the size of the union of the sets. It is useful for comparing sequences based on set similarity.  
+  <br>
+  + `**"jw"**` (Jaro-Winkler distance)  
+ Measures the dissimilarity between sequences as 1 minus the Jaro-Winkler similarity, which incorporates a scaling factor and accounts for matching prefixes. It is useful for comparing sequences with potential transpositions or slight differences.  
+  <br>
+* **Default:** `"lv"`  
+<br>
+
+`dna.model`
+
+* **Description:** When a distance-based method is specified in the `construction.method` parameter, an evolutionary DNA model can be specified that is to be used during the pairewise distance calculation. Currently, the following models are included: 'raw', 'N', 'TS', 'TV', 'JC69', 'K80', 'F81', 'K81', 'F84', 'BH87', 'T92', 'TN93', 'GG95', 'logdet', 'paralin', 'indel', and 'indelblock'. The pairwise-distance matrix is calculated using the `ape::dist.dna()` function. When the `construction.method` parameter is set to `phylo.tree.ml`, a nucleotide subsitution model can be specified that is to be use during the maximum likelihood tree-inference. Currently, the following nucleotide substitution models are included: 'JC', 'F81', 'K80', 'HKY', 'TrNe', 'TrN', 'TPM1', 'K81', 'TPM1u', 'TPM2', 'TPM2u', 'TPM3', 'TPM3u', 'TIM1e', 'TIM1', 'TIM2e', 'TIM2', 'TIM3e', 'TIM3', 'TVMe', 'TVM', 'SYM', and 'GTR'. When set to `"all"`, all available nucleotide substitution models will be tested using the `phangorn::modelTest()` function, after which the result is given to the `phangorn::pml_bb()` function for the maximum likelihood tree inference.  
+* **Example:** `"all"`  
+* **Default:** *None* (when a distance-based method is specified with the `construction.method`parameter) and `"all"` (when the `construction.method` parameter is set to "phylo.tree.ml").  
+<br>
+
+`aa.model`
+
+* **Description:** When a distance-based method is specified in the `construction.method` parameter, an evolutionary protein model can be specified that is to be used during the pairwise distance calculation. Currently, the following models are included: 'WAG', 'JTT', 'LG', 'Dayhoff', 'cpREV', 'mtmam', 'mtArt', 'MtZoa', 'mtREV24', 'VT', 'RtREV', 'HIVw', 'HIVb', 'FLU', 'Blosum62', 'Dayhoff_DCMut', and 'JTT_DCMut'. The pairwise-distance matrix is calculated using the `phangorn::dist.ml()` function. When the `construction.method` parameter is set to 'phylo.tree.ml', an amino acid subsitution model can be specified that is to be use during the maximum likelihood tree-inference. Currently, the following amino acid substitution models are included: 'WAG', 'JTT', 'LG', 'Dayhoff', 'cpREV', 'mtmam', 'mtArt', 'MtZoa', 'mtREV24', 'VT', 'RtREV', 'HIVw', 'HIVb', 'FLU', 'Blosum62', 'Dayhoff_DCMut', and 'JTT-DCMut'. When set to `"all"`, all available nucleotide substitution models will be tested using the `phangorn::modelTest()` function, after which the result is given to the `phangorn::pml_bb()` function for the maximum likelihood tree inference.  
+* **Example:** `"all"`  
+* **Default:** *None* (when a distance-based method is specified with the `construction.method`parameter) and `"all"` (when the `construction.method` parameter is set to "phylo.tree.ml").  
+<br>
+
+`codon.model`
+
+* **Description:** Specifies the codon substitution model to be used during maximum likelihood tree infrence. This parameter can only be specified when the `construction.method` is set to "phylo.tree.ml" and when columns with nucleotide sequences are specified in the `sequence.columns` and `germline.columns` parameters. Currently, three codon substution models are available: 'M0' (which assumes a non-distinct non-synonymous/synonymous ratio (ω), 'M1a' (that estimates two different ω classes: ω = 1 & ω < 1), and 'M2a' (that estimates three different ω classes: ω < 1, ω = 1, positive selection ω > 1).
+* **Example:** `"M0"`  
+* **Default:** *None*  
+<br>
+
+`construction.method`
+
+* **Description:** Denotes the approach and algorithm used to convert the distance matrix or multiple sequence alignment into a lineage tree. Currently, there are six options for this paramater:  
+<br>
+  + `**"phylo.network.default"**`  
+  This approach employs a mst-like algorithm to construct a tree evolutionary network. In this method, the germline node is positioned at the top of the tree, and nodes with the minimum distance to any existing node in the tree are linked iteratively.  
+  <br>
+  + `**"phylo.network.mst"**`  
+  This method utilizes the minimum spanning tree (MST) algorithm from the `ape::mst()` function. It constructs networks with the minimum sum of edge lengths/weights by iteratively adding edges to the network in ascending order of edge weights, while ensuring that no cycles are formed. The network is then reorganized into a germline-rooted lineage tree. More information about the use of the 'ape' package is provided in the book 'Analysis of Phylogenetic and Evolution with R' by Emmanual Paradis (https://link.springer.com/book/10.1007/978-1-4614-1743-9).  
+  <br>
+  + `**"phylo.tree.nj"**`  
+  This approach employs the neighbor-joining (NJ) algorithm from the `ape::nj()` function. It constructs phylogenetic trees by joining pairs of nodes with the minimum distance, resulting in a bifurcating tree consisting of internal nodes (representing unrecovered sequences) and terminal nodes (representing the recovered sequences). More information about the use of the 'ape' package is provided in the book 'Analysis of Phylogenetic and Evolution with R' by Emmanual Paradis (https://link.springer.com/book/10.1007/978-1-4614-1743-9).  
+  <br>
+  + `**"phylo.tree.mp"**`  
+  This method utilizes the maximum-parsimony (MP) algorithm from the `phangorn::pratchet()` function. It constructs phylogenetic trees by minimizing the total number of edits required to explain the observed differences among sequences. More information on this implementation of the MP algorithm is provided by [Schliep *et al.* (2011)](https://klausvigo.github.io/phangorn/articles/Trees.html).  
+  <br>
+  + `**"phylo.tree.ml"**`  
+  This approach utilizes the maximum-likelihood (ML) algorithm from the `phangorn::pml_bb()` function. It constructs phylogenetic trees by estimating the tree topology and branch lengths that maximize the likelihood of observing the given sequence data under a specified evolutionary model. More information on this implementation of the ML algorithm is provided by [Schliep *et al.*  (2011)](https://klausvigo.github.io/phangorn/articles/Trees.html).  
+  <br>
+  + `**"phylo.tree.IgPhyML"**`  
+  With this option, no trees/networks are inferred directly. Instead, trees are imported from an IgPhyML output file specified by the `IgPhyML.output.file` parameter. IgPhyML is a tool for inferring phylogenetic trees, particularly suited for antibody lineages. More information on IgPhyML is given by [Hoehn *et al.* 2017](https://doi.org/10.1534/genetics.116.196303).
+  <br>
+* **Default:** `"phylo.network.default"` (if the `IgPhyML.output.file` parameter is not specified) and `"phylo.tree.IgPhyML"` (if the `IgPhyML.output.file` parameter is specified)  
+<br>
+
+`IgPhyML.output.file`
+
+* **Description:** Specifies the path to the IgPhyML output file, from which the trees will be imported if `construction.method` is not specified or set to `"phylo.tree.IgPhyML"`. 
+* **Example:** `"path/to/IgPhyML/output/file.tab"`  
+* **Default:** *None*  
+<br>
+
+`resolve.ties`
+
+* **Description:** Denotes how ties are handled during the conversion of the distance matrix into lineage trees when `construction.method` is set to "phylo.network.default". Ties occur when an unlinked node, which is to be linked to the tree next, shares identical distances with multiple previously linked nodes in the lineage tree. If a vector is provided, ties will be resolved in a hierarchical manner, following the order specified in the vector. If a tie could not be resolved, the node is connected to all nodes, thereby creating a cyclic structure, and a warning message is printed after creation of the AntibodyForests object. There are seven ways to handle ties:  
+<br>
+  + `**"min.expansion"**`  
+  Selects the node(s) with the smallest size.  
+  <br>
+  + `**"max.expansion"** ` 
+  Selects the node(s) with the biggest size.  
+  <br>
+  + `**"min.germline.dist"**`  
+  Selects the node(s) with the smallest string distance to the germline node.  
+  <br>
+  + `**"max.germline.dist"** ` 
+  Selects the node(s) with the biggest string distance to the germline node.  
+  <br>
+  + `**"min.germline.edges"**`  
+  Selects the node(s) with the lowest possible number of edges to the germline node.  
+  <br>
+  + `**"max.germline.edges"**`  
+  Selects the node(s) with the highest possible number of edges to the germline node.  
+  <br>
+  + `**"random"** ` 
+  Selects a random node.  
+  <br>
+* **Default:** `c("max.expansion", "close.germline.dist", "close.germline.edges", "random")` (if the `construction.method` parameter is set to `"phylo.network.default"`)  
+<br>
+
+`remove.internal.nodes`
+
+* **Description:** Denotes if and how internal nodes should be removed after constructing phylogenetic trees. There are four algorithms included to remove internal nodes:  
+<br>
+  + `**"zero.length.edges.only"**`  
+  This option removes internal nodes that only have zero-length edges to terminal nodes. Essentially, it removes internal nodes that do not contribute to the structure of the tree and are directly connected to terminal nodes.  
+  <br>
+  + `**"connect.to.parent"**`  
+  This option first removes internal nodes that have zero-length edges to terminal nodes. Subsequently, it connects all terminal nodes directly to the first parental sequence-recovered node found higher in the tree. This results in a simplified tree structure where terminal nodes are directly linked to a parent node without any intermediate internal nodes. Additionally, if the number of zero-length edges is minimal, the resulting tree may become germline-directed.  
+  <br>
+  + `**"minimum.length"** ` 
+  This algorithm iteratively removes internal nodes by prioritizing edges with the minimum length for deletion. It aims to simplify the tree structure by removing unnecessary internal nodes while preserving the overall topology. By prioritizing edges with minimum length, the algorithm ensures that the most straightforward connections are retained in the resulting tree.  
+  <br>
+  + `**"minimum.cost"**`  
+  Similar to the `"minimum.length"` option, this algorithm iteratively removes internal nodes. However, instead of prioritizing edges based solely on their length, it prioritizes edges that result in the minimum increase in the sum of all edge lengths (referred to as the 'cost') when replacing internal nodes with terminal nodes. By prioritizing edges with minimum cost, the algorithm ensures that the resulting tree maintains the most efficient connections while simplifying its structure.  
+  <br>
+* **Default:** `"minimum.cost"` (when the `construction.method` parameter is set to `"phylo.tree.nj"`) and `"connect.to.parent"` (when the `construction.method` parameter is set to `"phylo.tree.mp"`, `"phylo.tree.ml"`, or `"phylo.tree.IgPhyML"`)  
+<br>
+
+`include`
+
+* **Description:** Specifies the objects that will be returned within the AntibodyForests object. Only objects relevant to the specified `construction.method` should be included. In theory, there are nine objects that can be returned:  
+<br>
+  + `**"nodes"**`  
+  Nested list containing information for each node, including sequences, barcodes, and selected columns specified with the `node.features` paramter. This object is automatically generated and included with each option for `construction.method`.  
+  <br>
+  + `**"dist"**`  
+  Pairwise string distance matrices, one for each column selected in `sequence.columns`, or only one if `concatenate.sequences` is set to TRUE.  
+  <br>
+  + `**"msa"**`  
+  Multiple sequence alignments, one for each column selected in `sequence.columns`, or only one if `concatenate.sequences` is set to TRUE.    
+  <br>
+  + `**"phylo"**`  
+  An object of class 'phylo' representing the lineage tree, created when the clonotype contains at least three sequences and the `construction.method` is set to `"phylo.tree.nj"`, `"phylo.tree.mp"`, `"phylo.tree.ml"`, or `"phylo.tree.IgPhyML"`.  
+  <br>
+  + `**"igraph"**`  
+  An object of class 'igraph' representing the final lineage tree, used for plotting by the `AntibodyForests_plot()` function. This object is automatically generated and included with each option for `construction.method`.  
+  <br>
+  + `**"igraph.with.inner.nodes"** ` 
+  An object of class 'igraph' representing the lineage tree before the removal of internal nodes, relevant when `construction.method` is set to `"phylo.tree.nj"`, `"phylo.tree.mp"`, `"phylo.tree.ml"`, or `"phylo.tree.IgPhyML"`.  
+  <br>
+  + `**"edges"**`  
+  Dataframe with columns "upper.node", "lower.node", and "edge.length", where each row represents an edge in the final lineage tree (stored in the "igraph" object. This object is automatically generated and included with each option for `construction.method`.  
+  <br>
+  + `**"edges.with.inner.nodes"**`  
+  Similar to "edges", a dataframe with edge information, but includes edges before the removal of internal nodes. Again, only relevant when `construction.method` is set to `"phylo.tree.nj"`, `"phylo.tree.mp"`, `"phylo.tree.ml"`, or `"phylo.tree.IgPhyML"`.  
+  <br>
+  + `**"metrics"**`  
+  List of tree metrics, including a `"tie.resolving"` matrix indicating tie resolution counts (relevant for the `"phylo.network.default"` construction algorithm) and a `"model"` string indicating the model used to infer the maximum likelihood tree (relevant for the `"phylo.tree.ml"` construction algorithm).  
+  <br>
+* **Default:** `"all"` (all objects that are created with the specified construction algorithm will be included in the AntibodyForests object)  
+<br>
+
+`parallel`
+
+* **Description:** If `TRUE`, the per-clone network inference is executed in parallel (parallelized across clonotypes) using either the `parallel::parLapply()` function (on Windows) or the `parallel:mclapply()` function (on Linux/MacOS).  
+* **Default:** `FALSE`  
+<br>
+
+`num.cores`
+
+* **Description:** Number of cores to be used when the `parallel` parameter is set to `TRUE`.  
+* **Example:** `4`  
+* **Default:** All available cores - 1.  
+<br>
+</div>
+
+
+### Examples {.tabset}
+
+```{r load-AntibodyForests-objects, include = FALSE}
+# Load preconstructed AntibodyForests objects
+load("../objects/AntibodyForests_OVA_default.RData")
+load("../objects/AntibodyForests_OVA_mst.RData")
+load("../objects/AntibodyForests_OVA_nj.RData")
+load("../objects/AntibodyForests_OVA_mp.RData")
+load("../objects/AntibodyForests_OVA_ml.RData")
+load("../objects/AntibodyForests_OVA_IgPhyML.RData")
+```
+
+<div class=text-justify>
+
+#### 1. Default  
+
+In the example below, the chosen construction method, `"phylo.network.default"`, employs a mst-like algorithm for constructing evolutionary networks. The germline node is positioned on top, and the sequence-recovered nodes are iteratively linked to the tree by looking at the minimum distance. Sequence and germline columns are specified, ensuring relevant DNA sequences are utilized for inference. Sequences are not concatenated (`concatenate.sequences = FALSE`) to facilitate single distance matrix calculations. Additional features, such as isotype, are included (`node.features = "isotype"`) for downstream analyses. String distances are calculated using the Levenshtein distance metric (`string.dist.metric = "lv"`) to handle sequences with differing lengths or mutations. In the situation where a node that is to be added shares the same distance to multiple nodes in the tree, the tie resolution methods (`resolve.ties`) are employed in a hierarchical manner: first by maximum expansion (`"max.expansion"`), followed by proximity to the germline (`"close.germline.dist"`) and number of edges to the germline (`"close.germline.edges"`). The `"random"` option is included to prevent cyclic structures from being created in the lineage tree. Finally, parallelization (`parallel = TRUE`) optimizes performance by executing per-clone network inference in parallel.
+```{r AntibodyForests-example-default, eval = FALSE}
+# Infer lineage trees for all clones using the 'phylo.network.default' construction method and using all default parameter settings
+AntibodyForests_OVA_default <- AntibodyForests(VDJ = VDJ_OVA,
+                                               sequence.columns = c("VDJ_sequence_nt_trimmed", "VJ_germline_nt_trimmed"),
+                                               germline.columns = c("VDJ_germline_nt_trimmed", "VJ_germline_nt_trimmed"),
+                                               concatenate.sequences = FALSE,
+                                               node.feautres = "isotype",
+                                               construction.method = "phylo.network.default",
+                                               string.dist.metric = "lv",
+                                               resolve.ties = c("max.expansion", "close.germline.dist", "close.germline.edges", "random"),
+                                               parallel = TRUE)
+```
+<br>
+
+#### 2. MST  
+
+In this example, the construction method `"phylo.network.mst"` utilizes a minimum spanning tree (MST) algorithm to initially construct networks. The resulting networks are reorganized, positioning the germline node on top, thereby creating a lineage tree. The specified sequence and germline columns ensure the relevant DNA sequences are used for inference, with concatenation of sequences disabled (`concatenate.sequences = FALSE`) to simplify distance matrix calculations. String distances are computed using the Levenshtein distance metric (`string.dist.metric = "lv"`) to accommodate variations in sequence lengths or mutations. Finally, parallelization (`parallel = TRUE`) enhances performance by executing per-clone network inference in parallel.
+```{r AntibodyForests-example-MST, eval = FALSE}
+# Infer lineage trees for all clones using the 'phylo.network.mst' construction method and using all default parameter settings
+AntibodyForests_OVA_mst <- AntibodyForests(VDJ = VDJ_OVA,
+                                           sequence.columns = c("VDJ_sequence_nt_trimmed", "VJ_germline_nt_trimmed"),
+                                           germline.columns = c("VDJ_germline_nt_trimmed", "VJ_germline_nt_trimmed"),
+                                           concatenate.sequences = FALSE,
+                                           construction.method = "phylo.network.mst",
+                                           string.dist.metric = "lv",
+                                           parallel = TRUE)
+```
+<br>
+
+#### 3. NJ  
+
+In this example, the construction method `"phylo.tree.nj"` employs the Neighbor Joining (NJ) algorithm to construct evolutionary trees. The specified sequence and germline columns ensure the relevant DNA sequences are used for inference, with concatenation of sequences disabled (`concatenate.sequences = FALSE`) to simplify distance matrix calculations. String distances are computed using the Levenshtein distance metric (`string.dist.metric = "lv"`) to accommodate variations in sequence lengths or mutations. The `remove.internal.nodes` parameter is set to `"minimum.cost"`, meaning that during tree construction, internal nodes will be pruned in a manner that minimizes the increase in the sum of all edge weights, thereby minimizing the overall impact on the lineage tree. This method aids in simplifying the resulting tree structure while preserving the essential evolutionary relationships. To enhance performance, parallelization (`parallel = TRUE`) is enabled for per-clone network inference. 
+```{r AntibodyForests-example-NJ, eval = FALSE}
+# Infer lineage trees for all clones using the 'phylo.tree.nj' construction method and using all default parameter settings
+AntibodyForests_OVA_nj <- AntibodyForests(VDJ = VDJ_OVA,
+                                          sequence.columns = c("VDJ_sequence_nt_trimmed", "VJ_germline_nt_trimmed"),
+                                          germline.columns = c("VDJ_germline_nt_trimmed", "VJ_germline_nt_trimmed"),
+                                          concatenate.sequences = FALSE,
+                                          construction.method = "phylo.tree.nj",
+                                          string.dist.metric = "lv",
+                                          remove.internal.nodes = "minimum.cost",
+                                          parallel = TRUE)
+```
+<br>
+
+#### 4. MP  
+
+In this example, the construction method `"phylo.tree.mp"` employs the Maximum Parsimony (MP) algorithm to infer evolutionary trees. The specified sequence and germline columns ensure the relevant DNA sequences are used for inference, with concatenation of sequences disabled (`concatenate.sequences = FALSE`) to simplify the multiple sequence alignment. The `remove.internal.nodes` parameter is set to `"connect.to.parent"`, which means that during tree construction, internal nodes will be pruned by connecting the descendant nodes directly to the parent node. This approach reduces complexity while preserving the essential structure of the lineage tree. Although this could result in a germline-weighted lineage tree, the common presence of zero-length branches between sequence-recovered nodes and internal nodes prevents this outcome, unlike when this pruning method is used for trees inferred with the NJ algorithm. Finally, parallelization (`parallel = TRUE`) enhances performance by executing per-clone network inference in parallel.
+```{r AntibodyForests-example-MP, eval = FALSE}
+# Infer lineage trees for all clones using the 'phylo.tree.mp' construction method and using all default parameter settings
+AntibodyForests_OVA_mp <- AntibodyForests(VDJ = VDJ_OVA,
+                                          sequence.columns = c("VDJ_sequence_nt_trimmed", "VJ_germline_nt_trimmed"),
+                                          germline.columns = c("VDJ_germline_nt_trimmed", "VJ_germline_nt_trimmed"),
+                                          concatenate.sequences = FALSE,
+                                          construction.method = "phylo.tree.mp",
+                                          remove.internal.nodes = "connect.to.parent",
+                                          parallel = TRUE)
+```
+<br>
+
+#### 5. ML  
+
+In this example, the construction method `"phylo.tree.ml"` employs the Maximum Likelihood (ML) algorithm to infer evolutionary trees. The specified sequence and germline columns ensure the relevant DNA sequences are used for inference, with concatenation of sequences disabled (`concatenate.sequences = FALSE`) to simplify the multiple sequence alignment. The `dna.model` parameter is set to `"all"`, indicating that various DNA substitution models are considered during tree construction to find the one that best fits the data. The `remove.internal.nodes` parameter is set to `"connect.to.parent"`, which means that during tree construction, internal nodes will be pruned by connecting the descendant nodes directly to the parent node. This approach reduces complexity while preserving the essential structure of the lineage tree. Although this could result in a germline-weighted lineage tree, the frequent occurrence of zero-length branches between sequence-recovered nodes and internal nodes prevents this outcome, unlike when this pruning method is applied to trees inferred using the NJ algorithm. Finally, parallelization (`parallel = TRUE`) enhances performance by executing per-clone network inference in parallel.
+```{r AntibodyForests-example-ML, eval = FALSE}
+# Infer lineage trees for all clones using the 'phylo.tree.ml' construction method and using all default parameter settings
+AntibodyForests_OVA_ml <- AntibodyForests(VDJ = VDJ_OVA,
+                                          sequence.columns = c("VDJ_sequence_nt_trimmed", "VJ_germline_nt_trimmed"),
+                                          germline.columns = c("VDJ_germline_nt_trimmed", "VJ_germline_nt_trimmed"),
+                                          concatenate.sequences = FALSE,
+                                          construction.method = "phylo.tree.ml",
+                                          dna.model = "all",
+                                          remove.internal.nodes = "connect.to.parent",
+                                          parallel = TRUE)
+```
+<br>
+
+#### 6. IgPhyML  {#AntibodyForests-example-6-IgPhyML}
+
+In this final example, it is demonstrated how the construction method `"phylo.tree.IgPhyML"` can be used for compatibility with the IgPhyML tool. Unlike other methods where trees are inferred, this method imports trees directly from the specified IgPhyML output file (`IgPhyML.output.file = "data/OVA_scRNA-seq_data/VDJ/airr_rearrangement_igphyml-pass.tab"`). The IgPhyML tool only accepts VDJ sequences as input, which is why only the `"VDJ_sequence_nt_trimmed"` and `"VDJ_germline_nt_trimmed"` columns are selected. This ensures that the relevant DNA sequences are imported from the VDJ dataframe into the AntibodyForests object. It is important to note that the IgPhyML tool also employs a maximum likelihood algorithm, similar to the `"phylo.tree.ml"` method, but uses a model that is specifically adapted to antibody sequences. This specialized model provides more accurate phylogenetic reconstructions for antibody sequence data. The `remove.internal.nodes` parameter is also set to `"connect.to.parent"`, which means that during the tree import process, internal nodes will be pruned by connecting the descendant nodes directly to the parent node. This approach reduces complexity while preserving the essential structure of the lineage tree. Although this could potentially result in a germline-weighted lineage tree, the common presence of zero-length branches between sequence-recovered nodes and internal nodes prevents this outcome, unlike when this pruning method is used for trees inferred with the NJ algorithm. Finally, parallelization (`parallel = TRUE`) enhances performance by executing per-clone network inference in parallel.
+```{r AntibodyForests-example-IgPhyML, eval = FALSE}
+# Infer lineage trees for all clones using the 'phylo.tree.IgPhyML' construction method and using all default parameter settings
+AntibodyForests_OVA_IgPhyML <- AntibodyForests(VDJ = VDJ_OVA,
+                                               sequence.columns = "VDJ_sequence_nt_trimmed",
+                                               germline.columns = "VDJ_germline_nt_trimmed",
+                                               construction.method = "phylo.tree.IgPhyML",
+                                               IgPhyML.output.file = "data/OVA_scRNA-seq_data/VDJ/airr_rearrangement_igphyml-pass.tab",
+                                               remove.internal.nodes = "connect.to.parent",
+                                               parallel = TRUE)
+```
+<br>
+
+</div>
+
+
+### Synchronize node names of AntibodyForests objects with the `AntibodyForests_sync()` function
+
+<div class=text-justify>
+
+When multiple AntibodyForests objects are created from the same VDJ dataframe and using the same sequence columns, the nodes in the resulting igraph objects should be the same. However, selecting different sequence columns may result in a different number of nodes and different node names. Additionally, the IgPhyML tool does not label the nodes according to their size but rather by using barcodes. When comparing tree topologies, having synchronized node names is essential.  
+<br>
+To achieve this, the AntibodyForests_sync() function can be used. This function takes one AntibodyForests object as a reference and renames the nodes of all clonotypes within all samples of another AntibodyForests object to match the reference. The function matches the nodes using barcodes.  
+<br>
+If the barcodes of one node in the reference object are found in multiple nodes in the subject object, the nodes in the subject will get suffixes A, B, etc. (e.g., node4 will become node4A and node4B). Conversely, if the barcodes of multiple nodes in the reference object are found in only one node in the subject object, the node in the subject object will get the concatenated names of the nodes in the reference object (e.g., node2 and node4 will become node2+4).
+```{r AntibodyForests_sync, eval = FALSE}
+AntibodyForests_OVA_IgPhyML <- AntibodyForests_sync(reference = AntibodyForests_OVA_default,
+                                                    subject = AntibodyForests_OVA_IgPhyML)
+```
+<br>
+
+</div>
+
+
+## 3. Visualize lineage trees with the `AntibodyForests_plot()` function
+
+### Summary  
+
+<div class=text-justify>
+
+The **`AntibodyForests_plot()`** function retrieves the igraph object from the provided AntibodyForests object for the specified clone within the specified sample and plots the lineage tree using the specified plotting parameters. This visualization offers insights into sequence evolution, enabling the observation of evolutionary processes in relation to sequence distances, clonal expansion, and other attributes such as isotype or evolutionary likelihood, as well as additional features appended to the VDJ dataframe.  
+<br>
+
+
+### Parameters
+
+`AntibodyForests_object`
+
+* **Description:** An AntibodyForests object as obtained from the `AntibodyForests()` function.  
+* **Example:** `AntibodyForests_OVA_default`  
+* **Default:** *None*  
+<br>
+
+`sample`
+
+* **Description:** Denotes the sample that contains the clonotype from which the lineage tree should be plotted.  
+* **Example:** `S1`   
+* **Default:** *None*   
+<br>
+
+`clonotype`
+
+* **Description:** Denotes the clonotype from which the lineage tree should be plotted.  
+* **Example:** `clonotype1`   
+* **Default:** *None*   
+<br>
+
+`show.inner.nodes`
+
+* **Description:** If TRUE, the tree with inner nodes is plotted. Inner nodes are present only when the trees are created with specific construction algorithms (phylo.tree.nj, phylo.tree.mp, phylo.tree.ml, or phylo.tree.IgPhyML).  
+* **Default:** `FALSE`   
+<br>
+
+`x.scaling`
+
+* **Description:** Specifies the range of the x-axis, scaling the horizontal distance between the nodes.  
+* **Example:** `c(-3, 3)`   
+* **Default:** Defaults to a range in which the minimal space between two nodes correspond to 20% of the size of the radius of the smallest node.   
+<br>
+
+`y.scaling`
+
+* **Description:** Specifies the range of the y-axis, scaling the vertical distance between the nodes.   
+* **Example:** `c(-2, 2)`  
+* **Default:** Defaults to a range in which the minimal vertical space between two nodes is 0.25 points.   
+<br>
+
+`color.by`
+
+* **Description:** Specifies the feature of the nodes used for coloring the nodes. A unique color is selected for each unique value using the `grDevices::rainbow()` function, unless a color gradient is created (see the `node.color.gradient` parameter).   
+* **Example:** `"isotype"`  
+* **Default:** `"isotype"` (if present) or `NULL`   
+<br>
+
+`label.by`
+
+* **Description:** Specifies what should be plotted on the nodes. Options include `"name"`, `"size"`, a feature stored in the nodes list, or `"none"`.   
+* **Example:** `"size"`  
+* **Default:** `"name"`   
+<br>
+
+`edge.label`
+
+* **Description:** Specifies what distance between the nodes is shown as labels of the edges. Options include `"original"`, `"none"`, `"lv"` (Levenshtein distance), `"dl"` (Damerau-Levenshtein distance), `"osa"` (Optimal String Alignment distance), and `"hamming"` (Hamming distance).   
+* **Example:** `"lv"`  
+* **Default:** `"none"`   
+<br>
+
+`node.size`
+
+* **Description:** Specifies the size of the nodes. If set to `expansion`, nodes get a size equivalent to the number of cells they represent. If set to an integer, all nodes get this size. If set to a list of integers, each node gets the size specified in the list.   
+* **Example:** `20`  
+* **Default:** `"expansion"`   
+<br>
+
+`node.size.factor`
+
+* **Description:** Factor by which all node sizes are multiplied.   
+* **Example:** `5`  
+* **Default:** `1`   
+<br>
+
+`node.size.scale`
+
+* **Description:** Specifies the minimum and maximum node size in the plot, to which original node sizes will be scales.   
+* **Example:** `c(5, 50)`  
+* **Default:** `c(10, 20)`   
+<br>
+
+`node.size.range`
+
+* **Description:** Specifies the minimum and maximum node size that will be shown in the node size legend. 
+* **Example:** `c(1, 100)`  
+* **Default:** Defaults to the original minimum and maximum node size.   
+<br>
+
+`node.color`
+
+* **Description:** Specifies the color of nodes. If set to `default` and of the `color.by` parameter is not specified, all sequence-recovered nodes are colored light blue. If set to a color (from the `grDevices::color()` list or a valid HEX code), all sequence-recovered nodes will get this color. If set to a list of colors, each node gets the color specified in the list. 
+* **Example:** `"green"`  
+* **Default:** `"default"`   
+<br>
+
+`node.color.gradient`
+
+* **Description:** Specifies the colors of the color gradient if the `color.by` parameter is set to a numerical feature. At least 2 colors must be specified.  
+* **Example:** `c("blue", "white", "red")`  
+* **Default:** Defaults to the colors of the viridis color palette (imported with `scales::viridis_pal()(1000)`).   
+<br>
+
+`node.color.range`
+
+* **Description:** Specifies the minimum and maximum node size that will be shown in the color gradient legend. 
+* **Example:** `"green"`  
+* **Default:** Defaults to the original minimum and maximum value found for the feature specified by the `color.by` parameter.   
+<br>
+
+`show.color.legend`
+
+* **Description:** If TRUE, a legend is plotted to display the values of the specified node feature matched to the corresponding colors.  
+* **Default:** `TRUE` (if the `color.by` parameter is specified)   
+<br>
+
+`show.size.legend`
+
+* **Description:** If TRUE, a legend is plotted to display the node sizes and the corresponding number of cells represented.  
+* **Default:** `TRUE` (if the `node.size` parameter is set to `"expansion"`)   
+<br>
+
+`main.title`
+
+* **Description:** Specifies the main title of the plot, displayed in bold font.  
+* **Example:** `"Your main title"`  
+* **Default:** `NULL`   
+<br>
+
+`sub.title`
+
+* **Description:** Specifies the subtitle of the plot, displayed in italic font below the main title.  
+* **Example:** `"Your sub title"`  
+* **Default:** `NULL`   
+<br>
+
+`color.legend.title`
+
+* **Description:** Specifies the title of the legend showing the color matching.  
+* **Example:** `"Your title"`  
+* **Default:** Defaults to the capitalized name of the feature specified in the `color.by` parameter.   
+<br>
+
+`size.legend.title`
+
+* **Description:** Specifies the title of the legend showing the node sizes.  
+* **Example:** `"Your title"`  
+* **Default:** `"Expansion (# cells)"`   
+<br>
+
+`output.file`
+
+* **Description:** If a path is specified, the generated plot is saved as a PNG file at that location.  
+* **Example:** `"/directory/ineage_tree.png"`  
+* **Default:** `NULL`   
+<br>
+</div>
+
+
+### Examples {.tabset}
+
+<div class=text-justify>
+
+```{r create-image-carousel, include = FALSE}
+# Write function that generates an image carousel from a list of PNG files
+create_image_carousel <- function(image_sources){
+  # Filter out non-existing PNG files and order images
+  image_sources <- gtools::mixedsort(image_sources[file.exists(image_sources)])
+  # Convert the image files to Base64-encoded data URIs
+  base64_images <- lapply(image_sources, function(x) base64enc::dataURI(file = x))
+  # Specify the style of images in caroussels 
+  style <- "width: 100%; height: 100%; object-fit: contain;"
+  # Create HTML image tags with the Base64-encoded data URIs and specified style
+  image_tags <- lapply(base64_images, function(uri) htmltools::tags$img(src = uri, style = style))
+  # Pass the list of image tags as individual arguments to the 'swipeRwrapper' function
+  wrapper <- do.call(swipeR::swipeRwrapper, image_tags)
+  # Create the swipeR carousel with specified parameters
+  swipeR::swipeR(wrapper = wrapper, width = "750px", height = "500px",
+                 effect = "flip", rewind = TRUE,
+                 paginationColor = "#2C3E50", navigationColor = "#2C3E50")
+}
+```
+
+#### 1. Default {.tabset}
+
+In the carousel below, the lineage trees for the first 10 clonotypes of all samples are displayed, constructed using the `phylo.network.default` algorithm (`AntibodyForests_object = AntibodyForests_OVA_default`. This specific example demonstrates plotting the lineage tree for clonotype1 (`clonotype = "clonotype1"`) from sample S1 (`sample = "S1"`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`), and edges are annotated with the Levenshtein distances between the connected nodes (`edge.label = "lv"`). Node sizes reflect clonal expansion (`node.size = "expansion"`), ranging from 10 to 20 on a scale (`node.size.scale = c(10, 20)`). The plot is titled `"Lineage tree - Default algorithm"`, with a subtitle indicating the sample and clonotype information. This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
+```{r AntibodyForests_plot_default_example, eval = FALSE}
+# Plot lineage tree, constructed with the `phylo.network.default' method
+AntibodyForests_plot(AntibodyForests_object = AntibodyForests_OVA_default,
+                     sample = "S1",
+                     clonotype = "clonotype1",
+                     label.by = "name",
+                     color.by = "isotype",
+                     edge.label = "lv",
+                     node.size = "expansion",
+                     node.size.scale = c(10, 20),
+                     main.title = "Lineage tree - Default algorithm",
+                     sub.title = "OVA - S1 - clonotype1")
+```
+
+
+```{r AntibodyForests_plot_default, eval = FALSE, include = FALSE}
+# Generate plots for the first 10 clonotypes of all samples 
+for(sample in paste0("S", 1:5)){
+  for(clonotype in paste0("clonotype", 1:10)){
+    if(!is.null(AntibodyForests_OVA_default[[sample]][[clonotype]])){
+      AntibodyForests_plot(AntibodyForests_object = AntibodyForests_OVA_default,
+                         sample = sample,
+                         clonotype = clonotype,
+                         edge.label = "lv",
+                         main.title = "Lineage tree - Default algorithm",
+                         sub.title = paste0("OVA - ", sample, " - ", clonotype),
+                         output.file = paste0("imgs/trees/default/", sample, "/", clonotype))
+    }
+  }
+}
+```
+
+##### S1
+```{r AntibodyForests_plot_default_S1, echo = FALSE}
+# Display all plots of S1 in an image carousel
+create_image_carousel(list.files("imgs/trees/default/S1", full.names = TRUE))
+```
+<br>
+
+##### S2
+```{r AntibodyForests_plot_default_S2, echo = FALSE}
+# Display all plots of S2 in an image carousel
+create_image_carousel(list.files("imgs/trees/default/S2", full.names = TRUE))
+```
+<br>
+
+##### S3
+```{r AntibodyForests_plot_default_S3, echo = FALSE}
+# Display all plots of S3 in an image carousel
+create_image_carousel(list.files("imgs/trees/default/S3", full.names = TRUE))
+```
+<br>
+
+##### S4
+```{r AntibodyForests_plot_default_S4, echo = FALSE}
+# Display all plots of S4 in an image carousel
+create_image_carousel(list.files("imgs/trees/default/S4", full.names = TRUE))
+```
+<br>
+
+##### S5
+```{r AntibodyForests_plot_default_S5, echo = FALSE}
+# Display all plots of S5 in an image carousel
+create_image_carousel(list.files("imgs/trees/default/S5", full.names = TRUE))
+```
+<br>
+
+#### 2. MST {.tabset}
+
+In the carousel below, the lineage trees for the first 10 clonotypes of all samples are displayed, constructed using the `phylo.network.mst` algorithm (`AntibodyForests_object = AntibodyForests_OVA_mst`. This specific example demonstrates plotting the lineage tree for clonotype1 (`clonotype = "clonotype1"`) from sample S1 (`sample = "S1"`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`), and edges are annotated with the Levenshtein distances between the connected nodes (`edge.label = "lv"`). Node sizes reflect clonal expansion (`node.size = "expansion"`), ranging from 10 to 20 on a scale (`node.size.scale = c(10, 20)`). The plot is titled `"Lineage tree - MST algorithm"`, with a subtitle indicating the sample and clonotype information. This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
+```{r AntibodyForests_plot_MST_example, eval = FALSE}
+# Plot lineage tree, constructed with the `phylo.network.mst' method
+AntibodyForests_plot(AntibodyForests_object = AntibodyForests_OVA_mst,
+                     sample = "S1",
+                     clonotype = "clonotype1",
+                     label.by = "name",
+                     color.by = "isotype",
+                     edge.label = "lv",
+                     node.size = "expansion",
+                     node.size.scale = c(10, 20),
+                     main.title = "Lineage tree - MST algorithm",
+                     sub.title = "OVA - S1 - clonotype1")
+```
+
+```{r AntibodyForests_plot_MST, eval = FALSE, include = FALSE}
+# Generate plots for the first 10 clonotypes of all samples 
+for(sample in paste0("S", 1:5)){
+  for(clonotype in paste0("clonotype", 1:10)){
+    if(!is.null(AntibodyForests_OVA_mst[[sample]][[clonotype]])){
+      AntibodyForests_plot(AntibodyForests_object = AntibodyForests_OVA_mst,
+                         sample = sample,
+                         clonotype = clonotype,
+                         edge.label = "lv",
+                         main.title = "Lineage tree - MST algorithm",
+                         sub.title = paste0("OVA - ", sample, " - ", clonotype),
+                         output.file = paste0("imgs/trees/mst/", sample, "/", clonotype))
+    }
+  }
+}
+```
+
+##### S1
+```{r AntibodyForests_plot_MST_S1, echo = FALSE}
+# Display all plots of S1 in an image carousel
+create_image_carousel(list.files("imgs/trees/mst/S1", full.names = TRUE))
+```
+<br>
+
+##### S2
+```{r AntibodyForests_plot_MST_S2, echo = FALSE}
+# Display all plots of S2 in an image carousel
+create_image_carousel(list.files("imgs/trees/mst/S2", full.names = TRUE))
+```
+<br>
+
+##### S3
+```{r AntibodyForests_plot_MST_S3, echo = FALSE}
+# Display all plots of S3 in an image carousel
+create_image_carousel(list.files("imgs/trees/mst/S3", full.names = TRUE))
+```
+<br>
+
+##### S4
+```{r AntibodyForests_plot_MST_S4, echo = FALSE}
+# Display all plots of S4 in an image carousel
+create_image_carousel(list.files("imgs/trees/mst/S4", full.names = TRUE))
+```
+<br>
+
+##### S5
+```{r AntibodyForests_plot_MST_S5, echo = FALSE}
+# Display all plots of S5 in an image carousel
+create_image_carousel(list.files("imgs/trees/mst/S5", full.names = TRUE))
+```
+<br>
+
+
+#### 3. NJ {.tabset}
+
+##### With internal nodes {.tabset}
+
+In the carousel below, the lineage trees for the first 10 clonotypes of all samples are displayed, constructed using the `phylo.tree.nj` algorithm (`AntibodyForests_object = AntibodyForests_OVA_nj`. This specific example demonstrates plotting the lineage tree for clonotype1 (`clonotype = "clonotype1"`) from sample S1 (`sample = "S1"`), with the internal nodes (`show.inner.nodes = TRUE`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`), and edges are annotated with the original calculated distances between the connected nodes (`edge.label = "original"`). Node sizes reflect clonal expansion (`node.size = "expansion"`), ranging from 10 to 20 on a scale (`node.size.scale = c(10, 20)`). The plot is titled `"Lineage tree - NJ algorithm"`, with a subtitle indicating the sample and clonotype information. This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
+```{r AntibodyForests_plot_nj_with_IN_example, eval = FALSE}
+# Plot lineage tree, constructed with the `phylo.tree.nj' method, with internal nodes
+AntibodyForests_plot(AntibodyForests_object = AntibodyForests_OVA_nj,
+                     sample = "S1",
+                     clonotype = "clonotype1",
+                     show.inner.nodes = TRUE,
+                     label.by = "name",
+                     color.by = "isotype",
+                     edge.label = "original",
+                     node.size = "expansion",
+                     node.size.scale = c(10, 20),
+                     main.title = "Lineage tree - NJ algorithm",
+                     sub.title = "OVA - S1 - clonotype1")
+```
+
+```{r AntibodyForests_plot_nj_with_IN, eval = FALSE, include = FALSE}
+# Generate plot of lineage trees created with the NJ algorithm of the first 10 clonotypes of all samples (with internal nodes)
+for(sample in paste0("S", 1:5)){
+  for(clonotype in paste0("clonotype", 1:10)){
+    if(!is.null(AntibodyForests_OVA_nj[[sample]][[clonotype]][["igraph.with.inner.nodes"]])){
+      AntibodyForests_plot(AntibodyForests_object = AntibodyForests_OVA_nj,
+                           sample = sample,
+                           clonotype = clonotype,
+                           show.inner.nodes = TRUE,
+                           edge.label = "original",
+                           main.title = "Lineage tree - NJ algorithm",
+                           sub.title = paste0("OVA - ", sample, " - ", clonotype),
+                           output.file = paste0("imgs/trees/nj/with_in/", sample, "/", clonotype))
+    }
+  }
+}
+```
+
+###### S1
+```{r AntibodyForests_plot_nj_with_IN_S1, echo = FALSE}
+# Display all plots of S1 in an image carousel
+create_image_carousel(list.files("imgs/trees/nj/with_in/S1", full.names = TRUE))
+```
+<br>
+
+###### S2
+```{r AntibodyForests_plot_nj_with_IN_S2, echo = FALSE}
+# Display all plots of S2 in an image carousel
+create_image_carousel(list.files("imgs/trees/nj/with_in/S2", full.names = TRUE))
+```
+<br>
+
+###### S3
+```{r AntibodyForests_plot_nj_with_IN_S3, echo = FALSE}
+# Display all plots of S3 in an image carousel
+create_image_carousel(list.files("imgs/trees/nj/with_in/S3", full.names = TRUE))
+```
+<br>
+
+###### S4
+```{r AntibodyForests_plot_nj_with_IN_S4, echo = FALSE}
+# Display all plots of S4 in an image carousel
+create_image_carousel(list.files("imgs/trees/nj/with_in/S4", full.names = TRUE))
+```
+<br>
+
+###### S5
+```{r AntibodyForests_plot_nj_with_IN_S5, echo = FALSE}
+# Display all plots of S1 in an image carousel
+create_image_carousel(list.files("imgs/trees/nj/with_in/S5", full.names = TRUE))
+```
+<br>
+
+##### Without internal nodes {.tabset}
+
+In the carousel below, the lineage trees for the first 10 clonotypes of all samples are displayed, constructed using the `phylo.tree.nj` algorithm (`AntibodyForests_object = AntibodyForests_OVA_mp`. This specific example demonstrates plotting the lineage tree for clonotype1 (`clonotype = "clonotype1"`) from sample S1 (`sample = "S1"`), without the internal nodes (`show.inner.nodes = FALSE`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`), and edges are annotated with the Levenshtein distances between the connected nodes (`edge.label = "lv"`). Node sizes reflect clonal expansion (`node.size = "expansion"`), ranging from 10 to 20 on a scale (`node.size.scale = c(10, 20)`). The plot is titled `"Lineage tree - NJ algorithm"`, with a subtitle indicating the sample and clonotype information. This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
+```{r AntibodyForests_plot_nj_without_IN_example, eval = FALSE}
+# Plot lineage tree, constructed with the `phylo.tree.nj' method, without internal nodes
+AntibodyForests_plot(AntibodyForests_object = AntibodyForests_OVA_nj,
+                     sample = "S1",
+                     clonotype = "clonotype1",
+                     show.inner.nodes = FALSE,
+                     label.by = "name",
+                     color.by = "isotype",
+                     edge.label = "lv",
+                     node.size = "expansion",
+                     node.size.scale = c(10, 20),
+                     main.title = "Lineage tree - NJ algorithm",
+                     sub.title = "OVA - S1 - clonotype1")
+```
+
+```{r AntibodyForests_plot_nj_without_IN, eval = FALSE, include = FALSE}
+# Generate plot of lineage trees created with the NJ algorithm of the first 10 clonotypes of all samples (without internal nodes)
+for(sample in paste0("S", 1:5)){
+  for(clonotype in paste0("clonotype", 1:10)){
+    if(!is.null(AntibodyForests_OVA_nj[[sample]][[clonotype]][["igraph"]])){
+      AntibodyForests_plot(AntibodyForests_object = AntibodyForests_OVA_nj,
+                           sample = sample,
+                           clonotype = clonotype,
+                           show.inner.nodes = FALSE,
+                           edge.label = "lv",
+                           main.title = "Lineage tree - NJ algorithm",
+                           sub.title = paste0("OVA - ", sample, " - ", clonotype),
+                           output.file = paste0("imgs/trees/nj/without_in/", sample, "/", clonotype))
+    }
+  }
+}
+```
+
+###### S1
+```{r AntibodyForests_plot_nj_without_IN_S1, echo = FALSE}
+# Display all plots of S1 in an image carousel
+create_image_carousel(list.files("imgs/trees/nj/without_in/S1", full.names = TRUE))
+```
+<br>
+
+###### S2
+```{r AntibodyForests_plot_nj_without_IN_S2, echo = FALSE}
+# Display all plots of S2 in an image carousel
+create_image_carousel(list.files("imgs/trees/nj/without_in/S2", full.names = TRUE))
+```
+<br>
+
+###### S3
+```{r AntibodyForests_plot_nj_without_IN_S3, echo = FALSE}
+# Display all plots of S3 in an image carousel
+create_image_carousel(list.files("imgs/trees/nj/without_in/S3", full.names = TRUE))
+```
+<br>
+
+###### S4
+```{r AntibodyForests_plot_nj_without_IN_S4, echo = FALSE}
+# Display all plots of S4 in an image carousel
+create_image_carousel(list.files("imgs/trees/nj/without_in/S4", full.names = TRUE))
+```
+<br>
+
+###### S5
+```{r AntibodyForests_plot_nj_without_IN_S5, echo = FALSE}
+# Display all plots of S1 in an image carousel
+create_image_carousel(list.files("imgs/trees/nj/without_in/S5", full.names = TRUE))
+```
+<br>
+
+#### 4. MP {.tabset}
+
+##### With internal nodes {.tabset}
+
+In the carousel below, the lineage trees for the first 10 clonotypes of all samples are displayed, constructed using the `phylo.tree.mp` algorithm (`AntibodyForests_object = AntibodyForests_OVA_mp`. This specific example demonstrates plotting the lineage tree for clonotype1 (`clonotype = "clonotype1"`) from sample S1 (`sample = "S1"`), with the internal nodes (`show.inner.nodes = TRUE`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`), and edges are annotated with the original calculated distances between the connected nodes (`edge.label = "original"`). Node sizes reflect clonal expansion (`node.size = "expansion"`), ranging from 10 to 20 on a scale (`node.size.scale = c(10, 20)`). The plot is titled `"Lineage tree - MP algorithm"`, with a subtitle indicating the sample and clonotype information. This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
+```{r AntibodyForests_plot_mp_with_IN_example, eval = FALSE}
+# Plot lineage tree, constructed with the `phylo.tree.mp' method, with internal nodes
+AntibodyForests_plot(AntibodyForests_object = AntibodyForests_OVA_mp,
+                     sample = "S1",
+                     clonotype = "clonotype1",
+                     show.inner.nodes = TRUE,
+                     label.by = "name",
+                     color.by = "isotype",
+                     edge.label = "original",
+                     node.size = "expansion",
+                     node.size.scale = c(10, 20),
+                     main.title = "Lineage tree - MP algorithm",
+                     sub.title = "OVA - S1 - clonotype1")
+```
+
+```{r AntibodyForests_plot_mp_with_IN, eval = FALSE, include = FALSE}
+# Generate plot of lineage trees created with the MP algorithm of the first 10 clonotypes of all samples (with internal nodes)
+for(sample in paste0("S", 1:5)){
+  for(clonotype in paste0("clonotype", 1:10)){
+    if(!is.null(AntibodyForests_OVA_mp[[sample]][[clonotype]][["igraph.with.inner.nodes"]])){
+      AntibodyForests_plot(AntibodyForests_object = AntibodyForests_OVA_mp,
+                           sample = sample,
+                           clonotype = clonotype,
+                           show.inner.nodes = TRUE,
+                           edge.label = "original",
+                           main.title = "Lineage tree - MP algorithm",
+                           sub.title = paste0("OVA - ", sample, " - ", clonotype),
+                           output.file = paste0("imgs/trees/mp/with_in/", sample, "/", clonotype))
+    }
+  }
+}
+```
+
+###### S1
+```{r AntibodyForests_plot_mp_with_IN_S1, echo = FALSE}
+# Display all plots of S1 in an image carousel
+create_image_carousel(list.files("imgs/trees/mp/with_in/S1", full.names = TRUE))
+```
+<br>
+
+###### S2
+```{r AntibodyForests_plot_mp_with_IN_S2, echo = FALSE}
+# Display all plots of S2 in an image carousel
+create_image_carousel(list.files("imgs/trees/mp/with_in/S2", full.names = TRUE))
+```
+<br>
+
+###### S3
+```{r AntibodyForests_plot_mp_with_IN_S3, echo = FALSE}
+# Display all plots of S3 in an image carousel
+create_image_carousel(list.files("imgs/trees/mp/with_in/S3", full.names = TRUE))
+```
+<br>
+
+###### S4
+```{r AntibodyForests_plot_mp_with_IN_S4, echo = FALSE}
+# Display all plots of S4 in an image carousel
+create_image_carousel(list.files("imgs/trees/mp/with_in/S4", full.names = TRUE))
+```
+<br>
+
+###### S5
+```{r AntibodyForests_plot_mp_with_IN_S5, echo = FALSE}
+# Display all plots of S1 in an image carousel
+create_image_carousel(list.files("imgs/trees/mp/with_in/S5", full.names = TRUE))
+```
+<br>
+
+##### Without internal nodes {.tabset}
+
+In the carousel below, the lineage trees for the first 10 clonotypes of all samples are displayed, constructed using the `phylo.tree.mp` algorithm (`AntibodyForests_object = AntibodyForests_OVA_mp`. This specific example demonstrates plotting the lineage tree for clonotype1 (`clonotype = "clonotype1"`) from sample S1 (`sample = "S1"`), without the internal nodes (`show.inner.nodes = FALSE`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`), and edges are annotated with the Levenshtein distances between the connected nodes (`edge.label = "lv"`). Node sizes reflect clonal expansion (`node.size = "expansion"`), ranging from 10 to 20 on a scale (`node.size.scale = c(10, 20)`). The plot is titled `"Lineage tree - MP algorithm"`, with a subtitle indicating the sample and clonotype information. This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
+```{r AntibodyForests_plot_mp_without_IN_example, eval = FALSE}
+# Plot lineage tree, constructed with the `phylo.tree.mp' method, without internal nodes
+AntibodyForests_plot(AntibodyForests_object = AntibodyForests_OVA_mp,
+                     sample = "S1",
+                     clonotype = "clonotype1",
+                     show.inner.nodes = FALSE,
+                     label.by = "name",
+                     color.by = "isotype",
+                     edge.label = "lv",
+                     node.size = "expansion",
+                     node.size.scale = c(10, 20),
+                     main.title = "Lineage tree - MP algorithm",
+                     sub.title = "OVA - S1 - clonotype1")
+```
+
+```{r AntibodyForests_plot_mp_without_IN, eval = FALSE, include = FALSE}
+# Generate plot of lineage trees created with the MP algorithm of the first 10 clonotypes of all samples (without internal nodes)
+for(sample in paste0("S", 1:5)){
+  for(clonotype in paste0("clonotype", 1:10)){
+    if(!is.null(AntibodyForests_OVA_mp[[sample]][[clonotype]][["igraph"]])){
+      AntibodyForests_plot(AntibodyForests_object = AntibodyForests_OVA_mp,
+                           sample = sample,
+                           clonotype = clonotype,
+                           show.inner.nodes = FALSE,
+                           edge.label = "lv",
+                           main.title = "Lineage tree - MP algorithm",
+                           sub.title = paste0("OVA - ", sample, " - ", clonotype),
+                           output.file = paste0("imgs/trees/mp/without_in/", sample, "/", clonotype))
+    }
+  }
+}
+```
+
+###### S1
+```{r AntibodyForests_plot_mp_witthout_IN_S1, echo = FALSE}
+# Display all plots of S1 in an image carousel
+create_image_carousel(list.files("imgs/trees/mp/without_in/S1", full.names = TRUE))
+```
+<br>
+
+###### S2
+```{r AntibodyForests_plot_mp_without_IN_S2, echo = FALSE}
+# Display all plots of S2 in an image carousel
+create_image_carousel(list.files("imgs/trees/mp/without_in/S2", full.names = TRUE))
+```
+<br>
+
+###### S3
+```{r AntibodyForests_plot_mp_without_IN_S3, echo = FALSE}
+# Display all plots of S3 in an image carousel
+create_image_carousel(list.files("imgs/trees/mp/without_in/S3", full.names = TRUE))
+```
+<br>
+
+###### S4
+```{r AntibodyForests_plot_mp_without_IN_S4, echo = FALSE}
+# Display all plots of S4 in an image carousel
+create_image_carousel(list.files("imgs/trees/mp/without_in/S4", full.names = TRUE))
+```
+<br>
+
+###### S5
+```{r AntibodyForests_plot_mp_witout_IN_S5, echo = FALSE}
+# Display all plots of S1 in an image carousel
+create_image_carousel(list.files("imgs/trees/mp/without_in/S5", full.names = TRUE))
+```
+<br>
+
+#### 5. ML {.tabset}
+
+##### With internal nodes {.tabset}
+
+In the carousel below, the lineage trees for the first 10 clonotypes of all samples are displayed, constructed using the `phylo.tree.ml` algorithm (`AntibodyForests_object = AntibodyForests_OVA_ml`. This specific example demonstrates plotting the lineage tree for clonotype1 (`clonotype = "clonotype1"`) from sample S1 (`sample = "S1"`), with the internal nodes (`show.inner.nodes = TRUE`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`), and edges are annotated with the original calculated distances between the connected nodes (`edge.label = "original"`). Node sizes reflect clonal expansion (`node.size = "expansion"`), ranging from 10 to 20 on a scale (`node.size.scale = c(10, 20)`). The plot is titled `"Lineage tree - ML algorithm"`, with a subtitle indicating the sample and clonotype information. This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
+```{r AntibodyForests_plot_ml_with_IN_example, eval = FALSE}
+# Plot lineage tree, constructed with the `phylo.tree.ml' method, with internal nodes
+AntibodyForests_plot(AntibodyForests_object = AntibodyForests_OVA_ml,
+                     sample = "S1",
+                     clonotype = "clonotype1",
+                     show.inner.nodes = TRUE,
+                     label.by = "name",
+                     color.by = "isotype",
+                     edge.label = "original",
+                     node.size = "expansion",
+                     node.size.scale = c(10, 20),
+                     main.title = "Lineage tree - ML algorithm",
+                     sub.title = "OVA - S1 - clonotype1")
+```
+
+```{r AntibodyForests_plot_ml_with_IN, eval = FALSE, include = FALSE}
+# Generate plot of lineage trees created with the ML algorithm of the first 10 clonotypes of all samples (with internal nodes)
+for(sample in paste0("S", 1:5)){
+  for(clonotype in paste0("clonotype", 1:10)){
+    if(!is.null(AntibodyForests_OVA_ml[[sample]][[clonotype]][["igraph.with.inner.nodes"]])){
+      AntibodyForests_plot(AntibodyForests_object = AntibodyForests_OVA_ml,
+                           sample = sample,
+                           clonotype = clonotype,
+                           show.inner.nodes = TRUE,
+                           edge.label = "original",
+                           main.title = "Lineage tree - ML algorithm",
+                           sub.title = paste0("OVA - ", sample, " - ", clonotype),
+                           output.file = paste0("imgs/trees/ml/with_in/", sample, "/", clonotype))
+    }
+  }
+}
+```
+
+###### S1
+```{r AntibodyForests_plot_ml_with_IN_S1, echo = FALSE}
+# Display all plots of S1 in an image carousel
+create_image_carousel(list.files("imgs/trees/ml/with_in/S1", full.names = TRUE))
+```
+<br>
+
+###### S2
+```{r AntibodyForests_plot_ml_with_IN_S2, echo = FALSE}
+# Display all plots of S2 in an image carousel
+create_image_carousel(list.files("imgs/trees/ml/with_in/S2", full.names = TRUE))
+```
+<br>
+
+###### S3
+```{r AntibodyForests_plot_ml_with_IN_S3, echo = FALSE}
+# Display all plots of S3 in an image carousel
+create_image_carousel(list.files("imgs/trees/ml/with_in/S3", full.names = TRUE))
+```
+<br>
+
+###### S4
+```{r AntibodyForests_plot_ml_with_IN_S4, echo = FALSE}
+# Display all plots of S4 in an image carousel
+create_image_carousel(list.files("imgs/trees/ml/with_in/S4", full.names = TRUE))
+```
+<br>
+
+###### S5
+```{r AntibodyForests_plot_ml_with_IN_S5, echo = FALSE}
+# Display all plots of S1 in an image carousel
+create_image_carousel(list.files("imgs/trees/ml/with_in/S5", full.names = TRUE))
+```
+<br>
+
+##### Without internal nodes {.tabset}
+
+In the carousel below, the lineage trees for the first 10 clonotypes of all samples are displayed, constructed using the `phylo.tree.ml` algorithm (`AntibodyForests_object = AntibodyForests_OVA_ml`. This specific example demonstrates plotting the lineage tree for clonotype1 (`clonotype = "clonotype1"`) from sample S1 (`sample = "S1"`), without the internal nodes (`show.inner.nodes = FALSE`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`), and edges are annotated with the Levenshtein distances between the connected nodes (`edge.label = "lv"`). Node sizes reflect clonal expansion (`node.size = "expansion"`), ranging from 10 to 20 on a scale (`node.size.scale = c(10, 20)`). The plot is titled `"Lineage tree - ML algorithm"`, with a subtitle indicating the sample and clonotype information. This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
+```{r AntibodyForests_plot_ml_without_IN_example, eval = FALSE}
+# Plot lineage tree, constructed with the `phylo.tree.ml' method, without internal nodes
+AntibodyForests_plot(AntibodyForests_object = AntibodyForests_OVA_ml,
+                     sample = "S1",
+                     clonotype = "clonotype1",
+                     show.inner.nodes = FALSE,
+                     label.by = "name",
+                     color.by = "isotype",
+                     edge.label = "lv",
+                     node.size = "expansion",
+                     node.size.scale = c(10, 20),
+                     main.title = "Lineage tree - ML algorithm",
+                     sub.title = "OVA - S1 - clonotype1")
+```
+
+```{r AntibodyForests_plot_ml_without_IN, eval = FALSE, include = FALSE}
+# Generate plot of lineage trees created with the ML algorithm of the first 10 clonotypes of all samples (without internal nodes)
+for(sample in paste0("S", 1:5)){
+  for(clonotype in paste0("clonotype", 1:10)){
+    if(!is.null(AntibodyForests_OVA_ml[[sample]][[clonotype]][["igraph"]])){
+      AntibodyForests_plot(AntibodyForests_object = AntibodyForests_OVA_ml,
+                           sample = sample,
+                           clonotype = clonotype,
+                           show.inner.nodes = FALSE,
+                           edge.label = "lv",
+                           main.title = "Lineage tree - ML algorithm",
+                           sub.title = paste0("OVA - ", sample, " - ", clonotype),
+                           output.file = paste0("imgs/trees/ml/without_in/", sample, "/", clonotype))
+    }
+  }
+}
+```
+
+###### S1
+```{r AntibodyForests_plot_ml_without_IN_S1, echo = FALSE}
+# Display all plots of S1 in an image carousel
+create_image_carousel(list.files("imgs/trees/ml/without_in/S1", full.names = TRUE))
+```
+<br>
+
+###### S2
+```{r AntibodyForests_plot_ml_without_IN_S2, echo = FALSE}
+# Display all plots of S2 in an image carousel
+create_image_carousel(list.files("imgs/trees/ml/without_in/S2", full.names = TRUE))
+```
+<br>
+
+###### S3
+```{r AntibodyForests_plot_ml_without_IN_S3, echo = FALSE}
+# Display all plots of S3 in an image carousel
+create_image_carousel(list.files("imgs/trees/ml/without_in/S3", full.names = TRUE))
+```
+<br>
+
+###### S4
+```{r AntibodyForests_plot_ml_without_IN_S4, echo = FALSE}
+# Display all plots of S4 in an image carousel
+create_image_carousel(list.files("imgs/trees/ml/without_in/S4", full.names = TRUE))
+```
+<br>
+
+###### S5
+```{r AntibodyForests_plot_ml_without_IN_S5, echo = FALSE}
+# Display all plots of S1 in an image carousel
+create_image_carousel(list.files("imgs/trees/ml/without_in/S5", full.names = TRUE))
+```
+<br>
+
+#### 6. IgPhyML {.tabset} 
+
+##### With internal nodes {.tabset}
+
+In the carousel below, the lineage trees for the first 10 clonotypes of all samples are displayed, constructed using the `phylo.tree.IgPhyML` algorithm (`AntibodyForests_object = AntibodyForests_OVA_IgPhyML`. This specific example demonstrates plotting the lineage tree for clonotype1 (`clonotype = "clonotype1"`) from sample S1 (`sample = "S1"`), with the internal nodes (`show.inner.nodes = TRUE`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`), and edges are annotated with the original calculated distances between the connected nodes (`edge.label = "original"`). Node sizes reflect clonal expansion (`node.size = "expansion"`), ranging from 10 to 20 on a scale (`node.size.scale = c(10, 20)`). The plot is titled `"Lineage tree - IgPhyML tool"`, with a subtitle indicating the sample and clonotype information. This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
+```{r AntibodyForests_plot_IgPhyML_with_IN_example, eval = FALSE}
+# Plot lineage tree, constructed with the `phylo.tree.IgPhyML' method, with internal nodes
+AntibodyForests_plot(AntibodyForests_object = AntibodyForests_OVA_IgPhyML,
+                     sample = "S1",
+                     clonotype = "clonotype1",
+                     show.inner.nodes = TRUE,
+                     label.by = "name",
+                     color.by = "isotype",
+                     edge.label = "original",
+                     node.size = "expansion",
+                     node.size.scale = c(10, 20),
+                     main.title = "Lineage tree - IgPhyML tool",
+                     sub.title = "OVA - S1 - clonotype1")
+```
+
+```{r AntibodyForests_plot_IgPhyML_with_IN, eval = FALSE, include = FALSE}
+# Generate plot of lineage trees created with the IgPhyML tool of the first 10 clonotypes of all samples (with internal nodes)
+for(sample in paste0("S", 1:5)){
+  for(clonotype in paste0("clonotype", 1:10)){
+    if(!is.null(AntibodyForests_OVA_IgPhyML[[sample]][[clonotype]][["igraph.with.inner.nodes"]])){
+      AntibodyForests_plot(AntibodyForests_object = AntibodyForests_OVA_IgPhyML,
+                           sample = sample,
+                           clonotype = clonotype,
+                           edge.label = "original",
+                           show.inner.nodes = TRUE,
+                           main.title = "Lineage tree - IgPhyML tool",
+                           sub.title = paste0("OVA - ", sample, " - ", clonotype),
+                           output.file = paste0("imgs/trees/IgPhyML/with_in/", sample, "/", clonotype))
+    }
+  }
+}
+```
+
+###### S1
+```{r AntibodyForests_plot_IgPhyML_with_IN_S1, echo = FALSE}
+# Display all plots of S1 in an image carousel
+create_image_carousel(list.files("imgs/trees/IgPhyML/with_in/S1", full.names = TRUE))
+```
+<br>
+
+###### S2
+```{r AntibodyForests_plot_IgPhyML_with_IN_S2, echo = FALSE}
+# Display all plots of S2 in an image carousel
+create_image_carousel(list.files("imgs/trees/IgPhyML/with_in/S2", full.names = TRUE))
+```
+<br>
+
+###### S3
+```{r AntibodyForests_plot_IgPhyML_with_IN_S3, echo = FALSE}
+# Display all plots of S3 in an image carousel
+create_image_carousel(list.files("imgs/trees/IgPhyML/with_in/S3", full.names = TRUE))
+```
+<br>
+
+###### S4
+```{r AntibodyForests_plot_IgPhyML_with_IN_S4, echo = FALSE}
+# Display all plots of S4 in an image carousel
+create_image_carousel(list.files("imgs/trees/IgPhyML/with_in/S4", full.names = TRUE))
+```
+<br>
+
+###### S5
+```{r AntibodyForests_plot_IgPhyML_with_IN_S5, echo = FALSE}
+# Display all plots of S1 in an image carousel
+create_image_carousel(list.files("imgs/trees/IgPhyML/with_in/S5", full.names = TRUE))
+```
+<br>
+
+##### Without internal nodes {.tabset}
+
+In the carousel below, the lineage trees for the first 10 clonotypes of all samples are displayed, constructed using the `phylo.tree.ml` algorithm (`AntibodyForests_object = AntibodyForests_OVA_IgPhyML`. This specific example demonstrates plotting the lineage tree for clonotype1 (`clonotype = "clonotype1"`) from sample S1 (`sample = "S1"`), without the internal nodes (`show.inner.nodes = FALSE`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`), and edges are annotated with the Levenshtein distances between the connected nodes (`edge.label = "lv"`). Node sizes reflect clonal expansion (`node.size = "expansion"`), ranging from 10 to 20 on a scale (`node.size.scale = c(10, 20)`). The plot is titled `"Lineage tree - IgPhyML tool"`, with a subtitle indicating the sample and clonotype information. This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
+```{r AntibodyForests_plot_IgPhyML_without_IN_example, eval = FALSE}
+# Plot lineage tree, constructed with the `phylo.tree.ml' method, without internal nodes
+AntibodyForests_plot(AntibodyForests_object = AntibodyForests_OVA_IgPhyML,
+                     sample = "S1",
+                     clonotype = "clonotype1",
+                     show.inner.nodes = FALSE,
+                     label.by = "name",
+                     color.by = "isotype",
+                     edge.label = "lv",
+                     node.size = "expansion",
+                     node.size.scale = c(10, 20),
+                     main.title = "Lineage tree - IgPhyML tool",
+                     sub.title = "OVA - S1 - clonotype1")
+```
+
+```{r AntibodyForests_plot_IgPhyML_without_IN, eval = FALSE, include = FALSE}
+# Generate plot of lineage trees created with the IgPhyML tool of the first 10 clonotypes of all samples (without internal nodes)
+for(sample in paste0("S", 1:5)){
+  for(clonotype in paste0("clonotype", 1:10)){
+    if(!is.null(AntibodyForests_OVA_IgPhyML[[sample]][[clonotype]][["igraph"]])){
+      AntibodyForests_plot(AntibodyForests_object = AntibodyForests_OVA_IgPhyML,
+                           sample = sample,
+                           clonotype = clonotype,
+                           show.inner.nodes = FALSE,
+                           edge.label = "lv",
+                           main.title = "Lineage tree - IgPhyML tool",
+                           sub.title = paste0("OVA - ", sample, " - ", clonotype),
+                           output.file = paste0("imgs/trees/IgPhyML/without_in/", sample, "/", clonotype))
+    }
+  }
+}
+```
+
+###### S1
+```{r AntibodyForests_plot_IgPhyML_without_IN_S1, echo = FALSE}
+# Display all plots of S1 in an image carousel
+create_image_carousel(list.files("imgs/trees/IgPhyML/without_in/S1", full.names = TRUE))
+```
+<br>
+
+###### S2
+```{r AntibodyForests_plot_IgPhyML_without_IN_S2, echo = FALSE}
+# Display all plots of S2 in an image carousel
+create_image_carousel(list.files("imgs/trees/IgPhyML/without_in/S2", full.names = TRUE))
+```
+<br>
+
+###### S3
+```{r AntibodyForests_plot_IgPhyML_without_IN_S3, echo = FALSE}
+# Display all plots of S3 in an image carousel
+create_image_carousel(list.files("imgs/trees/IgPhyML/without_in/S3", full.names = TRUE))
+```
+<br>
+
+###### S4
+```{r AntibodyForests_plot_IgPhyML_without_IN_S4, echo = FALSE}
+# Display all plots of S4 in an image carousel
+create_image_carousel(list.files("imgs/trees/IgPhyML/without_in/S4", full.names = TRUE))
+```
+<br>
+
+###### S5
+```{r AntibodyForests_plot_IgPhyML_without_IN_S5, echo = FALSE}
+# Display all plots of S5 in an image carousel
+create_image_carousel(list.files("imgs/trees/IgPhyML/without_in/S5", full.names = TRUE))
+```
+<br>
+
+</div>
+
+
+## 4. Calculate metrics and compare antibody lineage trees with the `AntibodyForests_compare()` function
+
+[...]
+```{r}
+
+```
+<br>
+
+## i. Run IgPhyML on VDJ dataframe and import IgPhyML trees into AntibodyForests object {#supplementary-i}
+
+<div class=text-justify>
+
+IgPhyML is a command-line tool that utilizes a phylogenetic codon substitution model tailored for antibody lineages to construct lineage trees. The tool requires an AIRR-formatted data file where each sequence is clustered into a clone, with specified columns including `sequence_id`, `sequence`, `sequence_alignment`, `germline_alignment`, `v_call`, `d_call`, and `clone_id`. Notably, the sequence alignments must adhere to a specific IMGT numeric scheme, ensuring that conserved amino acids from frameworks consistently receive the same number across Ig or TR chain types, domains, and species origins. To obtain these alignments, the IgBLAST tool can be employed on the 10x Genomics output. Detailed instructions on converting 10x V(D)J data into the AIRR standardized format can be found in the documentation of Change-O on [this page](https://changeo.readthedocs.io/en/stable/examples/10x.html). The instructions below outline the installation process for the IgPhyML and IgBLAST tools, as well as the procedure for processing 10x Genomics data using the `AssignGenes.py` and `MakeDb.py scripts`.
+
+```{bash install-IgPhyML-IgBLAST, eval = FALSE}
+# Create and activate environment
+conda create -n igphyml
+conda activate igphyml
+
+# Install Autoconf and Automake
+conda install -c conda-forge autoconf automake
+
+# Install Change-O and Alakazam
+conda install -c bioconda changeo r-alakazam
+
+# Install OpenMP-enabled C Compiler
+conda install -c conda-forge gcc
+
+# Install BLAS and LAPACK libraries
+conda install -c conda-forge python=3.9 blas blas-devel lapack libblas libcblas liblapack liblapacke libtmglib
+
+# Clone IgPhyML repository within the conda environment
+cd $(conda info --base})/envs/igphyml/share
+git clone https://bitbucket.org/kleinstein/igphyml
+
+# Navigate to IgPhyML direcoctory and compile IgPhyML with OpenMP support
+cd igphyml
+./make_phyml_omp
+
+# Add 'igphyml/src' directory to PATH variable within the conda environment
+export PATH=$PATH:$(pwd)/src
+
+# Test IgPhyML
+igphyml --version
+
+# Download and extract IgBLAST 1.22.0
+VERSION="1.22.0"
+wget ftp://ftp.ncbi.nih.gov/blast/executables/igblast/release/${VERSION}/ncbi-igblast-${VERSION}-x64-linux.tar.gz
+tar -zxf ncbi-igblast-${VERSION}-x64-linux.tar.gz
+cp ncbi-igblast-${VERSION}/bin/* $(conda info --base)/envs/igphyml/share
+
+# Download tools to set up IgBLAST database from the IMGT reference sequences and add to PATH
+mkdir tools
+wget https://bitbucket.org/kleinstein/immcantation/src/89303467be8cf07dcacf33fb5647e5fc28c3a670/scripts/fetch_igblastdb.sh -o tools/fetch_igblastdb.sh
+wget https://bitbucket.org/kleinstein/immcantation/src/4b225480cf9338a4d991c6c14894570cfb5591c2/scripts/fetch_imgtdb.sh -o tools/fetch_imgtdb.sh
+wget https://bitbucket.org/kleinstein/immcantation/src/eed7becf0e15fa629a37211e2d0091a0ef80f77d/scripts/clean_imgtdb.py -o tools/clean_imgtdb.py
+wget https://bitbucket.org/kleinstein/immcantation/src/20906ed10968abc8ccc762a7a9ff83a03b32ef62/scripts/imgt2igblast.sh -o tools/imgt2igblast.sh
+export PATH=$PATH:$(pwd)/tools
+
+# Download reference databases and setup IGDATA directory
+fetch_igblastdb.sh -o $(conda info --base)/envs/igphyml/share/igblast
+cp -r ncbi-igblast-${VERSION}/internal_data $(conda info --base)/envs/igphyml/share/igblast
+cp -r ncbi-igblast-${VERSION}/optional_file $(conda info --base)/envs/igphyml/share/igblast
+
+# Build IgBLAST database from IMGT reference sequences
+fetch_imgtdb.sh -o $(conda info --base)/envs/igphyml/share/germlines/imgt
+imgt2igblast.sh -i $(conda info --base)/envs/igphyml/share/germlines/imgt -o $(conda info --base)/envs/igphyml/share/igblast
+
+# Execute igblastn to assign V(D)J gene annotations
+AssignGenes.py igblast -s ../data/OVA_scRNA-seq_data/VDJ/S1/filtered_contig.fasta -b anaconda3/envs/igphyml/share/igblast --organism mouse --loci ig --format blast
+AssignGenes.py igblast -s ../data/OVA_scRNA-seq_data/VDJ/S2/filtered_contig.fasta -b anaconda3/envs/igphyml/share/igblast --organism mouse --loci ig --format blast
+AssignGenes.py igblast -s ../data/OVA_scRNA-seq_data/VDJ/S3/filtered_contig.fasta -b anaconda3/envs/igphyml/share/igblast --organism mouse --loci ig --format blast
+AssignGenes.py igblast -s ../data/OVA_scRNA-seq_data/VDJ/S4/filtered_contig.fasta -b anaconda3/envs/igphyml/share/igblast --organism mouse --loci ig --format blast
+AssignGenes.py igblast -s ../data/OVA_scRNA-seq_data/VDJ/S5/filtered_contig.fasta -b anaconda3/envs/igphyml/share/igblast --organism mouse --loci ig --format blast
+
+# Create database files to store sequence alignment information with the IMGT reference sequences
+MakeDb.py igblast -i ../data/OVA_scRNA-seq_data/VDJ/S1/filtered_contig_igblast.fmt7 -s ../data/OVA_scRNA-seq_data/VDJ/S1/filtered_contig.fasta -r anaconda3/envs/igphyml/share/germlines/imgt/mouse/vdj/imgt_mouse_*.fasta --10x ../data/OVA_scRNA-seq_data/VDJ/S1/filtered_contig_annotations.csv --extended
+MakeDb.py igblast -i ../data/OVA_scRNA-seq_data/VDJ/S2/filtered_contig_igblast.fmt7 -s ../data/OVA_scRNA-seq_data/VDJ/S2/filtered_contig.fasta -r anaconda3/envs/igphyml/share/germlines/imgt/mouse/vdj/imgt_mouse_*.fasta --10x ../data/OVA_scRNA-seq_data/VDJ/S2/filtered_contig_annotations.csv --extended
+MakeDb.py igblast -i ../data/OVA_scRNA-seq_data/VDJ/S3/filtered_contig_igblast.fmt7 -s ../data/OVA_scRNA-seq_data/VDJ/S3/filtered_contig.fasta -r anaconda3/envs/igphyml/share/germlines/imgt/mouse/vdj/imgt_mouse_*.fasta --10x ../data/OVA_scRNA-seq_data/VDJ/S3/filtered_contig_annotations.csv --extended
+MakeDb.py igblast -i ../data/OVA_scRNA-seq_data/VDJ/S4/filtered_contig_igblast.fmt7 -s ../data/OVA_scRNA-seq_data/VDJ/S4/filtered_contig.fasta -r anaconda3/envs/igphyml/share/germlines/imgt/mouse/vdj/imgt_mouse_*.fasta --10x ../data/OVA_scRNA-seq_data/VDJ/S4/filtered_contig_annotations.csv --extended
+MakeDb.py igblast -i ../data/OVA_scRNA-seq_data/VDJ/S5/filtered_contig_igblast.fmt7 -s ../data/OVA_scRNA-seq_data/VDJ/S5/filtered_contig.fasta -r anaconda3/envs/igphyml/share/germlines/imgt/mouse/vdj/imgt_mouse_*.fasta --10x ../data/OVA_scRNA-seq_data/VDJ/S5/filtered_contig_annotations.csv --extended
+```
+<br>
+
+After parsing through each 10x Genomics V(D)J output directories, the annotations and alignments are stored in TSV files named `filtered_contig_igblast_db-pass.tsv`. When these files remain in the original sample directory, the annotations and alignments from these files can be appended to the VDJ dataframe using the `VDJ_import_IgBLAST_annotations()` function. This function allows appending annotations and alignments from all samples in one go to create a combined dataset.  
+<br>
+When using the `VDJ_import_IgBLAST_annotations()` function, the `method` parameter controls how the annotations are incorporated into the existing dataframe. If set to `"append"`, new columns with the suffix '_IgPhyML' will be added to the existing dataframe, preserving the original annotation columns. On the other hand, if the method parameter is set to `"replace"`, the original annotation columns in the VDJ dataframe will be replaced with the IgBLAST annotations, while retaining the original columns with the suffix '_10x'.  
+<br>
+After appending the annotations and alignments to the VDJ dataframe using the `"append"` method, all the columns required by the IgPhyML tool can be extracted. These columns can then be saved into an AIRR-formatted TSV file using the `VDJ_to_AIRR()` function, facilitating further analysis or sharing in a standardized format.
+```{r write-AIRR-rearrangement, eval = FALSE}
+# Append the IgBLAST annotations and alignment to the VDJ dataframe
+VDJ_OVA <- VDJ_import_IgBLAST_annotations(VDJ = VDJ_OVA,
+                                          VDJ.directory = "../data/OVA_scRNA-seq_data/VDJ/",
+                                          method = "append")
+
+# Write the VDJ dataframe into an AIRR-formatted TSV file
+VDJ_to_AIRR(VDJ = VDJ_OVA,
+            output.file = "../data/OVA_scRNA-seq_data/VDJ/airr_rearrangement.tsv")
+```
+<br>
+
+After generating the AIRR rearrangement, the input file can be provided to the IgPhyML tool to construct the lineage trees for all clones. IgPhyML is executed through the Change-O program BuildTrees by specifying the `--igphyml` option. The `--collapse` flag is utilized to merge identical sequences, expediting calculations without affecting the likelihood calculations. Furthermore, the `--clean all` flag is employed to remove all intermediate files generated after IgPhyML execution. The resulting trees are saved to a TAB file named `airr_rearrangement_igphyml-pass.tab`, which can be imported into an AntibodyForests object using the `AntibodyForests()` function, as demonstrated [in this example](#AntibodyForests-example-6-IgPhyML).
+```{bash execute-IgPhyML, eval = FALSE}
+BuildTrees.py -d ../data/OVA_scRNA-seq_data/VDJ/airr_rearrangement.tsv --collapse --igphyml --clean all
+```
+<br>
+
+</div>
+
+## Acknowledgements
+
+<div class=text-justify>
+
+The AntibodyForests package originated from the Platypus ecosystem of packages, where the fundamental functions `VDJ_build()` and `AntibodyForests()` were initially developed. Subsequently, significant refinements were made, and they were migrated to this standalone package. Contributions have been made by:  
+
+* Valentijn Tromp, B.Sc.
+* Daphne van Ginneken, M.Sc.
+* Tudor-Stefan Cotet, M.Sc.
+* Victor Kreiner, M.Sc.
+* Dr. Alexander Yermanos
+
+</div>
