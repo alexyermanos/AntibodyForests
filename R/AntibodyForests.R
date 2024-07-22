@@ -125,7 +125,7 @@ AntibodyForests <- function(VDJ,
   # Define the 'sequence_type' (DNA sequence or protein sequence) based on the sequences in the specified 'sequence.columns' and the 'germline.columns'
   if(all(sapply(c(sequence.columns, germline.columns), function(x) all(sapply(1:nrow(VDJ), function(y) grepl(pattern = "^[ACTG-]+$", VDJ[y, x])))))){
     sequence_type <- "DNA"
-  } else if(all(sapply(c(sequence.columns, germline.columns), function(x) all(sapply(1:nrow(VDJ), function(y) (grepl(pattern = "^[ARNDCQEGHILKMFPSTWYV*-]+$", VDJ[y, x]) && !grepl(pattern = "^[ACTG]+$", VDJ[y, x]))))))){
+  } else if(all(sapply(c(sequence.columns, germline.columns), function(x) all(sapply(1:nrow(VDJ), function(y) (grepl(pattern = "^[ARNDCQEGHILKMFPSTWYV\\*-]+$", VDJ[y, x]) && !grepl(pattern = "^[ACTG]+$", VDJ[y, x]))))))){
     sequence_type <- "AA"
   } else{
     # If the 'sequence_type' cannot be defined, a message is returned and execution is stopped
