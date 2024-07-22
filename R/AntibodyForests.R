@@ -1,7 +1,7 @@
-#' Function to infer B cell evolutionary networks for all clonotypes in VDJ dataframe as obtained from the 'minimal_VDJ()' function.
+#' Function to infer B cell evolutionary networks for all clonotypes in VDJ dataframe as obtained from the 'VDJ_build()' function.
 #' Authors: Valentijn Tromp, Daphne van Ginneken
 #' @description This function takes a VDJ dataframe and uses the specified sequence columns to build a tree/network for each clonotype and stores them in an AntibodyForests object, together with the sequences and other specified features. These trees/networks provide insights into the evolutionary relationships between B cell sequences from each clonotype. The resulting object of class 'AntibodyForests' can be used for downstream analysis as input for...
-#' @param VDJ dataframe - VDJ object as obtained from the minimal_VDJ() function in Platypus, or object of class dataframe that contains the columns specified in 'sequence.columns', 'germline.columns', and 'node.features'.
+#' @param VDJ dataframe - VDJ object as obtained from the VDJ_build() function in Platypus, or object of class dataframe that contains the columns 'sample_id', 'clonotype_id', and the columns specified in 'sequence.columns', 'germline.columns', and 'node.features'.
 #' @param sequence.columns string or vector of strings - denotes the sequence column(s) in the VDJ dataframe that contain the sequences that will be used to infer B cell lineage trees. Nodes in the trees will represent unique combinations of the selected sequences. Defaults to 'c("VDJ_sequence_nt_trimmed", "VJ_sequence_nt_trimmed")'.
 #' @param germline.columns string or vector of strings - denotes the germline column(s) in the VDJ dataframe that contain the sequences that will be used as starting points of the trees. The columns should be in the same order as in 'sequence.columns'. Defaults to 'c("VDJ_germline_nt_trimmed", "VJ_germline_nt_trimmed")'.
 #' @param concatenate.sequences bool - if TRUE, sequences from multiple sequence columns are concatenated into one sequence for single distance matrix calculations / multiple sequence alignments, else, a distance matrix is calculated / multiple sequence alignment is performed for each sequence column separately. Defaults to FALSE. 
@@ -101,7 +101,7 @@ AntibodyForests <- function(VDJ,
   original_working_directory <- getwd()
   
   # If no 'VDJ' dataframe is provided, a message is returned and execution is stopped
-  if(missing(VDJ)){stop("ERROR: Please provide a VDJ dataframe as obtained from the 'minimal_VDJ()' function in Platypus, or a similar dataframe containing the specified sequence and germline colums.")}
+  if(missing(VDJ)){stop("ERROR: Please provide a VDJ dataframe as obtained from the 'VDJ_build()' function in Platypus, or a similar dataframe containing the specified sequence and germline colums.")}
   
   # If the 'sequence.columns' parameter is not specified, and no IgPhyML output file is provided, the 'VDJ_sequence_nt_trimmed' and 'VJ_sequence_nt_trimmed' columns are selected, and a message is returned
   if(missing(sequence.columns) && missing(IgPhyML.output.file)){sequence.columns <- c("VDJ_sequence_nt_trimmed", "VJ_sequence_nt_trimmed"); message("WARNING: No sequence columns are specified. Defaults to 'VDJ_sequence_nt_trimmed' and 'VJ_sequence_nt_trimmed'.\n")}
@@ -1096,7 +1096,7 @@ AntibodyForests <- function(VDJ,
     
     # Infers network/tree for a single clone within one sample
     # Arguments:
-    # - VDJ: VDJ dataframe as obtained from the minimal_VDJ() function in Platypus
+    # - VDJ: VDJ dataframe as obtained from the VDJ_build() function in Platypus
     # - clone: string denoting the sample ID and the clonotype ID for which the network will be inferred (in the format of "S1_clonotype4" or "S2_clonotype3")
     # - sequence.columns: string or vector of strings denoting the sequence columns in the 'VDJ' dataframe that contain the sequences that will be used to infer B cell lineage trees
     # - germline.columns: string or vector of strings denoting the germline columns in the 'VDJ' dataframe that contain the sequences that will be used as starting points of the lineage trees
