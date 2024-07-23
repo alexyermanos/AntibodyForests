@@ -631,9 +631,9 @@ AntibodyForests_plot <- function(AntibodyForests_object,
       # Retrieve the values for the feature (specified with the 'color.by' parameter) for the current node
       node_values <- node.feature.list[[node_name]]
       # If the current node contains only one unique value  for the specified feature, the node is plotted as a circle
-      if(length(unique(node_values)) == 1 | (all(node.color.gradient != "none") && length(unique(node_values[node_values != "unknown"])) == 1)){
+     if(length(unique(node_values)) == 1 | (all(node.color.gradient != "none"))){
         igraph::V(tree)$shape[i] = "circle"
-        igraph::V(tree)$color[i] = node.color.list[[unique(node_values[node_values != "unknown"])]]
+        igraph::V(tree)$color[i] = node.color.list[[unique(node_values)]]
         igraph::V(tree)$pie[i] = NA
         igraph::V(tree)$pie.color[i] = NA
       }
