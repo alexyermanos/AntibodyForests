@@ -474,9 +474,10 @@ AntibodyForests_plot <- function(AntibodyForests_object,
   if(missing(node.size.factor)){node.size.factor <- 1}
   # If the 'node.size.factor' parameter is set to a non-numerical or negative value, a message is returned and execution is stopped
   if(!(is.numeric(node.size.factor)) | !(if(is.numeric(node.size.factor)){node.size.factor > 0}else{FALSE})){stop("The 'node.size.factor' parameter only accepts positve numerical values.")}
-  
   # If the 'node.size.range' parameter is not specified, while the 'node.size' parameter is set to 'expansion' and the 'node.size.list' contains different sizes, the range is set to the minimum and maximum value in the 'node.size.list'
-  if(is.character(node.size)){if(node.size == "expansion"){if(missing(node.size.range) && length(unique(unlist(node.size.list))) > 1){node.size.range <- c(min(unique(unlist(node.size.list))), max(unique(unlist(node.size.list))))}}}
+  if(node.size == "expansion" && missing(node.size.range) && length(unique(unlist(node.size.list))) > 1){node.size.range <- c(min(unique(unlist(node.size.list))), max(unique(unlist(node.size.list))))}
+  # If the 'node.size.range' parameter is not specified, while the 'node.size' parameter is set to 'expansion' and the 'node.size.list' contains one size, the range minimum is set to this size and maximum to this size + 1
+  if(node.size == "expansion" && missing(node.size.range) && length(unique(unlist(node.size.list))) == 1){node.size.range <- c(unique(unlist(node.size.list)), unique(unlist(node.size.list)) + 1)}
   # If the 'node.size.range' parameter is not specified, while the 'node.size' parameter is set to a numerical value, the range is set to this value
   if(is.numeric(node.size)){if(missing(node.size.range)){node.size.range <- rep(node.size, 3)}}
   # If the 'node.size.range' parameter is not specified, while the 'node.size' parameter is set to a numerical value and the 'node.size.list' contains different sizes, the range is set to the minimum and maximum value in the 'node.size.list'
