@@ -17,6 +17,7 @@
 #' @param min.nodes The minimum number of nodes for a tree to be included in this analysis (this included the germline). This should be the same as for the AntibodyForests_compare_clonotypes() functions.
 #' @param colors - string -  Optionally specific colors for the clusters
 #' @param text.size Font size in the plot (default 20).
+#' @param significane - boolean - If TRUE, the significance of a T test between the groups is plotted (default FALSE)
 #' @param parallel If TRUE, the metric calculations are parallelized across clonotypes. (default FALSE)
 #' @return - list - A list with boxplots per metric
 #' @export
@@ -27,6 +28,7 @@ AntibodyForests_clusters <- function(af,
                                      min.nodes,
                                      colors,
                                      text.size,
+                                     significane,
                                      parallel){
   
   #Set defaults and check for missing input
@@ -36,6 +38,7 @@ AntibodyForests_clusters <- function(af,
   if(missing(min.nodes)){min.nodes = 0}
   if(missing(colors)){colors = scales::hue_pal()(length(unique(clusters)))}
   if(missing(text.size)){text.size = 20}
+  if(missing(significane)){significane = F}
   if(missing(parallel)){parallel <- F}
   #Check if group are in the metric dataframe
   #if(!(all(groups %in% colnames(metric_df)))){stop("Groups are not in the column names of the metric dataframe.")}
@@ -45,10 +48,14 @@ AntibodyForests_clusters <- function(af,
                                        parallel = parallel,
                                        min.nodes = min.nodes,
                                        metrics = metrics)
+
   
   #Check if clonotypes are the same between metric_df and clusters
   if (nrow(metric_df) < length(clusters)){stop("Make sure that min.nodes threshold is not higher then min.nodes used when running AntibodyForests_compare_clonotypes().")}
-  if (!(all(rownames(clusters) %in% names(metric_df)))){stop("The names of the clonotypes in the AntibodyForests-object and the clusters should be the same.")}
+  #AntibodyForests_metrics sometimes adds an X in front of the rownames, if this happenend remove it.
+  if(all(gsub("^X", "", rownames(metric_df)) == names(clusters))){rownames(metric_df) <- gsub("^X", "", rownames(metric_df))}
+  #Check if the names of the trees are the same
+  if (!(all(names(clusters) %in% rownames(metric_df)))){stop("The names of the clonotypes in the AntibodyForests-object and the clusters should be the same.")}
   
   #Add clusters to the metric_df
   cluster_df <- merge(metric_df, as.data.frame(clusters), by = "row.names")
@@ -70,6 +77,17 @@ AntibodyForests_clusters <- function(af,
       ggplot2::xlab("Cluster") +
       ggplot2::ggtitle(paste0(metric, " per cluster"))
     
+    #Add significance to the plot
+    if(significane){
+      #Get the unique combinations of clusters if there are more than 2 clusters
+      if(length(unique(cluster_df$clusters)) > 2){
+        #Get the unique combinations of clusters
+        combinations_list <- split(combn(unique(cluster_df$clusters), 2), col(combinations))
+      }else{combinations_list <- list(unique(cluster_df$clusters))}
+      #Add to the existing plot
+      p <- p + ggsignif::geom_signif(comparisons=combinations_list, step_increase = 0.1)
+    }
+      
     #Add to output list
     output_list[[metric]] <- p
   }
