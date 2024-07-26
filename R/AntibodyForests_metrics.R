@@ -236,6 +236,10 @@ AntibodyForests_metrics <- function(input,
       })))
       #Only keep rows that have enough nodes (nr_nodes != NA)
       metric_df <- metric_df[which(is.na(metric_df[,ncol(metric_df)]) == FALSE),]
+      #Transform to dataframe
+      metric_df <- as.data.frame(metric_df)
+      #Add sample names to the dataframe
+      metric_df$sample <- gsub(".clonotype(.*)$", "", rownames(metric_df))
       return(metric_df)
     }
     # If the operating system is Windows, "parLapply" is used for parallelization
@@ -253,6 +257,10 @@ AntibodyForests_metrics <- function(input,
       parallel::stopCluster(cluster)
       #Only keep rows that have enough nodes (nr_nodes != NA)
       metric_df <- metric_df[which(is.na(metric_df[,ncol(metric_df)]) == FALSE),]
+      #Transform to dataframe
+      metric_df <- as.data.frame(metric_df)
+      #Add sample names to the dataframe
+      metric_df$sample <- gsub(".clonotype(.*)$", "", rownames(metric_df))
       return(metric_df)
     }
   }
@@ -266,6 +274,10 @@ AntibodyForests_metrics <- function(input,
       })))
       #Only keep rows that have enough nodes (nr_nodes != NA)
       metric_df <- metric_df[which(is.na(metric_df[,ncol(metric_df)]) == FALSE),]
+      #Transform to dataframe
+      metric_df <- as.data.frame(metric_df)
+      #Add sample names to the dataframe
+      metric_df$sample <- gsub(".clonotype(.*)$", "", rownames(metric_df))
       return(metric_df)
     
   }
