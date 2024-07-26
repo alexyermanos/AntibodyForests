@@ -111,7 +111,7 @@ AntibodyForests_compare_clonotypes <- function(input,
         #Only keep trees with a minimum number of nodes (min.nodes)
         if (igraph::vcount(af[[sample]][[clonotype]][['igraph']]) >= min.nodes){
           phylo_tree <- AntibodyForests_phylo(af[[sample]][[clonotype]][['igraph']], solve_multichotomies = F)
-          phylo_list[[paste0(sample,".",clonotype)]] <- phylo_tree
+          phylo_list[[paste0(gsub("-", ".", sample),".",clonotype)]] <- phylo_tree
         }
       }
     }
@@ -239,8 +239,13 @@ AntibodyForests_compare_clonotypes <- function(input,
       }else{
         #Connect the clustering to the dimensions
         cluster_df <- cbind(results_list[[method]], cluster = as.factor(output[["clustering"]]))
+        #Add the sample to the cluster dataframe
+        cluster_df <- cbind(cluster_df, sample = as.factor(metric_df$sample))
         #Plot the clusters and store in plot list
         plot_list[[paste0(method, "_clusters")]] <- plot(cluster_df, color = "cluster", name = method, plot.label)
+        #Plot the samples
+        plot_list[[paste0(method, "_samples")]] <- plot(cluster_df, color = "sample", name = method, plot.label)
+
         
         #Exchange spectral.density for specific density metrics
         if ("spectral.density" %in% distance.metrics){
