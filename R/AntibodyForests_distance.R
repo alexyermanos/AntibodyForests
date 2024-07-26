@@ -40,7 +40,8 @@ AntibodyForests_distance <- function(input,
                                        min.nodes = min.nodes,
                                        metrics = paste0("group.",distance),
                                        node.feature = node.feature,
-                                       group.node.feature = groups))
+                                       group.node.feature = groups)
+  #Remove column with sample names
   metric_df <- metric_df[,colnames(metric_df) != "sample"]
   
   #Error if zero or only one tree is in the metric_df
