@@ -8,7 +8,8 @@
 #' 'nr.cells'         : The total number of cells in this clonotype
 #' 'mean.depth'       : Mean of the number of edges connecting each node to the germline
 #' 'mean.edge.length' : Mean of the edge lengths between each node and the germline
-#' 'group.depth'      : Mean of the number of edges connecting each node per group (node.features of the AntibodyForests-object) to the germline. (default FALSE)
+#' 'group.node.depth'      : Mean of the number of edges connecting each node per group (node.features of the AntibodyForests-object) to the germline. (default FALSE)
+#' 'group.edge.length'    : Mean of the sum of edge length of the shortest path between germline and nodes per group (node.features of the AntibodyForests-object) 
 #' 'sackin.index'     : Sum of the number of nodes between each node and the germline
 #' 'spectral.density' : Metrics of the spectral density profiles (calculated with package RPANDA)
 #'    - peakedness            : Tree balance
@@ -16,6 +17,8 @@
 #'    - principal eigenvalue  : Phylogenetic diversity
 #'    - modalities            : The number of different structures within the tree
 #' 'colless.number'   : Sum of the absolute difference between the number of left- and right descendants for each node (this requires a tree to be binary!)
+#' @param node.feature The node feature to be used for the group.depth metric.
+#' @param group.node.feature The groups in the node feature to be plotted
 #' @param parallel If TRUE, the metric calculations are parallelized (default FALSE)
 #' @param num.cores Number of cores to be used when parallel = TRUE. (Defaults to all available cores - 1)
 #' @return Returns a dataframe where the rows are trees and the columns are metrics
@@ -23,6 +26,8 @@
 
 AntibodyForests_metrics <- function(input,
                                     min.nodes,
+                                    node.feature,
+                                    group.node.feature,
                                     multiple.objects,
                                     metrics,
                                     parallel,
@@ -34,12 +39,17 @@ AntibodyForests_metrics <- function(input,
   if(missing(multiple.objects)){multiple.objects = F}
   if(missing(metrics)){metrics <- c("mean.depth", "nr.nodes")}
   if(missing(parallel)){parallel <- FALSE}
+  if(missing(group.node.feature)){group.node.feature = "all"}
   #Check if the input is in the correct format.
   #If multiple.objects is TRUE, multiple AntibodyForests-objects should be in the input list, where the third item in the nested AntibodyForest-object should be of class "igraph"
   if((multiple.objects == F && class(input[[1]][[1]][["igraph"]]) != "igraph")|| (multiple.objects == T && class(input[[1]][[1]][[1]][["igraph"]]) != "igraph")){
     stop("The input is not in the correct AntibodyForests-object format.")}
   # If 'parallel' is set to TRUE but 'num.cores' is not specified, the number of cores is set to all available cores - 1
   if(parallel == TRUE && missing(num.cores)){num.cores <- parallel::detectCores() -1}
+  #If metric is group.node.depth or group.edge.length, node.features should be provided
+  if("group.node.depth" %in% metrics || "group.edge.length" %in% metrics){
+    if(missing(node.feature)){stop("Please provide node features.")}
+  }
   
   #Functions to calculate metrics
   calculate_mean_depth <- function(tree, nodes){
@@ -134,30 +144,27 @@ AntibodyForests_metrics <- function(input,
       }
       
       if ("group.node.depth" %in% metrics){
-        #Get the unique node features in the input
+        #Get all the unique elements in this group
         if (multiple.objects){
-          features <- unique(unlist(lapply(input[[1]],function(a){lapply(a,function(b){lapply(b$nodes, function(c){names(c)[-(1:3)]})})})))
-          }else{features <- unique(unlist(lapply(input,function(a){lapply(a,function(b){lapply(b$nodes, function(c){names(c)[-(1:3)]})})})))}
+          groups <- unique(unlist(lapply(input[[1]],function(a){lapply(a,function(b){lapply(b$nodes, function(c){c[[node.feature]]})})})))
+        }else{groups <- unique(unlist(lapply(input,function(a){lapply(a,function(b){lapply(b$nodes, function(c){c[[node.feature]]})})})))}
         
-        #Loop over the node features
-        for (feature in features){
-          #Get the unique elements in this group
-          if (multiple.objects){
-            groups <- unique(unlist(lapply(input[[1]],function(a){lapply(a,function(b){lapply(b$nodes, function(c){c[[feature]]})})})))
-          }else{groups <- unique(unlist(lapply(input,function(a){lapply(a,function(b){lapply(b$nodes, function(c){c[[feature]]})})})))}
-          
-          for (group in groups){
-            #Take the nodes have a cell of this group
-            nodes <- names(which(lapply(clonotype$nodes, function(x){group %in% x[feature]}) == TRUE))
-            if (identical(nodes, character(0))){
-              #Add NA to the metrics vector
-              metrics_vector[paste0(group,".node.depth")] <- NA
-            }else{
-              #Calcute the mean depth for the nodes that have this group
-              depth <- calculate_mean_depth(clonotype$igraph, nodes = igraph::V(clonotype$igraph)[nodes])
-              #Add to the metrics vector
-              metrics_vector[paste0(group,".node.depth")] <- depth
-            }
+        #If group.node.features is specified, check wether they are all present in the node features of the AntibodyForests-object.
+        if(is.vector(group.node.feature)){
+          if(all(group.node.feature %in% groups) == FALSE){stop("The groups are not in the node features of the AntibodyForests-object.")
+          }else{groups <- group.node.feature}}
+
+        for (group in groups){
+          #Take the nodes have a cell of this group
+          nodes <- names(which(lapply(clonotype$nodes, function(x){group %in% x[node.feature]}) == TRUE))
+          if (identical(nodes, character(0))){
+            #Add NA to the metrics vector
+            metrics_vector[paste0(group,".node.depth")] <- NA
+          }else{
+            #Calcute the mean depth for the nodes that have this group
+            depth <- calculate_mean_depth(clonotype$igraph, nodes = igraph::V(clonotype$igraph)[nodes])
+            #Add to the metrics vector
+            metrics_vector[paste0(group,".node.depth")] <- depth
           }
         }
       }
