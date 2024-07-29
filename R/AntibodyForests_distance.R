@@ -6,10 +6,14 @@
 #' 'node.depth'     : Average of the sum of nodes on the shortest parth between germline and nodes from this group. (Default)
 #' 'edge.length'    : Average of the sum of edge length of the shortest path between germline and nodes from this group.
 #' @param min.nodes The minimum number of nodes for a tree to be included in this analysis (this included the germline)
-#' @param groups Which groups to compare. These groups need to be in the node features of the AntibodyForests-object. (default all)
+#' @param groups Which groups to compare. These groups need to be in the node features of the AntibodyForests-object. Set to NA if all features should displayed. (default is NA)
 #' If you want to compare IgM and IgG for example, groups should be c("IgM, "IgG") (not "Isotypes")
+#' @param unconnected If TRUE, trees that don't have all groups will be plotted, but not included in significance analysis. (default FALSE)
 #' @param colors Optionally specific colors for the group (Will be matched to the groups/names on alphabetical order).
 #' @param text.size Font size in the plot (default 20).
+#' @param x.label Label for the x-axis (default is the node feature).
+#' @param group.order Order of the groups on the x-axis. (default is alphabetical/numerical)
+#' @param significance If TRUE, the significance of the difference (paired t-test) between the groups is plotted. (default FALSE)
 #' @param parallel If TRUE, the metric calculations are parallelized across clonotypes. (default FALSE)
 #' @export
 
@@ -18,21 +22,30 @@ AntibodyForests_distance <- function(input,
                                      min.nodes,
                                      groups,
                                      node.feature,
+                                     unconnected,
                                      colors,
                                      text.size,
+                                     x.label,
+                                     group.order,
+                                     significance,
                                      parallel){
   
   #Set defaults and check for missing input
   if(missing(input)){stop("Please provide an AntibodyForests-object as input.")}
   if(missing(node.feature)){stop("Please provide a node feature to compare.")}
-  if(missing(groups)){groups = "all"}
-  if(missing(colors)){colors = scales::hue_pal()(length(groups))}
+  if(missing(groups)){groups = NA}
   if(missing(distance)){distance = "node.depth"}
   if(missing(text.size)){text.size = 20}
   if(missing(min.nodes)){min.nodes = 0}
   if(missing(parallel)){parallel <- F}
+  if(missing(x.label)){x_label = node.feature}
+  if(missing(significance)){significance = F}
+  if(missing(unconnected)){unconnected = F}
+  if(missing(group.order)){group.order = NA}
   #Check if group are in the metric dataframe
   #if(!(all(groups %in% colnames(metric_df)))){stop("Groups are not in the column names of the metric dataframe.")}
+  
+  print("Warning: This function takes a long runtime if the AntibodyForests-object is large.")
   
   #Calculate the average distance to the germline per group
   metric_df <- AntibodyForests_metrics(input,
@@ -42,16 +55,16 @@ AntibodyForests_distance <- function(input,
                                        node.feature = node.feature,
                                        group.node.feature = groups)
   #Remove column with sample names
-  metric_df <- metric_df[,colnames(metric_df) != "sample"]
+  df_all <- metric_df[,colnames(metric_df) != "sample"]
   
   #Error if zero or only one tree is in the metric_df
-  if(is.null(nrow(metric_df))){stop("Your AntibodyForests-object does not have enough trees that pass the min.nodes threshold.")}
+  if(is.null(nrow(df_all))){stop("Your AntibodyForests-object does not have enough trees that pass the min.nodes threshold.")}
   
   #Add clonotype as column
-  df$clonotype <- rownames(df)
+  df_all$clonotype <- rownames(df_all)
   
   #Only keep clonotypes that have nodes of all groups
-  df <- as.data.frame(na.omit(df))
+  df <- as.data.frame(na.omit(df_all))
   
   #Check if there are clonotypes left after NA removal
   if(nrow(df) == 0){stop("No trees contain nodes from all groups.")}
@@ -61,8 +74,19 @@ AntibodyForests_distance <- function(input,
                              names_to='group',
                              values_to='depth')
   
+  #Select all groups if groups is NA
+  if(all(is.na(groups))){groups <- gsub(paste0(".",distance), "", unique(df$group))}
+  
+  #Set colors if not provided
+  if(missing(colors)){colors = scales::hue_pal()(length(groups))}
+  
+  #Set order of groups if provided
+  if(!all(is.na(group.order))){
+    df$group <- factor(df$group, levels = paste0(group.order,".", distance))
+  }
+  
   #Plot the grouped boxplots with lines
-  ggplot2::ggplot(df, ggplot2::aes(x=group, y=depth, fill=group)) + 
+  p <- ggplot2::ggplot(df, ggplot2::aes(x=group, y=depth, fill=group)) + 
     ggplot2::geom_boxplot()+ 
     ggplot2::geom_point()+ 
     ggplot2::scale_fill_manual(values=colors) +
@@ -70,8 +94,38 @@ AntibodyForests_distance <- function(input,
     ggplot2::theme_classic() +
     ggplot2::theme(text = ggplot2::element_text(size = text.size),
                    legend.position = "none")  +
-    ggplot2::scale_x_discrete(breaks=paste0(groups,".node.depth"),
+    ggplot2::scale_x_discrete(breaks=paste0(groups,".", distance),
                      labels=groups) +
-    ggplot2::ggtitle(paste0("Distance (", distance, ") to germline"))
+    ggplot2::ggtitle(paste0("Distance (", distance, ") to germline")) +
+    ggplot2::xlab(x.label)
+  
+  #Add significance to the plot
+  if(significance){
+    #Get the unique combinations of groups if there are more than 2 groups
+    if(length(groups) > 2){
+      #Get the unique combinations of clusters
+      combinations <- combinat::combn(unique(df$group), 2)
+      combinations_list <- split(combinations, col(combinations))
+    }else{
+      combinations_list <- list(unique(df$group))
+    }
+    #Add to the existing plot
+    p <- p + ggsignif::geom_signif(comparisons=combinations_list, step_increase = 0.1, test = "t.test",
+                                   test.args = list(paired = T))
+  }
+  
+  #Add unconnected points
+  if(unconnected){
+    #Create dataframe with trees that don't have all groups
+    df_na <- df_all[rowSums(is.na(df_all)) > 0,]
+    #Transform dataframe for visualization
+    df_na <- tidyr::pivot_longer(df_na, cols=colnames(df_na)[1:ncol(df_na)-1],
+                              names_to='group',
+                              values_to='depth')
+    #Add to the plot
+    p <- p + ggplot2::geom_point(data = df_na, color = "darkgrey", ggplot2::aes(x=group, y=depth))
+  }
+  
+  print(p)
 
 }
