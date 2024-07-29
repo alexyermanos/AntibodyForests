@@ -82,10 +82,11 @@ AntibodyForests_clusters <- function(af,
       #Get the unique combinations of clusters if there are more than 2 clusters
       if(length(unique(cluster_df$clusters)) > 2){
         #Get the unique combinations of clusters
-        combinations_list <- split(combn(unique(cluster_df$clusters), 2), col(combinations))
+        combinations <- combinat::combn(unique(cluster_df$clusters), 2)
+        combinations_list <- split(combinations, col(combinations))
       }else{combinations_list <- list(unique(cluster_df$clusters))}
       #Add to the existing plot
-      p <- p + ggsignif::geom_signif(comparisons=combinations_list, step_increase = 0.1)
+      p <- p + ggsignif::geom_signif(comparisons=combinations_list, step_increase = 0.1, test = "t.test")
     }
       
     #Add to output list
