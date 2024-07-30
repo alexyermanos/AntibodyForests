@@ -12,7 +12,7 @@ output:
 
 ```{r setup, echo = FALSE, eval = TRUE}
 # Set working directory
-knitr::opts_knit$set(root.dir = "C:/Users/Valen/OneDrive/Documenten/Studie/Master Infection and Immunity/Major Research Project - Alex Yermanos/Computations/vignette/")
+knitr::opts_knit$set(root.dir = "~/OneDrive - UMC Utrecht/Documenten/Students/Valentijn/vignette/")
 # Set global options
 knitr::opts_chunk$set(eval = TRUE, include = TRUE, echo = TRUE, message = FALSE, warning = FALSE, error = FALSE)
 # Define custom hooks for handling errors, warnings, and messages during knitting
@@ -54,12 +54,12 @@ pre code, pre, code {
 
 ```{r load-scripts, include = FALSE}
 # Source AntibodyForests scripts
-source("../scripts/VDJ_build.R")
-source("../scripts/VDJ_import_IgBLAST_annotations.R")
-source("../scripts/VDJ_to_AIRR.R")
-source("../scripts/AntibodyForests.R")
-source("../scripts/AntibodyForests_sync.R")
-source("../scripts/AntibodyForests_plot.R")
+source("~/Documents/GitHub/Platypus/R/VDJ_build.R")
+source("~/Documents/GitHub/AntibodyForests/R/VDJ_import_IgBLAST_annotations.R")
+source("~/Documents/GitHub/AntibodyForests/R/VDJ_to_AIRR.R")
+source("~/Documents/GitHub/AntibodyForests/R/AntibodyForests.R")
+source("~/Documents/GitHub/AntibodyForests/R/AntibodyForests_sync.R")
+source("~/Documents/GitHub/AntibodyForests/R/AntibodyForests_plot.R")
 ```
 <br>
 
@@ -1639,14 +1639,19 @@ conda install -c conda-forge autoconf automake
 # Install Change-O and Alakazam
 conda install -c bioconda changeo r-alakazam
 
-# Install OpenMP-enabled C Compiler
+# For Linux, Install OpenMP-enabled C Compiler
 conda install -c conda-forge gcc
+# For MacOS, install Clang and Compilers
+conda install -c conda-forge clang_osx-64 clangxx_osx-64
+conda install -c conda-forge compilers make cmake
+# For Windows, Install MinGW-w64 Toolchain
+conda install -c conda-forge m2w64-toolchain
 
 # Install BLAS and LAPACK libraries
 conda install -c conda-forge python=3.9 blas blas-devel lapack libblas libcblas liblapack liblapacke libtmglib
 
 # Clone IgPhyML repository within the conda environment
-cd $(conda info --base})/envs/igphyml/share
+cd $(conda info --base)/envs/igphyml/share
 git clone https://bitbucket.org/kleinstein/igphyml
 
 # Navigate to IgPhyML direcoctory and compile IgPhyML with OpenMP support
@@ -1661,17 +1666,24 @@ igphyml --version
 
 # Download and extract IgBLAST 1.22.0
 VERSION="1.22.0"
+# For Linux:
 wget ftp://ftp.ncbi.nih.gov/blast/executables/igblast/release/${VERSION}/ncbi-igblast-${VERSION}-x64-linux.tar.gz
 tar -zxf ncbi-igblast-${VERSION}-x64-linux.tar.gz
+# For MacOS:
+wget ftp://ftp.ncbi.nih.gov/blast/executables/igblast/release/${VERSION}/ncbi-igblast-${VERSION}-x64-macosx.tar.gz
+tar -zxf ncbi-igblast-${VERSION}-x64-macosx.tar.gz
+# For Windows:
+wget ftp://ftp.ncbi.nih.gov/blast/executables/igblast/release/${VERSION}/ncbi-igblast-${VERSION}-x64-win64.tar.gz
+tar -zxf ncbi-igblast-${VERSION}-x64-win64.tar.gz
+# Copy IgBLAST binaries to the conda environment
 cp ncbi-igblast-${VERSION}/bin/* $(conda info --base)/envs/igphyml/share
 
 # Download tools to set up IgBLAST database from the IMGT reference sequences and add to PATH
 mkdir tools
-wget https://bitbucket.org/kleinstein/immcantation/src/89303467be8cf07dcacf33fb5647e5fc28c3a670/scripts/fetch_igblastdb.sh -o tools/fetch_igblastdb.sh
-wget https://bitbucket.org/kleinstein/immcantation/src/4b225480cf9338a4d991c6c14894570cfb5591c2/scripts/fetch_imgtdb.sh -o tools/fetch_imgtdb.sh
-wget https://bitbucket.org/kleinstein/immcantation/src/eed7becf0e15fa629a37211e2d0091a0ef80f77d/scripts/clean_imgtdb.py -o tools/clean_imgtdb.py
-wget https://bitbucket.org/kleinstein/immcantation/src/20906ed10968abc8ccc762a7a9ff83a03b32ef62/scripts/imgt2igblast.sh -o tools/imgt2igblast.sh
-export PATH=$PATH:$(pwd)/tools
+cd tools
+git clone https://bitbucket.org/kleinstein/immcantation
+export PATH=$PATH:$(pwd)/immcantation/scripts
+cd ..
 
 # Download reference databases and setup IGDATA directory
 fetch_igblastdb.sh -o $(conda info --base)/envs/igphyml/share/igblast
@@ -1682,19 +1694,33 @@ cp -r ncbi-igblast-${VERSION}/optional_file $(conda info --base)/envs/igphyml/sh
 fetch_imgtdb.sh -o $(conda info --base)/envs/igphyml/share/germlines/imgt
 imgt2igblast.sh -i $(conda info --base)/envs/igphyml/share/germlines/imgt -o $(conda info --base)/envs/igphyml/share/igblast
 
+# If the following error occurs during imgt2igblast.sh:
+#
+# Traceback (most recent call last):
+#   File "/anaconda3/envs/igphyml/share/igphyml/tools/clean_imgtdb.py", line 22, in <module>
+#     seq = SeqRecord(rec.seq.replace('.', '').upper(), id=name, name=name, description=name)
+# AttributeError: 'Seq' object has no attribute 'replace'
+#
+# Add to the imports of the 'tools/immcantation/scripts/clean_imgtdb.py' script: 
+#   from Bio.Seq import Seq
+# And replace line 22 with:
+#   modified_seq_str = str(rec.seq).replace('.', '').upper()
+#   modified_seq = Seq(modified_seq_str)
+#   seq = SeqRecord(modified_seq, id=name, name=name, description=name)
+
 # Execute igblastn to assign V(D)J gene annotations
-AssignGenes.py igblast -s ../data/OVA_scRNA-seq_data/VDJ/S1/filtered_contig.fasta -b anaconda3/envs/igphyml/share/igblast --organism mouse --loci ig --format blast
-AssignGenes.py igblast -s ../data/OVA_scRNA-seq_data/VDJ/S2/filtered_contig.fasta -b anaconda3/envs/igphyml/share/igblast --organism mouse --loci ig --format blast
-AssignGenes.py igblast -s ../data/OVA_scRNA-seq_data/VDJ/S3/filtered_contig.fasta -b anaconda3/envs/igphyml/share/igblast --organism mouse --loci ig --format blast
-AssignGenes.py igblast -s ../data/OVA_scRNA-seq_data/VDJ/S4/filtered_contig.fasta -b anaconda3/envs/igphyml/share/igblast --organism mouse --loci ig --format blast
-AssignGenes.py igblast -s ../data/OVA_scRNA-seq_data/VDJ/S5/filtered_contig.fasta -b anaconda3/envs/igphyml/share/igblast --organism mouse --loci ig --format blast
+AssignGenes.py igblast -s ../data/OVA_scRNA-seq_data/VDJ/S1/filtered_contig.fasta -b $(conda info --base)/envs/igphyml/share/igblast --organism mouse --loci ig --format blast
+AssignGenes.py igblast -s ../data/OVA_scRNA-seq_data/VDJ/S2/filtered_contig.fasta -b $(conda info --base)/envs/igphyml/share/igblast --organism mouse --loci ig --format blast
+AssignGenes.py igblast -s ../data/OVA_scRNA-seq_data/VDJ/S3/filtered_contig.fasta -b $(conda info --base)/envs/igphyml/share/igblast --organism mouse --loci ig --format blast
+AssignGenes.py igblast -s ../data/OVA_scRNA-seq_data/VDJ/S4/filtered_contig.fasta -b $(conda info --base)/envs/igphyml/share/igblast --organism mouse --loci ig --format blast
+AssignGenes.py igblast -s ../data/OVA_scRNA-seq_data/VDJ/S5/filtered_contig.fasta -b $(conda info --base)/envs/igphyml/share/igblast --organism mouse --loci ig --format blast
 
 # Create database files to store sequence alignment information with the IMGT reference sequences
-MakeDb.py igblast -i ../data/OVA_scRNA-seq_data/VDJ/S1/filtered_contig_igblast.fmt7 -s ../data/OVA_scRNA-seq_data/VDJ/S1/filtered_contig.fasta -r anaconda3/envs/igphyml/share/germlines/imgt/mouse/vdj/imgt_mouse_*.fasta --10x ../data/OVA_scRNA-seq_data/VDJ/S1/filtered_contig_annotations.csv --extended
-MakeDb.py igblast -i ../data/OVA_scRNA-seq_data/VDJ/S2/filtered_contig_igblast.fmt7 -s ../data/OVA_scRNA-seq_data/VDJ/S2/filtered_contig.fasta -r anaconda3/envs/igphyml/share/germlines/imgt/mouse/vdj/imgt_mouse_*.fasta --10x ../data/OVA_scRNA-seq_data/VDJ/S2/filtered_contig_annotations.csv --extended
-MakeDb.py igblast -i ../data/OVA_scRNA-seq_data/VDJ/S3/filtered_contig_igblast.fmt7 -s ../data/OVA_scRNA-seq_data/VDJ/S3/filtered_contig.fasta -r anaconda3/envs/igphyml/share/germlines/imgt/mouse/vdj/imgt_mouse_*.fasta --10x ../data/OVA_scRNA-seq_data/VDJ/S3/filtered_contig_annotations.csv --extended
-MakeDb.py igblast -i ../data/OVA_scRNA-seq_data/VDJ/S4/filtered_contig_igblast.fmt7 -s ../data/OVA_scRNA-seq_data/VDJ/S4/filtered_contig.fasta -r anaconda3/envs/igphyml/share/germlines/imgt/mouse/vdj/imgt_mouse_*.fasta --10x ../data/OVA_scRNA-seq_data/VDJ/S4/filtered_contig_annotations.csv --extended
-MakeDb.py igblast -i ../data/OVA_scRNA-seq_data/VDJ/S5/filtered_contig_igblast.fmt7 -s ../data/OVA_scRNA-seq_data/VDJ/S5/filtered_contig.fasta -r anaconda3/envs/igphyml/share/germlines/imgt/mouse/vdj/imgt_mouse_*.fasta --10x ../data/OVA_scRNA-seq_data/VDJ/S5/filtered_contig_annotations.csv --extended
+MakeDb.py igblast -i ../data/OVA_scRNA-seq_data/VDJ/S1/filtered_contig_igblast.fmt7 -s ../data/OVA_scRNA-seq_data/VDJ/S1/filtered_contig.fasta -r $(conda info --base)/envs/igphyml/share/germlines/imgt/mouse/vdj/imgt_mouse_*.fasta --10x ../data/OVA_scRNA-seq_data/VDJ/S1/filtered_contig_annotations.csv --extended
+MakeDb.py igblast -i ../data/OVA_scRNA-seq_data/VDJ/S2/filtered_contig_igblast.fmt7 -s ../data/OVA_scRNA-seq_data/VDJ/S2/filtered_contig.fasta -r $(conda info --base)/envs/igphyml/share/germlines/imgt/mouse/vdj/imgt_mouse_*.fasta --10x ../data/OVA_scRNA-seq_data/VDJ/S2/filtered_contig_annotations.csv --extended
+MakeDb.py igblast -i ../data/OVA_scRNA-seq_data/VDJ/S3/filtered_contig_igblast.fmt7 -s ../data/OVA_scRNA-seq_data/VDJ/S3/filtered_contig.fasta -r $(conda info --base)/envs/igphyml/share/germlines/imgt/mouse/vdj/imgt_mouse_*.fasta --10x ../data/OVA_scRNA-seq_data/VDJ/S3/filtered_contig_annotations.csv --extended
+MakeDb.py igblast -i ../data/OVA_scRNA-seq_data/VDJ/S4/filtered_contig_igblast.fmt7 -s ../data/OVA_scRNA-seq_data/VDJ/S4/filtered_contig.fasta -r $(conda info --base)/envs/igphyml/share/germlines/imgt/mouse/vdj/imgt_mouse_*.fasta --10x ../data/OVA_scRNA-seq_data/VDJ/S4/filtered_contig_annotations.csv --extended
+MakeDb.py igblast -i ../data/OVA_scRNA-seq_data/VDJ/S5/filtered_contig_igblast.fmt7 -s ../data/OVA_scRNA-seq_data/VDJ/S5/filtered_contig.fasta -r $(conda info --base)/envs/igphyml/share/germlines/imgt/mouse/vdj/imgt_mouse_*.fasta --10x ../data/OVA_scRNA-seq_data/VDJ/S5/filtered_contig_annotations.csv --extended
 ```
 <br>
 
