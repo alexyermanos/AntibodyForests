@@ -177,32 +177,30 @@ AntibodyForests <- function(VDJ,
   if(construction.method %in% c("phylo.network.default", "phylo.network.mst", "phylo.tree.nj") && missing(string.dist.metric) && missing(dna.model) && missing(aa.model)){string.dist.metric <- "lv"}
   # If the 'construction.method' is set to a distance-based construction method, but both the 'string.dist.metric' parameter and 'dna.model' or 'aa.model' parameter are specified, a message is returned and execution is stopped
   if(construction.method %in% c("phylo.network.default", "phylo.network.mst", "phylo.tree.nj") && !missing(string.dist.metric) && (!missing(dna.model) | !missing(aa.model))){stop("ERROR: Please provide a string distance metric OR an evolutionary model to compute the pairwise distance matrices, but not both!")}
-  # If the 'construction.method' is set to 'phylo.tree.ml' and the 'sequence_type' is 'DNA', but the 'dna.model' parameter is missing, it is set to 'all'
-  if(construction.method == "phylo.tree.ml" && sequence_type == "DNA" && missing(dna.model)){dna.model <- "all"; aa.model <- NA}
-  # If the 'construction.method' is set to 'phylo.tree.ml' and the 'sequence_type' is 'AA', but the 'aa.model' parameter is missing, it is set to 'all'
-  if(construction.method == "phylo.tree.ml" && sequence_type == "AA" && missing(aa.model)){aa.model <- "all"; dna.model <- NA}
-  
+  # If the 'construction.method' is set to 'phylo.tree.ml' and the 'sequence_type' is 'DNA', but the 'dna.model' parameter is missing, it is set to all available models
+  if(construction.method == "phylo.tree.ml" && sequence_type == "DNA" && missing(dna.model)){
+    dna.model <- c("JC", "F81", "K80", "HKY", "TrNe", "TrN", "TPM1", "K81", "TPM1u", "TPM2", "TPM2u", "TPM3", "TPM3u", "TIM1e", "TIM1", "TIM2e", "TIM2", "TIM3e", "TIM3", "TVMe", "TVM", "SYM", "GTR")
+    message("WARNING: Comparing all available models and using the best fitting model for parameter optimization and phylogenetic tree inference may take up to several hours, when a large set of clonotypes is given as input. Please be patient!\n")}
+  # If the 'construction.method' is set to 'phylo.tree.ml' and the 'sequence_type' is 'AA', but the 'aa.model' parameter is missing, it is set to all available models
+  if(construction.method == "phylo.tree.ml" && sequence_type == "AA" && missing(aa.model)){
+    aa.model <- aa.model <- c("WAG", "JTT", "LG", "Dayhoff", "cpREV", "mtmam", "mtArt", "MtZoa", "mtREV24", "VT", "RtREV", "HIVw", "HIVb", "FLU", "Blosum62", "Dayhoff_DCMut", "JTT-DCMut")
+    message("WARNING: Comparing all available models and using the best fitting model for parameter optimization and phylogenetic tree inference may take up to several hours, when a large set of clonotypes is given as input. Please be patient!\n")
+    }
+  # If the 'dna.model' and 'aa.model' parameter are still not defined, these parameters will not be used, and are set to NA
+  if(missing(dna.model)){dna.model <- NA}
+  if(missing(aa.model)){aa.model <- NA}
   # If the 'aa.model' parameter is specified, while DNA sequences are found, or if the 'dna.model' parameter is specified, while protein sequence are found, a message is returned and execution is stopped
-  if(sequence_type == "DNA" && !missing(aa.model)){if(!is.na(aa.model)){stop("ERROR: The sequences in the specified sequence and germline columns are DNA sequences, whereas an amino acid model is specified.")}}
-  if(sequence_type == "AA" && !missing(dna.model)){if(!is.na(dna.model)){stop("ERROR: The sequences in the specified sequence and germline columns are protein sequences, whereas a DNA model is specified.")}}
-  # If the 'construction.method' parameter is set to 'phylo.tree.ml', and the 'dna.model' or 'aa.model' parameter is set to all, return a message that the tree inference may take up to several hours
-  if(construction.method == "phylo.tree.ml" && (dna.model == "all" | aa.model == "all")){message("WARNING: Comparing all available models and using the best fitting model for parameter optimization and phylogenetic tree inference may take up to several hours, when a large set of clonotypes is given as input. Please be patient!\n")}
-  # If the 'dna.model' or 'aa.model' parameter is set to 'all', it set to all available models within the 'phangorn' package for the current 'sequence_type'
-  if(construction.method == "phylo.tree.ml" && sequence_type == "DNA" && is.na(aa.model)){if(dna.model ==  "all"){dna.model <- c("JC", "F81", "K80", "HKY", "TrNe", "TrN", "TPM1", "K81", "TPM1u", "TPM2", "TPM2u", "TPM3", "TPM3u", "TIM1e", "TIM1", "TIM2e", "TIM2", "TIM3e", "TIM3", "TVMe", "TVM", "SYM", "GTR")}}
-  if(construction.method == "phylo.tree.ml" && sequence_type == "AA" && is.na(dna.model)){if(aa.model == "all"){aa.model <- c("WAG", "JTT", "LG", "Dayhoff", "cpREV", "mtmam", "mtArt", "MtZoa", "mtREV24", "VT", "RtREV", "HIVw", "HIVb", "FLU", "Blosum62", "Dayhoff_DCMut", "JTT-DCMut")}}
-  
+  if(sequence_type == "DNA" && !all(is.na(aa.model))){stop("ERROR: The sequences in the specified sequence and germline columns are DNA sequences, whereas an amino acid model is specified.")}
+  if(sequence_type == "AA" && !all(is.na(dna.model))){stop("ERROR: The sequences in the specified sequence and germline columns are protein sequences, whereas a DNA model is specified.")}
   # If the 'construction.method' is set to 'phylo.network.default', but 'resolve.ties' is missing, the 'max.expansion', 'min.germline.dist', 'min.germline.edges', and 'random' options are used to handle (all) ties
   if(construction.method == "phylo.network.default" && missing(resolve.ties)){resolve.ties <- c("max.expansion", "min.germline.dist", "min.germline.edges", "random")}
-  
   # If the 'construction.method' is set to 'phylo.tree.nj', but the 'remove.internal.nodes' parameter is missing, it is set to 'minimum.cost'
   if(construction.method == "phylo.tree.nj" && missing(remove.internal.nodes)){remove.internal.nodes <- "minimum.cost"}
   # If the 'construction.method' is set to 'phylo.tree.mp', 'phylo.tree.ml', or 'phylo.tree.IgPhyML', but the 'remove.internal.nodes' parameter is missing, it is set to 'connect.to.parent'
   if(construction.method %in% c("phylo.tree.mp", "phylo.tree.ml", "phylo.tree.IgPhyML") && missing(remove.internal.nodes)){remove.internal.nodes <- "connect.to.parent"}
   
-  # If the 'string.dist.metric', 'dna.model', 'aa.model', 'codon.model', 'resolve.ties', and 'remove.internal.nodes' parameter are still not defined, these parameters will not be used, and are set to NA
+  # If the 'string.dist.metric','codon.model', 'resolve.ties', and 'remove.internal.nodes' parameter are still not defined, these parameters will not be used, and are set to NA
   if(missing(string.dist.metric)){string.dist.metric <- NA}
-  if(missing(dna.model)){dna.model <- NA}
-  if(missing(aa.model)){aa.model <- NA}
   if(missing(codon.model)){codon.model <- NA}
   if(missing(resolve.ties)){resolve.ties <- NA}
   if(missing(remove.internal.nodes)){remove.internal.nodes <- NA}
@@ -241,8 +239,7 @@ AntibodyForests <- function(VDJ,
   if(missing(parallel)){parallel <- FALSE}
   # If 'parallel' is set to TRUE but 'num.cores' is not specified, the number of cores is set to all available cores - 1
   if(parallel == TRUE && missing(num.cores)){num.cores <- parallel::detectCores() -1}
-  
-  
+
   build_lineage_tree <- function(clone,
                                  dist.matrix,
                                  msa,
