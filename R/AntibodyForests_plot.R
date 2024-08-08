@@ -25,7 +25,8 @@
 #' @param sub.title string - specifies the sub title of the plot (to be plotted in an italic font below the main title). Defaults to NULL.
 #' @param color.legend.title string - specifies the title of the legend showing the color matching. Defaults to the (capitalized) name of the feature specified in the 'color.by' parameter (converted by the 'stringr::str_to_title()' function).
 #' @param size.legend.tile string - specifies the title of the legend showing the node sizes. Defaults to 'Expansion (# cells)'.
-#' @param output.file string - specifies the path to the output PNG file. Defaults to NULL.
+#' @param font.size float - specifies the font size of the text in the plot. Defaults to 1.
+#' @param output.file string - specifies the path to the output file (PNG of PDF). Defaults to NULL.
 #' @return Plots lineage tree for the specified clonotype.
 #' @export
 #' @examples
@@ -61,6 +62,7 @@ AntibodyForests_plot <- function(AntibodyForests_object,
                                  sub.title,
                                  color.legend.title,
                                  size.legend.title,
+                                 font.size,
                                  output.file){
   
   
@@ -580,11 +582,13 @@ AntibodyForests_plot <- function(AntibodyForests_object,
   if(show.color.legend && missing(color.legend.title)){color.legend.title <- paste0(stringr::str_to_title(color.by))}
   if(show.size.legend && missing(size.legend.title)){size.legend.title <- "Expansion (# cells)"}
   
+  # If the 'font.size' parameter if not specified, it is set to 1
+  if(missing(font.size)){font.size <- 1}
+  
   # If the 'output.file' parameter is not specified, set it to ''
   if(missing(output.file)){output.file <- ""}
-  # Check if the file path (if provided) ends with '.png' or '.PNG', and append '.png' if it does not
-  if(output.file != "" && !substr(output.file, nchar(output.file)-3, nchar(output.file)) %in% c(".png", ".PNG")){output.file <- paste0(output.file, ".png")}
-  
+  # Check if the file path (if provided) ends with '.png' or '.pdf', and append '.png' if it does not
+  if(output.file != "" && !(substr(output.file, nchar(output.file)-3, nchar(output.file)) %in% c(".png", ".pdf"))){output.file <- paste0(output.file, ".png")}
   
   # 2. Arrange the nodes in the igraph objects in a lineage tree format
   
@@ -751,12 +755,20 @@ AntibodyForests_plot <- function(AntibodyForests_object,
     figure_width <- if(show.color.legend | show.size.legend){(abs(diff(x.scaling))+0.75)*1000}else{abs(diff(x.scaling))*1000}
     figure_height <- if(main.title != ""){(abs(diff(y.scaling))+0.25)*1000}else{abs(diff(y.scaling))*1000}
     
-    # Save the plot that is to be made as PNG file
-    png(file = output.file,       # Specify the path of the output file
-        width = figure_width,     # Set the width of the image (in pixels)
-        height = figure_height,   # Set the height of the image (in pixels)
-        bg = "transparent",       # Make background of the image transparent
-        pointsize = 50)           # Set the default font size to 50
+    # Check if the output.file is png or pdf
+    if (grepl(pattern = ".png$", output.file)){
+      # Set the output device to PNG
+      png(file = output.file,       # Specify the path of the output file
+          width = figure_width,     # Set the width of the image (in pixels)
+          height = figure_height,   # Set the height of the image (in pixels)
+          bg = "transparent",       # Make background of the image transparent
+          pointsize = 50)           # Set the default font size to 50
+    }else if (grepl(pattern = ".pdf$", output.file)){
+      # Set the output device to PDF
+      pdf(file = output.file,       # Specify the path of the output file
+          width = figure_width/500, # Set the width of the image 
+          height = figure_height/500) # Set the height of the image 
+    }
     
     # Set the number of lines of margin to 0
     par(mar = rep(0, 4))
@@ -790,7 +802,8 @@ AntibodyForests_plot <- function(AntibodyForests_object,
     graphics::text(x = x.scaling[2]+0.2,
                    y = -0.1,
                    label = size.legend.title,
-                   adj = 0)
+                   adj = 0,
+                   cex = font.size*1)
     # Plot the nodes of the legend
     graphics::symbols(x = x_positions,
                       y = y_positions,
@@ -803,7 +816,7 @@ AntibodyForests_plot <- function(AntibodyForests_object,
                    y = y_positions,
                    labels = legend_labels,
                    adj = 0,
-                   cex = 0.75)
+                   cex = font.size*0.75)
   }
   
   # If 'show.color.legend' is set to TRUE, add a legend to the plot to show the color matching
@@ -827,7 +840,8 @@ AntibodyForests_plot <- function(AntibodyForests_object,
       graphics::text(x = x.scaling[2]+0.2,
                      y = y.scaling[2]-0.1,
                      label = color.legend.title,
-                     adj = 0)
+                     adj = 0,
+                     cex = font.size*1)
       # Plot the circles of the legend
       graphics::symbols(x = x_positions,
                         y = y_positions,
@@ -840,7 +854,7 @@ AntibodyForests_plot <- function(AntibodyForests_object,
                      y = y_positions,
                      labels = legend_labels,
                      adj = 0,
-                     cex = 0.75)
+                     cex = font.size*0.75)
       
     }
     
@@ -866,7 +880,8 @@ AntibodyForests_plot <- function(AntibodyForests_object,
       graphics::text(x = x.scaling[2]+0.2,
                      y = y.scaling[2]-0.1,
                      label = color.legend.title,
-                     adj = 0)
+                     adj = 0,
+                     cex = font.size*1)
       # Plot the color gradient
       graphics::symbols(x = x_positions,
                         y = y_positions,
@@ -888,7 +903,7 @@ AntibodyForests_plot <- function(AntibodyForests_object,
                      y = rep(y_positions[c(100, 300, 500, 700, 900)], 2),
                      labels = gradient_labels,
                      adj = 0,
-                     cex = 0.7)
+                     cex = font.size*0.7)
     }
   }
   
@@ -901,7 +916,7 @@ AntibodyForests_plot <- function(AntibodyForests_object,
                                       adj = 0.5,                 # Center the title
                                       labels = main.title,       # Specify the title
                                       font = 2,                  # Use bold font for the title
-                                      cex = 1.5)}                # Set the title font size to 1.5 times the default size
+                                      cex = font.size*1.5)}                # Set the title font size to 1.5 times the default size
   
   # Plot the subtitle (if specified)
   if(sub.title != ""){graphics::text(x = 0,                     # Center the title horizontally above the lineage tree
@@ -909,7 +924,7 @@ AntibodyForests_plot <- function(AntibodyForests_object,
                                      adj = 0.5,                 # Center the title
                                      labels = sub.title,        # Specify the subtitle
                                      font = 3,                  # Use italic font for the title
-                                     cex = 1)}                  # Set the title font size to the the default size
+                                     cex = font.size*1)}                  # Set the title font size to the the default size
   
   
   # 10. Save the plot (if requested)
