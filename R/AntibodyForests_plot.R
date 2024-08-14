@@ -237,6 +237,7 @@ AntibodyForests_plot <- function(AntibodyForests_object,
                    asp = asp,                  # Set the y/x aspect ratio
                    main = main, sub = sub,     # Specicy the main and sub title of the plot
                    xlab = xlab, ylab = ylab)   # Specify the axis titles
+    
     # Retrieve a list of the edges in the graph
     el <- igraph::as_edgelist(graph, names = FALSE)
     # Retrieve the edge labels 
@@ -752,7 +753,7 @@ AntibodyForests_plot <- function(AntibodyForests_object,
   if(output.file != ""){
     
     # Calculate the figure width and height by multiple the length of the x and y range by 1000
-    figure_width <- if(show.color.legend | show.size.legend){(abs(diff(x.scaling))+0.75)*1000}else{abs(diff(x.scaling))*1000}
+    figure_width <- if(show.color.legend | show.size.legend){(abs(diff(x.scaling))+1)*1000}else{abs(diff(x.scaling))*1000}
     figure_height <- if(main.title != ""){(abs(diff(y.scaling))+0.25)*1000}else{abs(diff(y.scaling))*1000}
     
     # Check if the output.file is png or pdf
@@ -781,9 +782,10 @@ AntibodyForests_plot <- function(AntibodyForests_object,
                      ylim = y.scaling,                                  # Set the limits for the vertical axis, thereby scaling the vertical node distance
                      legend = (show.color.legend | show.size.legend),   # Specify whether empty space (1.5 on the x axis) should be plotted on the right side 
                      title = if(main.title != ""){TRUE}else{FALSE},     # Specify whether empty space (0.5 on the y axis) should be plotted on top 
-                     edge.width = 2,                                    # Set the width of the edges
-                     edge.arrow.size = arrow.size,                               # Set the size of the arrows
-                     edge.arrow.width = 1)                              # Set the width of the arrows
+                     edge.width = 0.5,                                    # Set the width of the edges
+                     edge.arrow.size = arrow.size,                      # Set the size of the arrows
+                     edge.arrow.width = 1,                              # Set the width of the arrows
+                     vertex.frame.width = 0.5)
   
   
   # 8. Add legend(s)
@@ -861,7 +863,7 @@ AntibodyForests_plot <- function(AntibodyForests_object,
     # If node colors are specified with a gradient, create a legend using a color gradient
     if(all(node.color.gradient != "none")){
       # Create the colors of the gradient with the 'scales::pal_seq_gradient()' function
-      gradient_colors <- grDevices::colorRampPalette(node.color.gradient)(1000)
+      gradient_colors <- grDevices::colorRampPalette(node.color.gradient)(100)
       # Calculate the minimum and maximum label of the color gradient with the 'predict_range_labels()' function
       gradient_labels <- predict_range_labels(numerical_values)
       # Revert the 'gradient_colors' and the 'gradient_labels' to place the highest values on top
@@ -872,10 +874,10 @@ AntibodyForests_plot <- function(AntibodyForests_object,
         gradient_labels <- format(as.numeric(gradient_labels), scientific = FALSE, digits = 3)
       } 
       # Determine the x coordinates of the rectangles/symbols of the legend
-      if(show.size.legend){x_positions <- rep((x.scaling[2]+0.2+max(legend_node_sizes)), 1000)}
-      if(!show.size.legend){x_positions <- rep((x.scaling[2]+0.2+0.1), 1000)}
+      if(show.size.legend){x_positions <- rep((x.scaling[2]+0.2+max(legend_node_sizes)), 100)}
+      if(!show.size.legend){x_positions <- rep((x.scaling[2]+0.2+0.1), 100)}
       # Determine the y coordinates of the circles/symbols of the legend
-      y_positions <- rev(seq(0.1, y.scaling[2]-0.2, (abs(y.scaling[2])-0.3)/999))
+      y_positions <- rev(seq(0.1, y.scaling[2]-0.2, (abs(y.scaling[2])-0.3)/99))
       # Plot the title of the gradient legend
       graphics::text(x = x.scaling[2]+0.2,
                      y = y.scaling[2]-0.1,
@@ -885,14 +887,14 @@ AntibodyForests_plot <- function(AntibodyForests_object,
       # Plot the color gradient
       graphics::symbols(x = x_positions,
                         y = y_positions,
-                        rectangles = matrix(rep(c(0.15, (y.scaling[2]-0.3)/1000), 1000), ncol = 2, nrow = 1000, byrow = TRUE),
+                        rectangles = matrix(rep(c(0.15, (y.scaling[2]-0.3)/100), 100), ncol = 2, nrow = 100, byrow = TRUE),
                         lty = 0, 
                         inches = FALSE,
                         bg = gradient_colors,
                         add = TRUE)
       # Add tick marks to the color legend
       graphics::symbols(x = c(rep(unique(x_positions-0.055), 5), rep(unique(x_positions+0.055), 5)),
-                        y = rep(y_positions[c(100, 300, 500, 700, 900)], 2),
+                        y = rep(y_positions[c(10, 30, 50, 70, 90)], 2),
                         rectangles = matrix(rep(c(0.04, (y.scaling[2]-0.3)/1000*10), 10), ncol = 2, nrow = 10, byrow = TRUE),
                         lty = 0, 
                         inches = FALSE,
@@ -900,7 +902,7 @@ AntibodyForests_plot <- function(AntibodyForests_object,
                         add = TRUE)
       # Plot the labels next to the color gradient
       graphics::text(x = x_positions + 0.15,
-                     y = rep(y_positions[c(100, 300, 500, 700, 900)], 2),
+                     y = rep(y_positions[c(10, 30, 50, 70, 90)], 2),
                      labels = gradient_labels,
                      adj = 0,
                      cex = font.size*0.7)
