@@ -232,6 +232,9 @@ VDJ_import_IgBLAST_annotations <- function(VDJ,
     unrecognized_columns <- colnames(VDJ)[!colnames(VDJ) %in% new_order]
     new_order <- c(new_order, unrecognized_columns)
     
+    # Only keep the columns that are present in the VDJ dataframe
+    new_order <- new_order[new_order %in% colnames(VDJ)]
+    
     # Reorder the VDJ dataframe
     VDJ <- VDJ[, new_order]
   }
@@ -291,6 +294,9 @@ VDJ_import_IgBLAST_annotations <- function(VDJ,
     print(unrecognized_columns)
     new_order <- c(new_order, unrecognized_columns)
     
+    # Only keep the columns that are present in the VDJ dataframe
+    new_order <- new_order[new_order %in% colnames(VDJ)]
+
     # Reorder the VDJ dataframe 
     VDJ <- VDJ[, new_order]
   }
