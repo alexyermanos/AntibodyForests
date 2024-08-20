@@ -46,6 +46,8 @@
 #' 'max.germline.dist'    : the node(s) having the biggest string distance to the germline node is/are selected.
 #' 'min.germline.edges'   : the node(s) having the lowest possible number of edges to the germline node is/are selected.
 #' 'max.germline.edges    : the node(s) having the highest possible number of edges to the germline node is/are selected.
+#' 'min.descendants'      : the node(s) having the smallest number of descendants is/are selected.
+#' 'max.descendants'      : the node(s) having the biggest number of descendants is/are selected.
 #' 'random'               : a random node is selected.
 #' @param remove.internal.nodes string - denotes if and how internal nodes should be removed when the 'construction.method' is set to 'phylo.tree.nj', 'phylo.tree.mp', 'phylo.tree.ml' or 'phylo.tree.IgPhyML'. Options: 'zero.length.edges.only', 'connect.to.parent', 'minimum.length', and 'minimum.cost'. Defaults to 'minimum.cost', when 'construction.method' is set to 'phylo.tree.nj'. Defautls to 'connect.to.parent', when 'construction.method' is set to 'phylo.tree.mp', 'phylo.tree.ml', or 'phylo.tree.IgPhyML'. 
 #' 'zero.length.edges.only' : only internal nodes with a distance of zero to a terminal node are removed by replacing it with the terminal node.
@@ -205,7 +207,7 @@ AntibodyForests <- function(VDJ,
   # If the 'string.dist.metric' is set to an unknown string distance metrics, a message is returned and execution is stopped.
   if(!is.na(string.dist.metric)){if(!string.dist.metric %in% c("lv", "dl", "osa", "hamming", "lcs", "qgram", "cosine", "jaccard", "jw")){stop("ERROR: The specified string distance metric is not recognized. Please choose from the following options: 'lv', 'dl', 'osa', 'hamming', 'lcs', 'qgram', 'cosine', 'jaccard', or 'jw'.")}}
   # If the 'resolve.ties' parameter contains options that are not recognized, a message is returned and execution is stopped
-  if(!all(is.na(resolve.ties))){if(!all(resolve.ties %in% c("min.expansion", "max.expansion", "min.germline.dist", "max.germline.dist", "min.germline.edges", "max.germline.edges", "random"))){stop("ERROR: Not all options specified in 'resolve.ties' are recognized. Please choose from the following options: 'min.expansion', 'max.expansion', 'min.germline.dist', 'max.germline.dist', 'min.germline.edges', 'max.germline.edges', and 'random'.")}}
+  if(!all(is.na(resolve.ties))){if(!all(resolve.ties %in% c("min.expansion", "max.expansion", "min.germline.dist", "max.germline.dist", "min.germline.edges", "max.germline.edges", "min.descendants", "max.descendants", "random"))){stop("ERROR: Not all options specified in 'resolve.ties' are recognized. Please choose from the following options: 'min.expansion', 'max.expansion', 'min.germline.dist', 'max.germline.dist', 'min.germline.edges', 'max.germline.edges', and 'random'.")}}
   # If the 'remove.internal.nodes' parameter is set to an algorithm that is not recognized, a message is returned and execution is stopped
   if(!is.na(remove.internal.nodes)){if(!remove.internal.nodes %in% c("zero.length.edges.only", "connect.to.parent", "minimum.length", "minimum.cost")){stop("ERROR: The specified 'remove.internal.nodes' algorithm' is not recognized. Please choose from the following options: 'zero.length.edges.only', 'connect.to.parent', 'minimum.length', or 'minimum.weight'.")}}
   # If the 'dna.model' or 'aa.model' parameter contains models that are not available for the current 'sequence_type' or for the current 'construction.method', a message is returned and execution is stopped
@@ -501,7 +503,7 @@ AntibodyForests <- function(VDJ,
             
             # Select the node(s) in 'already_connected_nodes' that has/have 'min_distance' to the current node
             node_to_connect_to <- unlist(lapply(already_connected_nodes, function(x) if(dist_matrix[x, node] == min_distance){return(x)}))
-            
+
             # If multiple nodes in 'node_to_connect_to' share 'min_distance' to the current node, the 'resolve.ties' options are hierarchically applied to narrow down the candidates for linking the currently unlinked node in the tree to, aiming to select a single node.
             if(length(node_to_connect_to) != 1){
               
@@ -541,6 +543,18 @@ AntibodyForests <- function(VDJ,
                 if(option == "max.germline.edges"){
                   number_of_edges <- sapply(node_to_connect_to, function(node) count_edges_between_two_nodes(node1 = "germline", node2 = node, edge.matrix = edges))
                   node_to_connect_to <- node_to_connect_to[number_of_edges == max(number_of_edges)]
+                }
+                
+                # If the 'resolve.ties' parameter is set to 'min.descendants', the node(s) having the smallest number of descendants is/are selected
+                if(option == "min.descendants"){
+                  number_of_descendants <- sapply(node_to_connect_to, function(node){length(edges[edges[,"upper.node"] == node,"upper.node"])})
+                  node_to_connect_to <- node_to_connect_to[number_of_descendants == min(number_of_descendants)]
+                }
+                
+                # If the 'resolve.ties' parameter is set to 'max.descendants', the node(s) having the biggest number of descendants is/are selected
+                if(option == "max.descendants"){
+                  number_of_descendants <- sapply(node_to_connect_to, function(node){length(edges[edges[,"upper.node"] == node,"upper.node"])})
+                  node_to_connect_to <- node_to_connect_to[number_of_descendants == max(number_of_descendants)]
                 }
                 
                 # If the 'resolve.ties' parameter is set to 'random', a random node will be selected
@@ -697,38 +711,67 @@ AntibodyForests <- function(VDJ,
         # If there are 4 nodes or less, no bootstrapping is conducted, to prevent the creation of trees with less than three edges (such a tree cannot be unrooted)
         if(length(msa) <= 4){rearrangement_method <- "NNI"}
         
-        # Create maximum likelihood tree with the 'phangorn::pml_bb()' function (and hide in-function printed message), and store the best model according to the BIC value from the 'phangorn::modelTest()' function in the 'metrics' list
-        if(sequence.type == "DNA"){base::invisible(utils::capture.output(ml_tree <- phangorn::pml_bb(phangorn::modelTest(object = msa, model = dna.model), rearrangement = rearrangement_method))); metrics["dna.model"] <- ml_tree[["model"]]}
-        if(sequence.type == "AA"){base::invisible(utils::capture.output(ml_tree <- phangorn::pml_bb(phangorn::modelTest(object = msa, model = aa.model), rearrangement = rearrangement_method))); metrics["aa.model"] <- ml_tree[["model"]]}
-  
-        # Store the tree of class 'phylo' in the 'phylo_object'
-        phylo_object <- ml_tree[["tree"]]
+        ml_tree <- tryCatch(
+          # Create maximum likelihood tree with the 'phangorn::pml_bb()' function (and hide in-function printed message), and store the best model according to the BIC value from the 'phangorn::modelTest()' function in the 'metrics' list
+          {
+            if(sequence.type == "DNA"){base::invisible(utils::capture.output(ml_tree <- phangorn::pml_bb(phangorn::modelTest(object = msa, model = dna.model), rearrangement = rearrangement_method))); metrics["dna.model"] <- ml_tree[["model"]]}
+            if(sequence.type == "AA"){base::invisible(utils::capture.output(ml_tree <- phangorn::pml_bb(phangorn::modelTest(object = msa, model = aa.model), rearrangement = rearrangement_method))); metrics["aa.model"] <- ml_tree[["model"]]}
+            return(ml_tree)
+          },
+          error = function(e){
+            # If an error occurs during the maximum likelihood tree inference, NNI is attempted
+            message(paste0("An error occurred during maximum likelihood tree inference in ", clone, ". NNI rearrangement is attempted."))
+            ml_tree <- tryCatch(
+              {
+                if(sequence.type == "DNA"){base::invisible(utils::capture.output(ml_tree <- phangorn::pml_bb(phangorn::modelTest(object = msa, model = dna.model), rearrangement = "NNI"))); metrics["dna.model"] <- ml_tree[["model"]]}
+                if(sequence.type == "AA"){base::invisible(utils::capture.output(ml_tree <- phangorn::pml_bb(phangorn::modelTest(object = msa, model = aa.model), rearrangement = "NNI"))); metrics["aa.model"] <- ml_tree[["model"]]}
+                return(ml_tree)
+              },
+              error = function(e){
+                # If an error still occurs, return NULL
+                message(paste0("An error occurred during maximum likelihood tree inference in ", clone, ". No tree could be constructed."))
+                return(NULL)
+              }
+            )
+          }
+        )
         
-        # If codon models are specified in the 'codon.model' parameter...
-        if(!all(is.na(codon.model)) & !is.null(phylo_object)){
+        if(is.null(ml_tree)){
+          # As no 'phylo_object' can be created, internal nodes are absent, and therefore the 'phylo_object', 'igraph_object_with_inner_nodes', and 'edges_with_inner_nodes' are set to NULL
+          phylo_object <- NULL
+          igraph_object <- NULL
+          igraph_object_with_inner_nodes <- NULL
+          edges_with_inner_nodes <- NULL
+        }else{
+          # Store the tree of class 'phylo' in the 'phylo_object'
+          phylo_object <- ml_tree[["tree"]]
           
-          # Convert the multiple sequence alignment into a matrix and remove '-' characters and save in 'codon_msa'
-          codon_msa <- do.call(rbind, lapply(names(msa), function(x){strsplit(gsub(pattern = "-", replacement = "", do.call(paste0, as.list(as.character(msa)[x,]))), split = "")[[1]]}))
-          rownames(codon_msa) <- names(msa)
+          # If codon models are specified in the 'codon.model' parameter...
+          if(!all(is.na(codon.model)) & !is.null(phylo_object)){
+            
+            # Convert the multiple sequence alignment into a matrix and remove '-' characters and save in 'codon_msa'
+            codon_msa <- do.call(rbind, lapply(names(msa), function(x){strsplit(gsub(pattern = "-", replacement = "", do.call(paste0, as.list(as.character(msa)[x,]))), split = "")[[1]]}))
+            rownames(codon_msa) <- names(msa)
+            
+            # Convert the 'codon_msa' into the phyDat format, which will be the input for the 'phangorn::codonTest() function
+            codon_msa <- phangorn::as.phyDat(codon_msa, type = "CODON")
+            
+            # Estimate the specified codon models
+            codon_model_test <- phangorn::codonTest(tree = phylo_object, object = codon_msa, model = codon.model)
+            
+            # Select the best model according to the BIC value and append to the 'metrics' list
+            codon.model <- codon_model_test$summary[codon_model_test$summary$BIC == min(codon_model_test$summary$BIC), "model"]
+            metrics["codon.model"] <- codon.model
+            
+            # Replace the tree of class 'phylo' stored in 'phylo_object' by the tree created using the selected codon model
+            phylo_object <- codon_model_test$estimates[[codon.model]]$tree
+          }
           
-          # Convert the 'codon_msa' into the phyDat format, which will be the input for the 'phangorn::codonTest() function
-          codon_msa <- phangorn::as.phyDat(codon_msa, type = "CODON")
-          
-          # Estimate the specified codon models
-          codon_model_test <- phangorn::codonTest(tree = phylo_object, object = codon_msa, model = codon.model)
-          
-          # Select the best model according to the BIC value and append to the 'metrics' list
-          codon.model <- codon_model_test$summary[codon_model_test$summary$BIC == min(codon_model_test$summary$BIC), "model"]
-          metrics["codon.model"] <- codon.model
-          
-          # Replace the tree of class 'phylo' stored in 'phylo_object' by the tree created using the selected codon model
-          phylo_object <- codon_model_test$estimates[[codon.model]]$tree
+          # Remove node labels to enable conversion into igraph object
+          phylo_object$node.label <- NULL
         }
-        
-        # Remove node labels to enable conversion into igraph object
-        phylo_object$node.label <- NULL
       }
-      
+        
       # If there are less than 3 sequences, the tree consists of a germline node and a single descendant ('node1'), with a distance that is equal to the hamming distance normalized by the mean sequence length
       if(length(msa) < 3){
         edges <- data.frame(upper.node = "germline", lower.node = "node1", edge.length = stringdist::stringdist(as.character(phangorn::as.MultipleAlignment(msa))[1], as.character(phangorn::as.MultipleAlignment(msa))[2], method = "hamming")/((nchar(as.character(phangorn::as.MultipleAlignment(msa))[1]) + nchar(as.character(phangorn::as.MultipleAlignment(msa))[2]))/2))
