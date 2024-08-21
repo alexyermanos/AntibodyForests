@@ -741,6 +741,7 @@ AntibodyForests <- function(VDJ,
           phylo_object <- NULL
           igraph_object <- NULL
           igraph_object_with_inner_nodes <- NULL
+          edges <- NULL
           edges_with_inner_nodes <- NULL
         }else{
           # Store the tree of class 'phylo' in the 'phylo_object'
@@ -807,12 +808,13 @@ AntibodyForests <- function(VDJ,
           else if(grepl(pattern = "^[0-9]+$", x)){return(as.vector(1:sum(grepl(pattern = "^[0-9]+$", igraph::V(IgPhyML_igraph_object)$name)))[grep(pattern = "^[0-9]+$", igraph::V(IgPhyML_igraph_object)$name, value = TRUE) == x])}
         })
         
+        
         # Check whether all nodes in the 'nodes.list' could be found in the igraph object, and check whether all terminal nodes are found once
         igraph_object_check <- (all(names(nodes.list) %in% igraph::V(IgPhyML_igraph_object)$name) && all(table(igraph::V(IgPhyML_igraph_object)$name)[unique(grep(pattern = "^node|germline", igraph::V(IgPhyML_igraph_object)$name, value = TRUE))] == 1))
       } else{igraph_object_check <- FALSE}
       
       # If no igraph object could be found in the 'IgPhyML.trees' object, append warning message to warnings 'list'
-      warnings <- c(warnings, paste(c("The tree of", strsplit(clone, split="_")[[1]][], "of", strsplit(clone, split="_")[[1]][1], "could not be found in the specified IgPhyML output file!"), collapse = ""))
+      warnings <- c(warnings, paste(c("The tree of ", strsplit(clone, split="_")[[1]][2], " of ", strsplit(clone, split="_")[[1]][1], " has only 1 node or could not be found in the specified IgPhyML output file!"), collapse = ""))
       
       # If the igraph object is checked succesfully, onvert the object of class 'igraph' into an object of class 'phylo' using the 'igraph_to_phylo()' function
       if(igraph_object_check){phylo_object <- igraph_to_phylo(IgPhyML_igraph_object)}
