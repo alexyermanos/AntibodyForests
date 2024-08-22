@@ -27,6 +27,8 @@
 #' 'heatmap'        : A (clustered) heatmap of the distance between clonotypes. If distance.method is "none", euclidean distance will be calculated.
 # #' @param metrics.to.visualize - string - Other metrics from the input to use for visualization.
 #' @param plot.label - boolean - Label clonotypes in the PCA/MDS plot (default FALSE)
+#' @param text.size - integer - Size of the text in the plots (default 12)
+#' @param point.size - integer - Size of the points in the plots (default 2)
 #' @param parallel If TRUE, the metric calculations are parallelized (default FALSE)
 #' @param num.cores Number of cores to be used when parallel = TRUE (Defaults to all available cores - 1)
 #' @return - list - Returns a distance matrix, clustering, and various plots based on visualization.methods
@@ -40,6 +42,8 @@ AntibodyForests_compare_clonotypes <- function(input,
                                     visualization.methods,
                                     #metrics.to.visualize,
                                     plot.label,
+                                    text.size,
+                                    point.size = 2,
                                     parallel,
                                     num.cores){
   
@@ -51,6 +55,8 @@ AntibodyForests_compare_clonotypes <- function(input,
   if(missing(distance.metrics)){distance.metrics = c("mean.depth", "nr.nodes")}
   if(missing(clustering.method)){clustering.method = "none"}
   if(missing(plot.label)){plot.label = F}
+  if(missing(text.size)){text.size = 12}
+  if(missing(point.size)){point.size = 2}
   if(missing(parallel)){parallel <- F}
   if(parallel == TRUE && missing(num.cores)){num.cores <- parallel::detectCores() -1}
 
@@ -138,10 +144,18 @@ AntibodyForests_compare_clonotypes <- function(input,
   
   plot <- function(df, color, name, plot.label){
     p <- ggplot2::ggplot(df, ggplot2::aes(x=Dim1,y=Dim2, color=.data[[color]])) +
-      ggplot2::geom_point(size=5) +
-      ggplot2::theme_minimal() +
-      ggplot2::theme(text = ggplot2::element_text(size = 20)) +
+      ggplot2::geom_point(size=point.size) +
+      ggplot2::theme_classic() +
+      ggplot2::theme(text = ggplot2::element_text(size = text.size),
+                     axis.text.x= ggplot2::element_blank(),
+                     axis.ticks.x= ggplot2::element_blank(),
+                     axis.text.y = ggplot2::element_blank(),
+                     axis.ticks.y = ggplot2::element_blank()) +
       ggplot2::ggtitle(name)
+    
+    if(name == "PCA"){
+      p <- p + ggplot2::xlab("PC1") + ggplot2::ylab("PC2")
+    }
     
     if(plot.label){
       p <- p + ggrepel::geom_label_repel(ggplot2::aes(label = tree))
@@ -160,7 +174,8 @@ AntibodyForests_compare_clonotypes <- function(input,
       clusters$cluster <- as.factor(clusters$cluster)
       #Plot the clustered heatmap
       p <- pheatmap::pheatmap(as.matrix(df),
-                              annotation_col = clusters)
+                              annotation_col = clusters,
+                              fontsize = text.size)
     }
     #If there are no clusters
     else{p <- pheatmap::pheatmap(as.matrix(df))}
