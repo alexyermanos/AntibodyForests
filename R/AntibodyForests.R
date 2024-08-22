@@ -711,30 +711,36 @@ AntibodyForests <- function(VDJ,
         # If there are 4 nodes or less, no bootstrapping is conducted, to prevent the creation of trees with less than three edges (such a tree cannot be unrooted)
         if(length(msa) <= 4){rearrangement_method <- "NNI"}
         
-        ml_tree <- tryCatch(
-          # Create maximum likelihood tree with the 'phangorn::pml_bb()' function (and hide in-function printed message), and store the best model according to the BIC value from the 'phangorn::modelTest()' function in the 'metrics' list
-          {
-            if(sequence.type == "DNA"){base::invisible(utils::capture.output(ml_tree <- phangorn::pml_bb(phangorn::modelTest(object = msa, model = dna.model), rearrangement = rearrangement_method))); metrics["dna.model"] <- ml_tree[["model"]]}
-            if(sequence.type == "AA"){base::invisible(utils::capture.output(ml_tree <- phangorn::pml_bb(phangorn::modelTest(object = msa, model = aa.model), rearrangement = rearrangement_method))); metrics["aa.model"] <- ml_tree[["model"]]}
-            return(ml_tree)
-          },
-          error = function(e){
-            # If an error occurs during the maximum likelihood tree inference, NNI is attempted
-            message(paste0("An error occurred during maximum likelihood tree inference in ", clone, ". NNI rearrangement is attempted."))
-            ml_tree <- tryCatch(
-              {
-                if(sequence.type == "DNA"){base::invisible(utils::capture.output(ml_tree <- phangorn::pml_bb(phangorn::modelTest(object = msa, model = dna.model), rearrangement = "NNI"))); metrics["dna.model"] <- ml_tree[["model"]]}
-                if(sequence.type == "AA"){base::invisible(utils::capture.output(ml_tree <- phangorn::pml_bb(phangorn::modelTest(object = msa, model = aa.model), rearrangement = "NNI"))); metrics["aa.model"] <- ml_tree[["model"]]}
-                return(ml_tree)
-              },
-              error = function(e){
-                # If an error still occurs, return NULL
-                message(paste0("An error occurred during maximum likelihood tree inference in ", clone, ". No tree could be constructed."))
-                return(NULL)
-              }
-            )
-          }
-        )
+        #Function to catch errors during maximum likelihood tree inference
+        likelihood_inference <- function(sequence.type, dna.model, aa.model, msa, rearrangement_method){
+          tryCatch(
+            # Create maximum likelihood tree with the 'phangorn::pml_bb()' function (and hide in-function printed message), and store the best model according to the BIC value from the 'phangorn::modelTest()' function in the 'metrics' list
+            {
+              if(sequence.type == "DNA"){base::invisible(utils::capture.output(ml_tree <- phangorn::pml_bb(phangorn::modelTest(object = msa, model = dna.model), rearrangement = rearrangement_method))); metrics["dna.model"] <- ml_tree[["model"]]}
+              if(sequence.type == "AA"){base::invisible(utils::capture.output(ml_tree <- phangorn::pml_bb(phangorn::modelTest(object = msa, model = aa.model), rearrangement = rearrangement_method))); metrics["aa.model"] <- ml_tree[["model"]]}
+              return(ml_tree)
+            },
+            error = function(e){
+              # If an error occurs during the maximum likelihood tree inference, NNI is attempted
+              message(paste0("An error occurred during maximum likelihood tree inference in ", clone, ". NNI rearrangement is attempted."))
+              ml_tree <- tryCatch(
+                {
+                  if(sequence.type == "DNA"){base::invisible(utils::capture.output(ml_tree <- phangorn::pml_bb(phangorn::modelTest(object = msa, model = dna.model), rearrangement = "NNI"))); metrics["dna.model"] <- ml_tree[["model"]]}
+                  if(sequence.type == "AA"){base::invisible(utils::capture.output(ml_tree <- phangorn::pml_bb(phangorn::modelTest(object = msa, model = aa.model), rearrangement = "NNI"))); metrics["aa.model"] <- ml_tree[["model"]]}
+                  return(ml_tree)
+                },
+                error = function(e){
+                  # If an error still occurs, return NULL
+                  message(paste0("An error occurred during maximum likelihood tree inference in ", clone, ". No tree could be constructed."))
+                  return(NULL)
+                }
+              )
+              return(ml_tree)
+            }
+          )
+        }
+        # Create maximum likelihood tree with the 'phangorn::pml_bb()' function (and hide in-function printed message), and store the best model according to the BIC value from the 'phangorn::modelTest()' function in the 'metrics' list
+        ml_tree <- likelihood_inference(sequence.type, dna.model, aa.model, msa, rearrangement_method)
         
         if(is.null(ml_tree)){
           # As no 'phylo_object' can be created, internal nodes are absent, and therefore the 'phylo_object', 'igraph_object_with_inner_nodes', and 'edges_with_inner_nodes' are set to NULL
