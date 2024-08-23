@@ -19,6 +19,7 @@
 #' @param node.color.range - vector of 2 floats - specifies the range of the color gradient. Defaults to the minimum and maximum value found for the feature selected by the 'color.by' parameter.
 #' @param node.label.size float - specifies the font size of the node label. Default scales to the size of the nodes.
 #' @param arrow.size float - specifies the size of the arrows. Defaults to 1.
+#' @param edge.width float - specifies the width of the edges. Defaults to 1.
 #' @param show.color.legend boolean - if TRUE, a legend is plotted to display the values of the specified node feature matched to the corresponding colors. Defaults to TRUE if the 'color.by' parameter is specified.
 #' @param show.size.legend boolean - if TRUE, a legend is plotted to display the node sizes and the corresponding number of cells represented. Defaults to TRUE if the 'node.size' parameter is set to 'expansion'.
 #' @param main.title string - specifies the main title of the plot (to be plotted in a bold font). Defaults to NULL.
@@ -55,6 +56,7 @@ AntibodyForests_plot <- function(AntibodyForests_object,
                                  node.color.range,
                                  node.label.size,
                                  arrow.size,
+                                 edge.width,
                                  edge.label,
                                  show.color.legend,
                                  show.size.legend,
@@ -502,6 +504,8 @@ AntibodyForests_plot <- function(AntibodyForests_object,
   if(missing(node.label.size)){node.label.size <- "default"}
   # If the 'arrow.size' parameter is not specified, it is set to 1
   if(missing(arrow.size)){arrow.size <- 1}
+  # If the 'edge.width' parameter is not specified, it is set to 1
+  if(missing(edge.width)){edge.width <- 1}
   
   # Import the 'isotype_colors' list that specifies a unique color for each known isotype
   isotype_colors <- list(
@@ -782,7 +786,7 @@ AntibodyForests_plot <- function(AntibodyForests_object,
                      ylim = y.scaling,                                  # Set the limits for the vertical axis, thereby scaling the vertical node distance
                      legend = (show.color.legend | show.size.legend),   # Specify whether empty space (1.5 on the x axis) should be plotted on the right side 
                      title = if(main.title != ""){TRUE}else{FALSE},     # Specify whether empty space (0.5 on the y axis) should be plotted on top 
-                     edge.width = 0.5,                                    # Set the width of the edges
+                     edge.width = edge.width,                                    # Set the width of the edges
                      edge.arrow.size = arrow.size,                      # Set the size of the arrows
                      edge.arrow.width = 1,                              # Set the width of the arrows
                      vertex.frame.width = 0.5)
