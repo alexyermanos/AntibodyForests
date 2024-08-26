@@ -1,0 +1,94 @@
+#' Function to create a barplot of the cluster composition of selected features from each tree in an AntibodyForests-object
+#' @description Function to create a barplot of the cluster composition of selected features from each tree in an AntibodyForests-object
+#' @param input AntibodyForests-object(s), output from AntibodyForests()
+#' @param features Character vector of features to include in the barplot. (these features need to be present in the nodes of the trees)
+#' @param clusters Named vector with the cluster assignments of the trees, output from AntibodyForests_compare_clonotypes().
+#' @param fill identify each unique feature per tree (unique, default), or assign the most observed feature to the tree (max)
+#' @param colors Color palette to use for the features.
+#' @param text.size Size of the text in the plot. Default is 12.
+#' @return A list with barplots for each provided feature.
+#' @export
+
+AntibodyForests_cluster_composition <- function(input,
+                                                features,
+                                                clusters,
+                                                fill,
+                                                colors,
+                                                text.size){
+  
+  #Stop when no input is provided
+  if(missing(input)){stop("Please provide a valid input object.")}
+  if(missing(features)){stop("Please provide a valid features object.")}
+  if(missing(clusters)){stop("Please provide a valid clusters object.")}
+  #Set defaults
+  if(missing(fill)){fill <- "unique"}
+  if(missing(text.size)){text.size <- 12}
+  #Check if input is valid
+  if(!(fill %in% c("unique", "max"))){stop("Please provide a valid fill argument.")}
+  if(!all(features %in% names(input[[1]][[1]]$nodes[[1]]))){stop("Features are not present in AntibodyForests-object.")}
+  
+  #Function to get the node features for each tree
+  get_node_features <- function(clonotype, features, fill){
+    node_features <- c()
+    for (feature in features){
+      if(fill == "unique"){labels <- paste(unique(unlist(lapply(clonotype$nodes, function(c){c[[feature]]}))), collapse = ";")}
+      if(fill == "max"){
+        if(all(is.na(unlist(lapply(clonotype$nodes, function(c){c[[feature]]}))))){labels <- NA
+        }else{labels <- names(sort(table(unlist(lapply(clonotype$nodes, function(c){c[[feature]]}))), decreasing = TRUE))[1]}
+      }
+      node_features <- c(node_features, labels)
+    }
+    names(node_features) <- features
+    return(node_features)
+  }
+  
+  #Create a dataframe with the node features for each tree
+  df <- t(as.data.frame(lapply(input, function(sample){
+    lapply(sample, function(clonotype){
+      get_node_features(clonotype, features, fill)
+    })
+  })))
+  
+  #Add column to this dataframe with the assigned clusters
+  df <- as.data.frame(df)
+  df$tree <- gsub("^X", "", rownames(df))
+  clusters <- as.data.frame(clusters)
+  clusters$tree <- rownames(clusters)
+  df <- dplyr::left_join(df, clusters, by = "tree")
+  #Only keep trees with an assigned cluster
+  df <- df[!is.na(df$cluster),]
+  #Stop if there is no match
+  if(nrow(df) == 0){stop("Tree names of the clusters are not in the AntibodyForests-object.")}
+  
+  #Create barplots
+  output_list <- list()
+  print(head(df))
+  for(feature in features){
+    p <- ggplot2::ggplot(df, ggplot2::aes(x=as.factor(cluster), fill=!!rlang::sym(feature))) +
+      ggplot2::geom_bar(position = "fill", stat = "count", width = 0.8) +
+      ggplot2::theme_minimal() +
+      ggplot2::theme(text = ggplot2::element_text(size = text.size),
+                     axis.ticks.x=ggplot2::element_blank(),
+                     panel.border = ggplot2::element_blank(),
+                     panel.grid = ggplot2::element_blank(),
+                     panel.grid.major = ggplot2::element_blank(),
+                     panel.grid.minor = ggplot2::element_blank(),
+                     panel.grid.major.y = ggplot2::element_blank(),
+                     panel.grid.major.x = ggplot2::element_blank()) +
+      ggplot2::xlab("Cluster") + ggplot2::ylab("Percentage of cells")
+    if(!missing(colors)){p <- p + ggplot2::scale_fill_manual(values = colors)}
+    #Add to the output list
+    output_list[[feature]] <- p
+  }
+  
+  return(output_list)
+
+}
+
+
+
+
+
+
+
+
