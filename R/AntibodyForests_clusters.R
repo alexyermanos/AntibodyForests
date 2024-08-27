@@ -28,7 +28,7 @@ AntibodyForests_clusters <- function(af,
                                      min.nodes,
                                      colors,
                                      text.size,
-                                     significane,
+                                     significance,
                                      parallel){
   
   #Set defaults and check for missing input
@@ -38,7 +38,7 @@ AntibodyForests_clusters <- function(af,
   if(missing(min.nodes)){min.nodes = 0}
   if(missing(colors)){colors = scales::hue_pal()(length(unique(clusters)))}
   if(missing(text.size)){text.size = 20}
-  if(missing(significane)){significane = F}
+  if(missing(significance)){significane = F}
   if(missing(parallel)){parallel <- F}
   #Check if group are in the metric dataframe
   #if(!(all(groups %in% colnames(metric_df)))){stop("Groups are not in the column names of the metric dataframe.")}
@@ -78,7 +78,7 @@ AntibodyForests_clusters <- function(af,
       ggplot2::ggtitle(paste0(metric, " per cluster"))
     
     #Add significance to the plot
-    if(significane){
+    if(significance){
       #Get the unique combinations of clusters if there are more than 2 clusters
       if(length(unique(cluster_df$clusters)) > 2){
         #Get the unique combinations of clusters
