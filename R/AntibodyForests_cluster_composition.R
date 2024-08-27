@@ -56,17 +56,16 @@ AntibodyForests_cluster_composition <- function(input,
   clusters$tree <- rownames(clusters)
   df <- dplyr::left_join(df, clusters, by = "tree")
   #Only keep trees with an assigned cluster
-  df <- df[!is.na(df$cluster),]
+  df <- df[!is.na(df$clusters),]
   #Stop if there is no match
   if(nrow(df) == 0){stop("Tree names of the clusters are not in the AntibodyForests-object.")}
   
   #Create barplots
   output_list <- list()
-  print(head(df))
   for(feature in features){
-    p <- ggplot2::ggplot(df, ggplot2::aes(x=as.factor(cluster), fill=!!rlang::sym(feature))) +
+    p <- ggplot2::ggplot(df, ggplot2::aes(x=as.factor(clusters), fill=!!rlang::sym(feature))) +
       ggplot2::geom_bar(position = "fill", stat = "count", width = 0.8) +
-      ggplot2::theme_minimal() +
+      ggplot2::theme_classic() +
       ggplot2::theme(text = ggplot2::element_text(size = text.size),
                      axis.ticks.x=ggplot2::element_blank(),
                      panel.border = ggplot2::element_blank(),
