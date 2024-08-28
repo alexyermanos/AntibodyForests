@@ -95,7 +95,15 @@ AntibodyForests_compare_trees <- function(input,
         nodes <- names(depth_list[[1]][[sample]][[clonotype]])
         depth_df <- matrix(ncol = length(nodes), nrow = 0)
         colnames(depth_df) <- nodes
-        for (method in names(depth_list)){depth_df <- rbind(depth_df, depth_list[[method]][[sample]][[clonotype]])}
+        
+        skip = F
+        for (method in names(depth_list)){
+          #If the number of columns is not the same, skip this clonotype
+          if(ncol(depth_df) != length(depth_list[[method]][[sample]][[clonotype]])){skip = T;break}
+          #Add the depth to the dataframe
+          depth_df <- rbind(depth_df, depth_list[[method]][[sample]][[clonotype]])
+        }
+        if(skip){next}
         rownames(depth_df) <- names(depth_list)
         
         #Calculate the euclidean distance between the tree methods for this clonotype
@@ -188,14 +196,17 @@ AntibodyForests_compare_trees <- function(input,
           parallel::mclapply(mc.cores = num.cores, object, function(sample){
             parallel::mclapply(mc.cores = num.cores, sample, function(clonotype){
               #Only calculate depth for trees with at least min.nodes
-              if (igraph::vcount(clonotype$igraph) >= min.nodes){
-                #Calculate the depth for all nodes except the germline
-                depth_vector <- calculate_depth(clonotype$igraph,
-                                                nodes = igraph::V(clonotype$igraph)[names(igraph::V(clonotype$igraph)) != "germline"],
-                                                depth)
-                return(depth_vector)
-              }else{
-                return(NA)
+              if (is.null(clonotype$igraph)){return(NA)}
+              else{
+                if(igraph::vcount(clonotype$igraph) >= min.nodes){
+                  #Calculate the depth for all nodes except the germline
+                  depth_vector <- calculate_depth(clonotype$igraph,
+                                                  nodes = igraph::V(clonotype$igraph)[names(igraph::V(clonotype$igraph)) != "germline"],
+                                                  depth)
+                  return(depth_vector)
+                }else{
+                  return(NA)
+                }
               }
               
             })
@@ -211,14 +222,17 @@ AntibodyForests_compare_trees <- function(input,
         parallel::parLapply(cluster, object, function(sample){
           parallel::parLapply(cluster, sample, function(clonotype){
             #Only calculate depth for trees with at least min.nodes
-            if (igraph::vcount(clonotype$igraph) >= min.nodes){
-              #Calculate the depth for all nodes except the germline
-              depth_vector <- calculate_depth(clonotype$igraph,
-                                              nodes = igraph::V(clonotype$igraph)[names(igraph::V(clonotype$igraph)) != "germline"],
-                                              depth)
-              return(depth_vector)
-            }else{
-              return(NA)
+            if (is.null(clonotype$igraph)){return(NA)}
+            else{
+              if(igraph::vcount(clonotype$igraph) >= min.nodes){
+                #Calculate the depth for all nodes except the germline
+                depth_vector <- calculate_depth(clonotype$igraph,
+                                                nodes = igraph::V(clonotype$igraph)[names(igraph::V(clonotype$igraph)) != "germline"],
+                                                depth)
+                return(depth_vector)
+              }else{
+                return(NA)
+              }
             }
           })
         })
@@ -234,19 +248,24 @@ AntibodyForests_compare_trees <- function(input,
       lapply(object, function(sample){
         lapply(sample, function(clonotype){
           #Only calculate depth for trees with at least min.nodes
-          if (igraph::vcount(clonotype$igraph) >= min.nodes){
-            #Calculate the depth for all nodes except the germline
-            depth_vector <- calculate_depth(clonotype$igraph,
-                                            nodes = igraph::V(clonotype$igraph)[names(igraph::V(clonotype$igraph)) != "germline"],
-                                            depth)
-            return(depth_vector)
-          }else{
-            return(NA)
+          if (is.null(clonotype$igraph)){
+            return(NA)}
+          else{
+            if(igraph::vcount(clonotype$igraph) >= min.nodes){
+              #Calculate the depth for all nodes except the germline
+              depth_vector <- calculate_depth(clonotype$igraph,
+                                              nodes = igraph::V(clonotype$igraph)[names(igraph::V(clonotype$igraph)) != "germline"],
+                                              depth)
+              return(depth_vector)
+            }else{
+              return(NA)
+            }
           }
         })
       })
     })
   }
+  
   #Remove NA (clonotypes with less then min.nodes nodes)
   depth_list <- remove_na_entries(depth_list)
   
