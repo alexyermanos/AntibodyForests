@@ -1,7 +1,8 @@
-#' Function to compare different trees from the same clonotype using the euclidean distance between the germline-to-node depth of all nodes.
+#' Function to compare trees created with different algorithms from the same clonotype using the euclidean distance between the germline-to-node depth of all nodes.
 #' @description Function to compare different trees from the same clonotype. For example to compare various graph construction and phylogenetic reconstruction methods.
 #' @param input A list of AntibodyForests-objects as output from the function AntibodyForests(). These objects should contain the same samples/clonotypes. Please name the objects in the list according to their tree-construction method.
 #' @param min.nodes The minimum number of nodes in a tree to include in the comparison, this includes the germline. Default is 2 (this includes all trees).
+#' @param include.average If TRUE, the average distance matrix and visualizations between the trees is included in the output (default FALSE)
 #' @param depth - string - Method to calculate the germline-to-node depth (default edge.count)
 #' 'edge.count'   : The number of edges between each node and the germline
 #' 'edge.length'  : The sum of edge lengths between each node and the germline
@@ -20,6 +21,7 @@
 
 AntibodyForests_compare_trees <- function(input,
                                     min.nodes,
+                                    include.average,
                                     depth,
                                     clustering.method,
                                     visualization.methods,
@@ -33,6 +35,7 @@ AntibodyForests_compare_trees <- function(input,
   if(missing(visualization.methods)){visualization.methods = NULL}
   if(missing(clustering.method)){clustering.method = NULL}
   if(missing(parallel)){parallel <- FALSE}
+  if(missing(include.average)){include.average <- FALSE}
   # If 'parallel' is set to TRUE but 'num.cores' is not specified, the number of cores is set to all available cores - 1
   if(parallel == TRUE && missing(num.cores)){num.cores <- parallel::detectCores() -1}
   
@@ -66,7 +69,7 @@ AntibodyForests_compare_trees <- function(input,
       depths <- igraph::distances(tree, v = "germline", to = nodes, algorithm = "dijkstra",
                                     weights = as.numeric(igraph::edge_attr(tree)$edge.length))
       #Reorder according to node number
-      depths <- depths[,paste0("node",sort(as.numeric(stringr::str_sub(colnames(depths), start = 5))))]
+      depths <- depths[,paste0("node",sort(stringr::str_sub(colnames(depths), start = 5)))]
     }
     #Return the named vector of depths per node
     return(depths)
@@ -124,13 +127,13 @@ AntibodyForests_compare_trees <- function(input,
     mediods <- fpc::pamk(distance_matrix,krange=1:max_cluster)
     clusters <- mediods$pamobject$clustering
     #Assign the clusters to the tree names
-    names(clusters) <- labels(df)
+    names(clusters) <- rownames(df)
     return(clusters)
   }
   
   #Calculate principle components
   calculate_PC <- function(df, to.scale){
-    names <- labels(df)
+    names <- rownames(df)
     #Run a PCA and save the PCs in a dataframe
     pca_results <- as.data.frame(stats::prcomp(df, scale. = to.scale)$x)
     #Keep the first two PCs
@@ -143,7 +146,7 @@ AntibodyForests_compare_trees <- function(input,
   
   #Multidimensional scaling
   calculate_MDS <- function(df){
-    names <- labels(df)
+    names <- rownames(df)
     #Compute classical metric multidimensional scaling
     results <- as.data.frame(stats::cmdscale(df))
     colnames(results) <- c("Dim1", "Dim2")
@@ -161,7 +164,6 @@ AntibodyForests_compare_trees <- function(input,
       ggplot2::theme_minimal() +
       ggplot2::theme(text = ggplot2::element_text(size = 20)) +
       ggplot2::ggtitle(name)
-    
     return(p)
   }
   
@@ -172,13 +174,15 @@ AntibodyForests_compare_trees <- function(input,
       #Make df of the clusters
       clusters <- as.data.frame(clusters)
       colnames(clusters) <- "cluster"
+      rownames(clusters) <- labels(df)
       clusters$cluster <- as.factor(clusters$cluster)
       #Plot the clustered heatmap
       p <- pheatmap::pheatmap(as.matrix(df),
                          annotation_col = clusters)
     }
     #If there are no clusters
-    else{p <- pheatmap::pheatmap(as.matrix(df))}
+    else{
+      p <- pheatmap::pheatmap(as.matrix(df))}
     
     return(p)
   }
@@ -355,6 +359,92 @@ AntibodyForests_compare_trees <- function(input,
     
     return(temp_list)
   })
+  
+  #8. If include.average is TRUE, calculate the average distance matrix
+  if(include.average){
+    temp_list <- list()
+    #Calculate the average distance matrix over all clontoypes
+    distance_list <- lapply(output_list, function(x) as.matrix(x$distance.matrix))
+    mean_matrix <- Rcompadre::mat_mean(distance_list)
+    temp_list[["distance.matrix"]] <- mean_matrix
+    
+    #Clustering
+    if(!(is.null(clustering.method))){
+      #K-mediods clustering
+      if (clustering.method == "mediods"){
+        #Get clusters
+        clusters <- cluster_mediods(mean_matrix)
+      }
+      #Add to the list
+      temp_list[["clusters"]] <- clusters
+    }
+    
+    #Visualization
+    if(!(is.null(visualization.methods))){
+      #PCA analysis
+      if("PCA" %in% visualization.methods){
+        #Get PCA dimensions
+        pca <- calculate_PC(mean_matrix, to.scale = F)
+        #If there are clusters calculated
+        if(!(is.null(clustering.method))){
+          #Add clusters to the pca dataframe
+          pca <- cbind(pca, "clusters" = clusters)
+          #Create plot
+          plot <- plot(pca, color = "clusters", name = "PCA")
+        }
+        #If there are no clusters
+        else{
+          #Create plot
+          plot <- plot(pca, color = "tree", name = "PCA")
+        }
+        #Add to the list
+        temp_list[["PCA"]] = plot
+      }
+      #MDS analysis
+      if("MDS" %in% visualization.methods){
+        #Only do MDS when there are more than 2 trees to compare
+        if (ncol(as.matrix(mean_matrix)) > 2){
+          #Get MDS dimensions
+          mds <- calculate_MDS(mean_matrix)
+          #If there are clusters calculated
+          if(!(is.null(clustering.method))){
+            #Add clusters to the pca dataframe
+            mds <- cbind(mds, "clusters" = clusters)
+            #Create plot
+            plot <- plot(mds, color = "clusters", name = "MDS")
+          }
+          #If there are no clusters
+          else{
+            #Create plot
+            plot <- plot(mds, color = "tree", name = "MDS")
+          }
+          #Add to the list
+          temp_list[["MDS"]] = plot
+        }else{
+          temp_list[["MDS"]] = "Need at least 3 trees to compute MDS"
+        }
+      }
+      #Heatmap
+      if("heatmap" %in% visualization.methods){
+        #If there are clusters calculated
+        if(!(is.null(clustering.method))){
+          #Create plot
+          hm <- heatmap(as.dist(mean_matrix), clusters = clusters)
+        }
+        #If there are no clusters
+        else{
+          #Create plot
+          hm <- heatmap(as.dist(mean_matrix), clusters = NULL)
+        }
+        #Add to the list
+        temp_list[["Heatmap"]] <- hm
+      }
+    }
+    #Add to the output list
+    output_list[["average"]] <- temp_list
+  }
+  
+  
   
   return(output_list)
 
