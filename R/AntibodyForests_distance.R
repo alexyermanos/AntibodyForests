@@ -15,6 +15,7 @@
 #' @param group.order Order of the groups on the x-axis. (default is alphabetical/numerical)
 #' @param significance If TRUE, the significance of the difference (paired t-test) between the groups is plotted. (default FALSE)
 #' @param parallel If TRUE, the metric calculations are parallelized across clonotypes. (default FALSE)
+#' @return A ggplot object with the grouped boxplot of the distance to the germline.
 #' @export
 
 AntibodyForests_distance <- function(input,
@@ -126,6 +127,6 @@ AntibodyForests_distance <- function(input,
     p <- p + ggplot2::geom_point(data = df_na, color = "darkgrey", ggplot2::aes(x=group, y=depth))
   }
   
-  print(p)
+  return(p)
 
 }
