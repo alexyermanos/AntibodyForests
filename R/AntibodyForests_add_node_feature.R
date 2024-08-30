@@ -39,7 +39,7 @@ AntibodyForests_add_node_feature <- function(input,
           feature.df_node_sub[order(feature.df_node_sub$barcode), ]
           
           #Add node feature
-          node[[feature]] <- feature.df_sub[,feature]
+          node[[feature]] <- feature.df_node_sub[,feature]
         }
         return(node)
       })
