@@ -100,6 +100,9 @@ AntibodyForests_sync <- function(reference,
   # Iterate through the clones in the 'shared_clones' vector and apply the 'rename_nodes()' function to each clone
   for(clone in shared_clones){subject <- rename_nodes(reference = reference, subject = subject, clone = clone)}
   
+  # Change subject to AntibodyForests class
+  subject <- base::structure(subject, class = "AntibodyForests")
+  
   # Return 
   return(subject)
 }

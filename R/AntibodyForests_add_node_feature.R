@@ -3,7 +3,7 @@
 #' @param input AntibodyForests-object(s), output from AntibodyForests()
 #' @param feature.df Dataframe with features for each node. Must contain columns sample_id, clonotype_id, barcode and the features to be added.
 #' @param feature.names Character vector with the names of the features to be added.
-#' @return Returns sn AntibodyForests-object with the features added to the nodes.
+#' @return Returns an AntibodyForests-object with the features added to the nodes.
 #' @export
 
 AntibodyForests_add_node_feature <- function(input,
@@ -35,8 +35,10 @@ AntibodyForests_add_node_feature <- function(input,
           feature.df_node_sub <- feature.df_sub[feature.df_sub$barcode %in% node$barcode,]
           
           #Match the order of barcodes
-          feature.df_node_sub$barcode = factor(feature.df_node_sub$barcode, levels = node$barcode)
-          feature.df_node_sub[order(feature.df_node_sub$barcode), ]
+          if(length(unique(node$barcode)) > 1){
+            feature.df_node_sub$barcode = factor(feature.df_node_sub$barcode, levels = node$barcode)
+            feature.df_node_sub[order(feature.df_node_sub$barcode), ]
+          }
           
           #Add node feature
           node[[feature]] <- feature.df_node_sub[,feature]

@@ -8,6 +8,8 @@
 #' @param correlation "pearson", "spearman", "kendall", or "none"
 #' @param color.palette The color palette to use for the scatterplot. Default for numerical color.by is "viridis".
 #' @param font.size The font size of the plot. Default is 12.
+#' @param ylabel The labels of the y-axis, in the same order as the node.features. Default is the node.features
+#' @param point.size The size of the points in the scatterplot. Default is 1.
 #' @param output.file string - specifies the path to the output file (PNG of PDF). Defaults to NULL.
 #' @return 
 #' @export
@@ -20,22 +22,30 @@ AntibodyForests_distance_scatterplot <- function(input,
                                                  correlation,
                                                  color.palette,
                                                  font.size,
+                                                 ylabel,
+                                                 point.size,
                                                  output.file){
   
   #Set defaults and check for missing input
   if(missing(input)){stop("Please provide an AntibodyForests-object as input.")}
   if(missing(node.features)){stop("Please provide a node feature to compare.")}
-  # If the node.features could not be found for all nodes, a message is returned and execution is stopped
-  for(feature in node.features){if(!(all(sapply(names(input[[sample]][[clonotype]][["nodes"]])[!names(input[[sample]][[clonotype]][["nodes"]]) == "germline"], function(x) feature %in% names(input[[sample]][[clonotype]][["nodes"]][[x]]))))){stop("The feature specified with the 'node.features' parameter could not be found for all nodes.")}}  
+  # # If the node.features could not be found for all nodes, a message is returned and execution is stopped
+  # for(feature in node.features){
+  #   if(!(all(
+  #     sapply(names(input[[sample]][[clonotype]][["nodes"]])[!names(input[[sample]][[clonotype]][["nodes"]]) == "germline"], 
+  #            function(x) feature %in% names(input[[sample]][[clonotype]][["nodes"]][[x]]))))){
+  #     stop("The feature specified with the 'node.features' parameter could not be found for all nodes.")}}  
   if(missing(min.nodes)){min.nodes <- 2}
   if(missing(color.by)){color.by <- "none"}
   # If the color.by feature could not be found for all nodes, a message is returned and execution is stopped
-  if(color.by != "sample" & !(all(sapply(names(input[[sample]][[clonotype]][["nodes"]])[!names(input[[sample]][[sample]][[clonotype]][["nodes"]]) == "germline"], function(x) color.by %in% names(input[[sample]][[clonotype]][["nodes"]][[x]]))))){stop("The feature specified with the 'color.by' parameter could not be found for all nodes.")}
+  #if(color.by != "sample" & !(all(sapply(names(input[[sample]][[clonotype]][["nodes"]])[!names(input[[sample]][[clonotype]][["nodes"]]) == "germline"], function(x) color.by %in% names(input[[sample]][[clonotype]][["nodes"]][[x]]))))){stop("The feature specified with the 'color.by' parameter could not be found for all nodes.")}
   if(missing(color.by.numeric)){color.by.numeric <- F}
   if(missing(correlation)){correlation <- "none"}
   if(!(correlation %in% c("none", "spearman", "pearson", "kendall"))){stop("Please provide a valid correlation method ('none', 'spearman', 'pearson', or 'kendall').")}
   if(missing(color.palette)){color.palette <- NULL}
   if(missing(font.size)){font.size <- 12}
+  if(missing(ylabel)){ylabel <- NULL}
+  if(missing(point.size)){point.size <- 1}
   if(missing(output.file)){output.file <- NULL}  
   
   #Create input for ggplot
@@ -60,7 +70,7 @@ AntibodyForests_distance_scatterplot <- function(input,
                               node = rownames(distances_df))
         
         #Add color.by to the node features
-        if (!color.by %in% c("none", "sample")){adding.features <- c(node.features, color.by)}
+        if (!color.by %in% c("none", "sample")){adding.features <- c(node.features, color.by)}else{adding.features <- node.features}
         
         #Add the node features to the distances dataframe
         for (feature in adding.features){
@@ -95,13 +105,19 @@ AntibodyForests_distance_scatterplot <- function(input,
   }
   
   #Create the plots
+  count = 0
   for(feature in node.features){
+    count = count + 1
     #Create the scatterplot
     p <- ggplot2::ggplot(df, ggplot2::aes(x = as.numeric(germline), y = .data[[feature]])) +
-      ggplot2::geom_point() +
+      ggplot2::geom_point(size = point.size) +
       ggplot2::xlab("Distance to germline") +
       ggplot2::theme_classic() +
       ggplot2::theme(text = ggplot2::element_text(size = font.size))
+    
+    #Add y-axis label
+    if (!is.null(ylabel)){
+      p <- p + ggplot2::ylab(ylabel[count])}
     
     #Color by color.by feature
     if (color.by != "none"){
