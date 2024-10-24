@@ -17,6 +17,8 @@ AntibodyForests_get_sequences <- function(AntibodyForests_object,
   if(missing(sequence.name)){stop("Please provide the name of the sequences in the AntibodyForests object")}
   if(missing(min.nodes)){min.nodes <- 1}
   if(missing(min.edges)){min.edges <- 0}
+  
+  message("This function can have a long runtime for large AntibodyForests-objects.")
 
   #Function to get the sequences from a tree
   df_per_clone <- function(sample, clonotype){
