@@ -3,8 +3,8 @@
 #' @param input AntibodyForests-object with node features to compare distance to the germline
 #' @param node.feature Node feature in the AntibodyForests-object to compare.
 #' @param distance - string - How to calculate the distance to the germline.
-#' 'node.depth'     : Average of the sum of nodes on the shortest parth between germline and nodes from this group. (Default)
-#' 'edge.length'    : Average of the sum of edge length of the shortest path between germline and nodes from this group.
+#' 'node.depth'     : Average of the sum of edges on the shortest parth between germline and nodes from this group. 
+#' 'edge.length'    : Average of the sum of edge length of the shortest path between germline and nodes from this group. (Default)
 #' @param min.nodes The minimum number of nodes for a tree to be included in this analysis (this included the germline)
 #' @param groups Which groups to compare. These groups need to be in the node features of the AntibodyForests-object. Set to NA if all features should displayed. (default is NA)
 #' If you want to compare IgM and IgG for example, groups should be c("IgM, "IgG") (not "Isotypes")
@@ -35,7 +35,7 @@ AntibodyForests_distance <- function(input,
   if(missing(input)){stop("Please provide an AntibodyForests-object as input.")}
   if(missing(node.feature)){stop("Please provide a node feature to compare.")}
   if(missing(groups)){groups = NA}
-  if(missing(distance)){distance = "node.depth"}
+  if(missing(distance)){distance = "edge.length"}
   if(missing(text.size)){text.size = 20}
   if(missing(min.nodes)){min.nodes = 0}
   if(missing(parallel)){parallel <- F}

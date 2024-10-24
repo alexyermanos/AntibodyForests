@@ -1,7 +1,10 @@
 #' Function to scatterplot the distance to the germline to a numerical node feature of the AntibodyForests-object
 #' @description Function to scatterplot the distance to the germline to a numerical node feature of the AntibodyForests-object
-#' @param input AntibodyForests-object(s), output from AntibodyForests()
+#' @param AntibodyForests_object AntibodyForests-object, output from AntibodyForests()
 #' @param node.features Node features in the AntibodyForests-object to compare (needs to be numerical)
+#' @param distance - string - How to calculate the distance to the germline.
+#' 'node.depth'     : The sum of edges on the shortest parth between germline and each node
+#' 'edge.length'    : The sum of edge length of the shortest path between germline and each node (Default)
 #' @param min.nodes The minimum number of nodes for a tree to be included in this analysis (this included the germline). Default is 2.
 #' @param color.by Color the scatterplot by a node.feature in the AntibodyForests-object, by the sample, or no color ("none). Default is "none".
 #' @param color.by.numeric Logical. If TRUE, the color.by feature is treated as a numerical feature. Default is FALSE.
@@ -14,8 +17,9 @@
 #' @return 
 #' @export
 
-AntibodyForests_distance_scatterplot <- function(input,
+AntibodyForests_distance_scatterplot <- function(AntibodyForests_object,
                                                  node.features,
+                                                 distance,
                                                  min.nodes,
                                                  color.by,
                                                  color.by.numeric,
@@ -27,18 +31,19 @@ AntibodyForests_distance_scatterplot <- function(input,
                                                  output.file){
   
   #Set defaults and check for missing input
-  if(missing(input)){stop("Please provide an AntibodyForests-object as input.")}
+  if(missing(AntibodyForests_object)){stop("Please provide an AntibodyForests-object as input.")}
   if(missing(node.features)){stop("Please provide a node feature to compare.")}
+  if(missing(distance)){distance = "edge.length"}
   # # If the node.features could not be found for all nodes, a message is returned and execution is stopped
   # for(feature in node.features){
   #   if(!(all(
-  #     sapply(names(input[[sample]][[clonotype]][["nodes"]])[!names(input[[sample]][[clonotype]][["nodes"]]) == "germline"], 
-  #            function(x) feature %in% names(input[[sample]][[clonotype]][["nodes"]][[x]]))))){
+  #     sapply(names(AntibodyForests_object[[sample]][[clonotype]][["nodes"]])[!names(AntibodyForests_object[[sample]][[clonotype]][["nodes"]]) == "germline"], 
+  #            function(x) feature %in% names(AntibodyForests_object[[sample]][[clonotype]][["nodes"]][[x]]))))){
   #     stop("The feature specified with the 'node.features' parameter could not be found for all nodes.")}}  
   if(missing(min.nodes)){min.nodes <- 2}
   if(missing(color.by)){color.by <- "none"}
   # If the color.by feature could not be found for all nodes, a message is returned and execution is stopped
-  #if(color.by != "sample" & !(all(sapply(names(input[[sample]][[clonotype]][["nodes"]])[!names(input[[sample]][[clonotype]][["nodes"]]) == "germline"], function(x) color.by %in% names(input[[sample]][[clonotype]][["nodes"]][[x]]))))){stop("The feature specified with the 'color.by' parameter could not be found for all nodes.")}
+  #if(color.by != "sample" & !(all(sapply(names(AntibodyForests_object[[sample]][[clonotype]][["nodes"]])[!names(AntibodyForests_object[[sample]][[clonotype]][["nodes"]]) == "germline"], function(x) color.by %in% names(AntibodyForests_object[[sample]][[clonotype]][["nodes"]][[x]]))))){stop("The feature specified with the 'color.by' parameter could not be found for all nodes.")}
   if(missing(color.by.numeric)){color.by.numeric <- F}
   if(missing(correlation)){correlation <- "none"}
   if(!(correlation %in% c("none", "spearman", "pearson", "kendall"))){stop("Please provide a valid correlation method ('none', 'spearman', 'pearson', or 'kendall').")}
@@ -52,17 +57,25 @@ AntibodyForests_distance_scatterplot <- function(input,
   #Create empty dataframe
   df <- data.frame()
   #Loop though each sample and clonotype
-  for (sample in names(input)){
-    for (clonotype in names(input[[sample]])){
+  for (sample in names(AntibodyForests_object)){
+    for (clonotype in names(AntibodyForests_object[[sample]])){
       #Get the igraph object of the tree
-      tree <- input[[sample]][[clonotype]][["igraph"]]
+      tree <- AntibodyForests_object[[sample]][[clonotype]][["igraph"]]
       
       if (igraph::vcount(tree) >= min.nodes){
         #Calculate distances to germline
-        distances_df <- t(igraph::distances(tree,
-                                            v = "germline",
-                                            to = igraph::V(tree)[names(igraph::V(tree)) != "germline"],
-                                            weights = as.numeric(igraph::edge_attr(tree)$edge.length)))
+        if(distance == "edge.length"){
+          distances_df <- t(igraph::distances(tree,
+                                              v = "germline",
+                                              to = igraph::V(tree)[names(igraph::V(tree)) != "germline"],
+                                              weights = as.numeric(igraph::edge_attr(tree)$edge.length),
+                                              mode = "out"))
+        }else if(distance == "node.depth"){
+          distances_df <- t(igraph::distances(tree,
+                                              v = "germline",
+                                              to = igraph::V(tree)[names(igraph::V(tree)) != "germline"],
+                                              mode = "out"))
+        }
         
         #Add sample name, clonotype, and node number
         distances_df <- cbind(distances_df, sample = replicate(nrow(distances_df), sample), 
@@ -75,7 +88,7 @@ AntibodyForests_distance_scatterplot <- function(input,
         #Add the node features to the distances dataframe
         for (feature in adding.features){
           #Get the node feature
-          feature_list <- lapply(input[[sample]][[clonotype]][["nodes"]], function(x){
+          feature_list <- lapply(AntibodyForests_object[[sample]][[clonotype]][["nodes"]], function(x){
             value = unique(x[[feature]])
             if(length(value) == 1){return(value)}else{return(NA)}
           })
@@ -111,9 +124,11 @@ AntibodyForests_distance_scatterplot <- function(input,
     #Create the scatterplot
     p <- ggplot2::ggplot(df, ggplot2::aes(x = as.numeric(germline), y = .data[[feature]])) +
       ggplot2::geom_point(size = point.size) +
-      ggplot2::xlab("Distance to germline") +
       ggplot2::theme_classic() +
       ggplot2::theme(text = ggplot2::element_text(size = font.size))
+    
+    if (distance == "edge.length"){p <- p + ggplot2::xlab("Distance to germline (sum of edge lengths)")}
+    else if (distance == "node.depth"){p <- p + ggplot2::xlab("Distance to germline (sum of nodes)")}
     
     #Add y-axis label
     if (!is.null(ylabel)){
