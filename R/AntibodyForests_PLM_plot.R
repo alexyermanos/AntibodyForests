@@ -2,8 +2,10 @@
 #' @description Function to create a distribution plot of the Protein Language Model probabilities and ranks of the mutations along the edges of B cell lineage trees.
 #' @param PLM_dataframe Dataframe resulting from AntibodyForests_PLM_dataframe(). This contains the Protein Language Model probabilities and ranks of the mutations along the edges of B cell lineage trees.
 #' @param values What values to plot. Can be "rank" (default) or "probability".
-#' "rank" will plot the rank of the mutation along the edge of the tree (Highest probability is rank 1).
-#' "probability" will plot the probability of the mutation along the edge of the tree.
+#' "substitution_rank" will plot the rank of the mutation along the edge of the tree (Highest probability is rank 1).
+#' "substitution_probability" will plot the probability of the mutation along the edge of the tree.
+#' "original_rank" will plot the rank of the original amino acid at the site of mutation along the edge of the tree (Highest probability is rank 1).
+#' "original_probability" will plot the probability of the original amino acid at the site of mutation along the edge of the tree.
 #' @param group_by Plot a seperate line per sample or everything together (default).
 #' "sample_id"
 #' "none"
@@ -26,38 +28,55 @@ AntibodyForests_PLM_plot <- function(PLM_dataframe,
                                   mean_substitution_probability"))){stop("Please provide a PLM dataframe resulting from AntibodyForests_PLM_dataframe function.")}
   
   #Set defaults
-  if(missing(values)){values <- "rank"}
+  if(missing(values)){values <- "substitution_rank"}
   if(missing(group_by)){group_by <- "none"}
   if(missing(colors)){colors <- NULL}
   if(missing(font.size)){font.size <- 16}
-  if(missing(output.file)){output.file <- NULL})
+  if(missing(output.file)){output.file <- NULL}
   
-  if(values == "rank"){plot_values <- "mean_substitution_rank"}
-  if(values == "probability"){plot_values <- "mean_substitution_probability"}
+  if(values == "substitution_rank"){plot_values <- "mean_substitution_rank"}
+  if(values == "substitution_probability"){plot_values <- "mean_substitution_probability"}
+  if(values == "original_rank"){plot_values <- "mean_original_rank"}
+  if(values == "original_probability"){plot_values <- "mean_original_probability"}
   
   #Create the plot
   p <- ggplot2::ggplot(PLM_dataframe, ggplot2::aes(.data[[plot_values]])) +
     ggplot2::theme_minimal() +
     ggplot2::theme(text = ggplot2::element_text(size = font.size))
     
-  if (values == "rank"){
+  if (values == "substitution_rank"){
     #Set binwidt to 1 for freqpoly
     bin_width <- 1
     #Set the x-axis
     p <- p + ggplot2::scale_x_continuous(breaks = c(1,5,10,15,20), limits = c(1,NA)) +
       ggplot2::xlab("Substitution Rank") + ggplot2::ylab("Number of edges") 
   } 
-  if (values == "probability"){
+  if (values == "substitution_probability"){
     #Set binwidt to 1 for freqpoly
     bin_width <- 0.1
     #Set the x-axis
     p <- p + ggplot2::scale_x_continuous(limits = c(0,1)) +
       ggplot2::xlab("Substitution Likelihood") + ggplot2::ylab("Number of edges") 
   }
+  if (values == "original_rank"){
+    #Set binwidt to 1 for freqpoly
+    bin_width <- 1
+    #Set the x-axis
+    p <- p + ggplot2::scale_x_continuous(breaks = c(1,5,10,15,20), limits = c(1,NA)) +
+      ggplot2::xlab("Original Rank") + ggplot2::ylab("Number of edges") 
+  }
+  if (values == "original_probability"){
+    #Set binwidt to 1 for freqpoly
+    bin_width <- 0.1
+    #Set the x-axis
+    p <- p + ggplot2::scale_x_continuous(limits = c(0,1)) +
+      ggplot2::xlab("Original Likelihood") + ggplot2::ylab("Number of edges") 
+  }
   
   #Plot the lines
   if (group_by == "none"){
-    if(is.null(colors)){colors <- "black"}p <- p +  ggplot2::geom_freqpoly(binwidth = bin_width, linewidth = 2, color = colors)}
+    if(is.null(colors)){colors <- "black"}
+    p <- p +  ggplot2::geom_freqpoly(binwidth = bin_width, linewidth = 2, color = colors)}
   if (group_by == "sample_id"){
     p <- p +  ggplot2::geom_freqpoly(ggplot2::aes(colour = sample), binwidth = bin_width, linewidth = 2)
     if (!is.null(colors)){p <- p + ggplot2::scale_color_manual(values = colors)}

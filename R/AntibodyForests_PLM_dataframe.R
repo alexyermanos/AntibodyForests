@@ -62,6 +62,8 @@ AntibodyForests_PLM_dataframe <- function(AntibodyForests_object,
             #Initiate rank vector and probabilities vector
             substitute_ranks <- c()
             substitute_probabilities <- c()
+            original_ranks <- c()
+            original_probabilities <- c()
             
             #Loop over the mutational positions
             for (pos in diff_positions){
@@ -78,35 +80,47 @@ AntibodyForests_PLM_dataframe <- function(AntibodyForests_object,
               #Get the probability of the mutation
               probability <- likelihood_values[seq2[pos]]
               substitute_probabilities <- c(substitute_probabilities, probability)
+              
+              #Get the rank of the original residue
+              orig_rank <- ranks[seq1[pos]]
+              substitute_ranks <- c(original_ranks, orig_rank)
+              
+              #Get the probability of the original
+              orig_probability <- likelihood_values[seq1[pos]]
+              original_probabilities <- c(original_probabilities, orig_probability)
             }
-            #If there are multiple mutations in a sequence, get the average rank
+            #If there are multiple mutations in a sequence, get the average
             mean_substitution_rank <- mean(substitute_ranks)
-            
-            #If there are multiple mutations in a sequence, get the average probability
+            mean_original_rank <- mean(original_ranks)
             mean_substitution_probability <- mean(unlist(substitute_probabilities))
+            mean_original_probability <- mean(unlist(original_probabilities))
             
             #Add to the output dataframe
             edge_df <- data.frame(sample = sample, clonotype = clonotype, n_subs = length(diff_positions), node1 = node1, node2 = node2,
-                                       mean_substitution_rank = mean_substitution_rank, mean_substitution_probability = mean_substitution_probability)
+                                  mean_substitution_rank = mean_substitution_rank, mean_substitution_probability = mean_substitution_probability,
+                                  mean_original_rank = mean_original_rank, mean_original_probability = mean_original_probability)
             clonotype_df <- rbind(clonotype_df, edge_df)
           }
           else{
             print("No probability matrix found for ", paste0(sample,"_",clonotype,"_",node1))
             clonotype_df <- rbind(clonotype_df, data.frame(sample = NA, clonotype = NA, node1 = NA, node2 = NA,
-                                 n_subs = NA, mean_substitution_rank = NA, mean_substitution_probability = NA))
+                                 n_subs = NA, mean_substitution_rank = NA, mean_substitution_probability = NA,
+                                 mean_original_rank = NA, mean_original_probability = NA))
           }
         }
       }
     }
     else{
       clonotype_df <- data.frame(sample = NA, clonotype = NA, node1 = NA, node2 = NA,
-                                 n_subs = NA, mean_substitution_rank = NA, mean_substitution_probability = NA)
+                                 n_subs = NA, mean_substitution_rank = NA, mean_substitution_probability = NA,
+                                 mean_original_rank = NA, mean_original_probability = NA)
     }
     return(clonotype_df)
   }
   
   output_df <- data.frame(sample = character(), clonotype = character(), node1 = character(), node2 = character(),
-                          n_subs = numeric(), mean_substitution_rank = numeric(), mean_substitution_probability = numeric())
+                          n_subs = numeric(), mean_substitution_rank = numeric(), mean_substitution_probability = numeric(),
+                          mean_original_rank = numeric(), mean_original_probability = numeric())
   for (sample in names(AntibodyForests_object)){
     for (clonotype in names(AntibodyForests_object[[sample]])){
       tree_df <- df_per_clone(sample, clonotype)
