@@ -116,19 +116,21 @@ AntibodyForests_distance_scatterplot <- function(AntibodyForests_object,
       }
     }
   }
+
   
   #Create the plots
+  shuffled_data= df[sample(1:nrow(df)), ] 
   count = 0
   for(feature in node.features){
     count = count + 1
     #Create the scatterplot
-    p <- ggplot2::ggplot(df, ggplot2::aes(x = as.numeric(germline), y = .data[[feature]])) +
+    p <- ggplot2::ggplot(shuffled_data, ggplot2::aes(x = as.numeric(germline), y = .data[[feature]])) +
       ggplot2::geom_point(size = point.size) +
       ggplot2::theme_classic() +
       ggplot2::theme(text = ggplot2::element_text(size = font.size))
     
-    if (distance == "edge.length"){p <- p + ggplot2::xlab("Distance to germline (sum of edge lengths)")}
-    else if (distance == "node.depth"){p <- p + ggplot2::xlab("Distance to germline (sum of nodes)")}
+    if (distance == "edge.length"){p <- p + ggplot2::xlab("Distance to germline")}
+    else if (distance == "node.depth"){p <- p + ggplot2::xlab("Number of edges to the germline")}
     
     #Add y-axis label
     if (!is.null(ylabel)){
@@ -151,7 +153,8 @@ AntibodyForests_distance_scatterplot <- function(AntibodyForests_object,
     
     if (correlation != "none"){
       cor <- stats::cor.test(as.numeric(df$germline), df[,feature], method = correlation, exact = F)
-      p <- p + ggplot2::ggtitle(paste0(correlation, " R\u00b2 = ", round(cor$estimate, digits = 2)))
+      p <- p + ggplot2::ggtitle(paste0(correlation, " R\u00b2 = ", round(cor$estimate, digits = 2))) +
+        ggplot2::geom_smooth(method = "lm", se = F)
     }
     
     if(!is.null(output.file)){

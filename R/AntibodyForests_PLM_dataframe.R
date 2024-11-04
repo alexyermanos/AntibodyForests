@@ -83,7 +83,7 @@ AntibodyForests_PLM_dataframe <- function(AntibodyForests_object,
               
               #Get the rank of the original residue
               orig_rank <- ranks[seq1[pos]]
-              substitute_ranks <- c(original_ranks, orig_rank)
+              original_ranks <- c(original_ranks, orig_rank)
               
               #Get the probability of the original
               orig_probability <- likelihood_values[seq1[pos]]

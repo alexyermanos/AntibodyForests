@@ -76,9 +76,9 @@ AntibodyForests_PLM_plot <- function(PLM_dataframe,
   #Plot the lines
   if (group_by == "none"){
     if(is.null(colors)){colors <- "black"}
-    p <- p +  ggplot2::geom_freqpoly(binwidth = bin_width, linewidth = 2, color = colors)}
+    p <- p +  ggplot2::geom_freqpoly(binwidth = bin_width, linewidth = 1, color = colors)}
   if (group_by == "sample_id"){
-    p <- p +  ggplot2::geom_freqpoly(ggplot2::aes(colour = sample), binwidth = bin_width, linewidth = 2)
+    p <- p +  ggplot2::geom_freqpoly(ggplot2::aes(colour = sample), binwidth = bin_width, linewidth = 1)
     if (!is.null(colors)){p <- p + ggplot2::scale_color_manual(values = colors)}
     }
   
