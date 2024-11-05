@@ -1,6 +1,6 @@
 ---
 title: 'AntibodyForests vignette: a comprehensive guide for importing 10x single-cell V(D)J sequencing data, building lineage trees, and comparing trees within and across repertoires'
-date: "04-11-2024"
+date: "05-11-2024"
 output:
   html_document:
     theme: flatly
@@ -8,6 +8,7 @@ output:
     toc: true
     toc_float: true
 ---
+
 
 ```{r setup, echo = FALSE, eval = TRUE}
 # Set working directory
@@ -62,6 +63,7 @@ source("~/Documents/GitHub/AntibodyForests/R/AntibodyForests_add_node_feature.R"
 source("~/Documents/GitHub/AntibodyForests/R/AntibodyForests_PLM_plot.R")
 source("~/Documents/GitHub/AntibodyForests/R/AntibodyForests_PLM_dataframe.R")
 source("~/Documents/GitHub/AntibodyForests/R/AntibodyForests_distance_scatterplot.R")
+source("~/Documents/GitHub/AntibodyForests/R/AntibodyForests_get_sequences.R")
 ```
 <br>
 
@@ -1607,11 +1609,15 @@ create_image_carousel(list.files("imgs/trees/IgPhyML/without_in/S5", full.names 
 
 ## 4. Quantifying evolution and comparing antibody lineage trees
 
+<div class=text-justify>
+
 [...]
 ```{r}
 
 ```
 <br>
+
+</div>
 
 ## 5. Assessing evolutionary likelihood of somatic hypermutation with Protein Language Models (PLM)
 
@@ -1623,7 +1629,7 @@ PLMs have demonstrated success in understanding the unique features of antibody 
 <br>
 The pseudolikelihoods and probability matrices can be supplied manually, or easily generated using the [PLM-pipeline](https://github.com/dvginneken/PLM-pipeline). Here, a VDJ-dataframe can be used as input CSV file, and the pipeline can generate the pseudolikelihoods and probability matrices of those sequences using different PLMs. The resulting pseudolikelihoods can be incoporates as node feature in the AntibodyForests-object using the **`AntibodyForests_add_node_feature()`** function. The pseudolikelihoods can be visualized using the **`AntibodyForests_plot()`** function, and the correlation with distance to the germline can be visualized using the **`AntibodyForests_distance_scatterplot`** function.  
 <br>
-PLM-generated probability matrices can be supplied to the function **`AntibodyForests_PLM_dataframe()`** to generate a dataframe with the ranks and probabilities of the mutations along the edges of the lineage trees. These ranks and probabilties of both the mutated amino acids and the original amino acid can be visualized using the **`AntibodyForests_PLM_plot()`** function.  
+ Sequences corresponding to nodes in the AntibodyForests-object can be extracted using the **`AntibodyForests_get_sequences()`** function. This dataframe can be used as input CSV file for the [PLM-pipeline](https://github.com/dvginneken/PLM-pipeline) to be able to match probability matrices to the right trees and nodes. PLM-generated probability matrices can be supplied to the function **`AntibodyForests_PLM_dataframe()`** to generate a dataframe with the ranks and probabilities of the mutations along the edges of the lineage trees. These ranks and probabilties of both the mutated amino acids and the original amino acid can be visualized using the **`AntibodyForests_PLM_plot()`** function.  
 <br>
 
 </div>
@@ -1739,6 +1745,36 @@ PLM-generated probability matrices can be supplied to the function **`AntibodyFo
 * **Default:** `NULL`   
 <br>
 
+#### **AntibodyForests_get_sequences()**
+
+`AntibodyForests_object`
+
+* **Description:** An AntibodyForests object as obtained from the **`AntibodyForests()`** function.  
+* **Example:** `AntibodyForests_OVA_default`  
+* **Default:** *None*  
+<br>
+
+`sequence.name`
+
+* **Description:** Name of the sequence column in the AntibodyForests object as obtained from the **`AntibodyForests()`** function.  
+* **Example:** `VDJ_sequence_aa_trimmed`  
+* **Default:** *None*  
+<br>
+
+`min.nodes`
+
+* **Description:** The minimum number of nodes for a tree to be included in the output dataframe (this does not include the germline).
+* **Example:** `5` 
+* **Default:** `1`  
+<br>
+
+`min.edges`
+
+* **Description:** The minimum number of edges for a tree to be included in this analysis (this does not include the edge to the germline).
+* **Example:** `1` 
+* **Default:** `0`  
+<br>
+
 #### **AntibodyForests_PLM_dataframe()**
 
 `AntibodyForests_object`
@@ -1805,7 +1841,7 @@ PLM-generated probability matrices can be supplied to the function **`AntibodyFo
 * **Default:** `NULL`   
 <br>
 
-### Examples {.tabset}
+### Example1 {.tabset}
 
 <div class=text-justify>
 
@@ -1813,20 +1849,23 @@ Pseudolikelihoods were calculated with the [PLM-pipeline](https://github.com/dvg
 
 ```{r, add_pseudolikelihood_example, eval=FALSE}
 # Add pseudolikelihood as node feature to the AntibodyForests object
-af <- AntibodyForests_add_node_feature(AntibodyForests_object = af, feature.df = vdj,
-                                       feature.names = "pseudolikelihood")
+AntibodyForests_OVA_default <- AntibodyForests_add_node_feature(AntibodyForests_object = AntibodyForests_OVA_default, 
+                                                                feature.df = VDJ_OVA,
+                                                                feature.names = "pseudolikelihood")
 ```
 
 ```{r, load_pseudolikelihood_data, echo=FALSE}
 load("objects/AntibodyForests_example_pseudolikelihood.RData")
+AntibodyForests_OVA_default <- af
 load("objects/VDJ_example_pseudolikelihood.RData")
+VDJ_OVA <- vdj
 ```
 
 #### 1. Edge length {.tabset}
 
 ```{r, plot_pseudolikelihood_example1}
 # Plot pseudolikelihood against distance to the germline
-AntibodyForests_distance_scatterplot(AntibodyForests_object = af, 
+AntibodyForests_distance_scatterplot(AntibodyForests_object = AntibodyForests_OVA_default, 
                                      node.features = "pseudolikelihood",
                                      distance = "edge.length",
                                      min.nodes = 5,
@@ -1838,12 +1877,89 @@ AntibodyForests_distance_scatterplot(AntibodyForests_object = af,
 
 ```{r, plot_pseudolikelihood_example2}
 # Plot pseudolikelihood against distance to the germline
-AntibodyForests_distance_scatterplot(AntibodyForests_object = af, 
+AntibodyForests_distance_scatterplot(AntibodyForests_object = AntibodyForests_OVA_default, 
                                      node.features = "pseudolikelihood",
                                      distance = "node.depth",
                                      min.nodes = 5,
                                      correlation = "spearman")
 ```
+</div>
+
+### Example2 {.tabset}
+
+<div class=text-justify>
+
+To investigate the PLM likelihoods of somatic hypermutation, we first need to extract sequences from the AntibodyForests object. These sequences can be used as input CSV file for the [PLM-pipeline](https://github.com/dvginneken/PLM-pipeline).
+
+```{r, get_sequences_probability_example, eval=FALSE}
+#Create a dataframe of the sequences with a sequence ID containing the sample, clonotype, and node number
+df <- AntibodyForests_get_sequences(AntibodyForests_object = AntibodyForests_OVA_default, 
+                                               sequence.name = "VDJ_sequence_aa_trimmed", 
+                                               min.edges = 1)
+#Save the data frame as CSV to serve as input for the PLM-pipeline
+write.csv(df, file = "/directory/PLM_input.csv", row.names = FALSE)
+```
+
+The generated probability matrices can be used to create a dataframe of the ranks and probabilities of the mutations along the edges of the lineage trees.
+
+```{r, probability_matrix_example, eval=FALSE}
+#Create a PLM dataframe
+PLM_dataframe <- AntibodyForests_PLM_dataframe(AntibodyForests_object = AntibodyForests_OVA_default, 
+                                               sequence.name = "VDJ_sequence_aa_trimmed", 
+                                               path_to_probabilities = "/directory/ProbabilityMatrix")
+```
+
+```{r, load_plm_dataframe, echo=FALSE}
+load("objects/PLM_dataframe.RData")
+```
+
+Below is an example of the PLM dataframe. Each row in this data frame represents an edge between `node1` and `node2` in the lineage tree of `sample` and `clonotype`. The number of mutations along this edge is given by `n_subs`. When there are multiple mutations, the average of the ranks and probabilities are reported.
+
+```{r vdj_plm-df, echo = FALSE}
+DT::datatable(data = PLM_dataframe,
+              rownames = FALSE,
+              options = list(scrollX = TRUE)
+)
+```
+
+The `ranks` and `probabilities` of the `original` and `substitution` redisues can be visualized in distribution plots.
+ 
+#### 1. Substitution Rank {.tabset}
+
+```{r, plot_likelihood_example1}
+# Plot the substitution rank
+AntibodyForests_PLM_plot(PLM_dataframe = PLM_dataframe, 
+                         values = "substitution_rank", 
+                         group_by = "sample_id")
+```
+
+#### 2. Substitution Probability {.tabset}
+
+```{r, plot_likelihood_example2}
+# Plot the substitution rank
+AntibodyForests_PLM_plot(PLM_dataframe = PLM_dataframe, 
+                         values = "substitution_probability", 
+                         group_by = "none")
+```
+
+#### 3. Original Rank {.tabset}
+
+```{r, plot_likelihood_example3}
+# Plot the substitution rank
+AntibodyForests_PLM_plot(PLM_dataframe = PLM_dataframe, 
+                         values = "original_rank", 
+                         group_by = "none")
+```
+
+#### 4. Original Probability {.tabset}
+
+```{r, plot_likelihood_example4}
+# Plot the substitution rank
+AntibodyForests_PLM_plot(PLM_dataframe = PLM_dataframe, 
+                         values = "original_probability", 
+                         group_by = "sample_id")
+```
+
 </div>
 
 <br>
@@ -1980,7 +2096,11 @@ BuildTrees.py -d ../data/OVA_scRNA-seq_data/VDJ/airr_rearrangement.tsv --collaps
 ```
 <br>
 
-## j. Integrate bulk RNA-seq sequences {#supplementary-j}
+</div>
+
+## j. Integrate bulk RNA-seq sequences
+
+<div class=text-justify>
 
 [...]
 ```{r}
@@ -1994,7 +2114,7 @@ BuildTrees.py -d ../data/OVA_scRNA-seq_data/VDJ/airr_rearrangement.tsv --collaps
 
 <div class=text-justify>
 
-The AntibodyForests package originated from the [Platypus](https://academic.oup.com/bioinformatics/article/39/9/btad553/7264179) ecosystem of packages, where the fundamental function `AntibodyForests()` were initially developed. Subsequently, significant refinements were made, and they were migrated to this standalone package. 
+The AntibodyForests package originated from the [Platypus](https://academic.oup.com/bioinformatics/article/39/9/btad553/7264179) ecosystem of packages, where the fundamental function `AntibodyForests()` was initially developed. Subsequently, significant refinements were made, and they were migrated to this standalone package. 
 
 Contributors:  
 * Alexander Yermanos  
