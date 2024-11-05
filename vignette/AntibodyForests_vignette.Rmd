@@ -1,7 +1,6 @@
 ---
 title: 'AntibodyForests vignette: a comprehensive guide for importing 10x single-cell V(D)J sequencing data, building lineage trees, and comparing trees within and across repertoires'
-author: "Valentijn Tromp & Daphne van Ginneken"
-date: "03-07-2024"
+date: "04-11-2024"
 output:
   html_document:
     theme: flatly
@@ -12,7 +11,7 @@ output:
 
 ```{r setup, echo = FALSE, eval = TRUE}
 # Set working directory
-knitr::opts_knit$set(root.dir = "~/OneDrive - UMC Utrecht/Documenten/Students/Valentijn/vignette/")
+knitr::opts_knit$set(root.dir = "~/Documents/GitHub/AntibodyForests/vignette/")
 # Set global options
 knitr::opts_chunk$set(eval = TRUE, include = TRUE, echo = TRUE, message = FALSE, warning = FALSE, error = FALSE)
 # Define custom hooks for handling errors, warnings, and messages during knitting
@@ -54,12 +53,15 @@ pre code, pre, code {
 
 ```{r load-scripts, include = FALSE}
 # Source AntibodyForests scripts
-source("~/Documents/GitHub/Platypus/R/VDJ_build.R")
 source("~/Documents/GitHub/AntibodyForests/R/VDJ_import_IgBLAST_annotations.R")
 source("~/Documents/GitHub/AntibodyForests/R/VDJ_to_AIRR.R")
 source("~/Documents/GitHub/AntibodyForests/R/AntibodyForests.R")
 source("~/Documents/GitHub/AntibodyForests/R/AntibodyForests_sync.R")
 source("~/Documents/GitHub/AntibodyForests/R/AntibodyForests_plot.R")
+source("~/Documents/GitHub/AntibodyForests/R/AntibodyForests_add_node_feature.R")
+source("~/Documents/GitHub/AntibodyForests/R/AntibodyForests_PLM_plot.R")
+source("~/Documents/GitHub/AntibodyForests/R/AntibodyForests_PLM_dataframe.R")
+source("~/Documents/GitHub/AntibodyForests/R/AntibodyForests_distance_scatterplot.R")
 ```
 <br>
 
@@ -67,9 +69,8 @@ source("~/Documents/GitHub/AntibodyForests/R/AntibodyForests_plot.R")
 
 <div class=text-justify>
 
-This vignette provides a detailed explanation of the main functions from the AntibodyForests package, including the `VDJ_build()`, `AntibodyForests()`, and `AntibodyForests_compare()` functions. These functions are designed for importing single-cell V(D)J sequencing data from 10x Genomics, constructing lineage trees, and eventually comparing the structure of these trees within and across repertoires. This comparisons can be performed on sequence level, functional level, and evolutionary level. Throughout this vignette, the dataset outlined by [Neumeier et al. (2022)](https://doi.org/10.1073/pnas.2113766119) will be used.  
-<br>
-![Analysis workflow of the AntibodyForests package](imgs/main/workflow.png)  
+This vignette provides a detailed explanation of the main functions from the AntibodyForests package, including the `VDJ_build()` function from the [Platypus package](https://github.com/alexyermanos/Platypus). These functions are designed for importing single-cell V(D)J sequencing data from 10x Genomics, constructing lineage trees, comparing the structure of these trees within and across repertoires, and incorporating features of protein structure and evolutionary likelihood from Protein Language models. Throughout this vignette, the dataset outlined by [Neumeier et al. (2022)](https://doi.org/10.1073/pnas.2113766119) and [Kim et al. (2022)](https://www.nature.com/articles/s41586-022-04527-1) will be used.  
+
 <br>
 </div>
 
@@ -81,7 +82,7 @@ This vignette provides a detailed explanation of the main functions from the Ant
 The AntibodyForests package integrates functions from various packages to provide a comprehensive toolkit for analyzing antibody sequence data. To ensure smooth execution of its functions, it's essential to have certain packages installed. The code below automates this process by checking for the required packages and installing them if necessary. Additionally, it sources the latest versions of the AntibodyForests package scripts from its GitHub repository, enabling you to access the most up-to-date functionalities.
 ```{r installation, eval = FALSE}
 # List of CRAN packages required to run all functions
-CRAN_packages <- c("alakazam", "ape", "base",
+CRAN_packages <- c("Platypus", "alakazam", "ape", "base",
                    "base64enc", "BiocManager", "dplyr", 
                    "grDevices", "gtools", "igraph", 
                    "jsonlite", "knitr", "parallel", 
@@ -102,16 +103,6 @@ for(package in c(CRAN_packages, Bioconductor_packages)){
   }
 }
 
-# GitHub repository URL for AntibodyForests package scripts
-GitHub_repository <- "https://github.com/alexyermanos/AntibodyForests/raw/main/R/"
-
-# Source the most recent versions of the scripts from the AntibodyForests package
-source(paste0(GitHub_repository, "AntibodyForests.R"))
-source(paste0(GitHub_repository, "AntibodyForests_plot.R"))
-source(paste0(GitHub_repository, "AntibodyForests_sync.R"))
-source(paste0(GitHub_repository, "VDJ_build.R"))
-source(paste0(GitHub_repository, "VDJ_import_IgBLAST_annotations.R"))
-source(paste0(GitHub_repository, "VDJ_to_AIRR.R"))
 ```
 <br>
 </div>
@@ -125,7 +116,7 @@ source(paste0(GitHub_repository, "VDJ_to_AIRR.R"))
 ```{r quick-start, eval = FALSE}
 # Import 10x Genomics output files into VDJ dataframe and only keep cells with one VDJ and one VJ transcript
 # For each clone, trim germline sequence and replace CDR3 region in germline with most-frequently observed CDR3 sequence
-VDJ_OVA <- VDJ_build(VDJ.directory = "data/OVA_scRNA-seq_data/VDJ/",
+VDJ_OVA <- Platypus::VDJ_build(VDJ.directory = "10x_output/VDJ/",
                      remove.divergent.cells = TRUE,
                      complete.cells.only = TRUE,
                      trim.germlines = TRUE)
@@ -245,7 +236,7 @@ NOTE: In older versions of Cell Ranger (older than v6), the FWR1-4 and CDR1-3 re
 In the example provided below, all transcripts are imported into the VDJ dataframe without undergoing any filtering steps. The resulting dataframe comprises a total of *22,425 cells*. It is worth noting that individual cells may contain multiple VDJ and VJ transcripts within a single row, and a few cells may lack either the VDJ or VJ transcript. For instance, multiple cells of clonotype5 of S1 have multiple VJ transcripts, including those with barcodes ACATCAGAGCAATCTC, AGCAGCCTCTGTCTAT, and AGCGGTCGTCCAACTA. Additionally, multiple cells of clonotype3 of S1 lack a VDJ transcript, including those with barcodes GACTGCGTCAATCACG, GACTGCGTCGTAGATC, and TAGACCAGTACAAGTA.
 ```{r vdj_build-example-1-code, eval = FALSE}
 # Read in data without filtering divergent and incomplete cells
-VDJ_OVA <- VDJ_build(VDJ.directory = "../data/OVA_scRNA-seq_data/VDJ/",
+VDJ_OVA <- Platypus::VDJ_build(VDJ.directory = "10x_output/VDJ/",
                      remove.divergent.cells = FALSE,
                      complete.cells.only = FALSE)
 ```
@@ -263,7 +254,7 @@ print(knitr::kable(data.frame(divergent.cells = c(0, 0, 0, 0, 0),
 For illustration, the dummy VDJ dataframe below contains the data of clonotype 1-5 of S1:
 ```{r vdj_build-example-1-df, echo = FALSE}
 # Load the example VDJdataframe
-load("vdj_dummies/VDJ_OVA_dummy_1.RData")
+load("../data/VDJ_OVA_dummy_1.RData")
 # Print first 10 clonotypes of all samples
 DT::datatable(data = VDJ_OVA_dummy_1,
               rownames = FALSE,
@@ -276,7 +267,7 @@ DT::datatable(data = VDJ_OVA_dummy_1,
 In the upcoming example, cells with multiple VDJ or VJ transcripts, referred to as 'divergent cells', are filtered out. The filtered VDJ dataframe now contains a total of *20,982 cells*. The left column of the printed table displays the count of divergent cells filtered out for each sample.  
 ```{r vdj_build-example-2-code, eval = FALSE}
 # Read in data with filtering divergent cells
-VDJ_OVA <- VDJ_build(VDJ.directory = "../data/OVA_scRNA-seq_data/VDJ/",
+VDJ_OVA <- Platypus::VDJ_build(VDJ.directory = "10x_output/VDJ/",
                      remove.divergent.cells = TRUE,
                      complete.cells.only = FALSE)
 ```
@@ -294,7 +285,7 @@ print(knitr::kable(data.frame(divergent.cells = c(360, 295, 79, 183 ,526),
 For illustration, the dummy VDJ dataframe below contains the data of clonotype 1-5 of S1:
 ```{r vdj_build-example-2-df, echo = FALSE}
 # Load the example VDJdataframe
-load("vdj_dummies/VDJ_OVA_dummy_2.RData")
+load("../data/VDJ_OVA_dummy_2.RData")
 # Print first 10 clonotypes of all samples
 DT::datatable(data = VDJ_OVA_dummy_2,
               rownames = FALSE,
@@ -307,7 +298,7 @@ DT::datatable(data = VDJ_OVA_dummy_2,
 In the final example, divergent cells are filtered out, and only cells with both a VDJ and VJ transcript are included in the VDJ dataframe. The resulting VDJ dataframe contains *17,891 cells* with both a single VDJ and VJ transcript. The number of cells filtered out due to the lack of VDJ and VJ transcripts, referred to as 'incomplete cells', is shown in the right column of the printed table. Since a cell can have a double VDJ or VJ transcript or may lack a VDJ or VJ transcript, such a cell can be included in both the counts of 'divergent cells' and 'incomplete cells'. Note that, as a result, the sum of these counts may not exactly match the difference in the number of rows between the dataframes. Additionally, for each clone, the germline sequences are trimmed, and an additional germline sequence column is added in which the CDR3 region is replaced by the most frequently observed CDR3 sequence in that clone.
 ```{r vdj_build-example-3-code, eval = FALSE}
 # Read in data, keep only complete, non-divergent cells and trim germline sequences
-VDJ_OVA <- VDJ_build(VDJ.directory = "../data/OVA_scRNA-seq_data/VDJ/",
+VDJ_OVA <- Platypus::VDJ_build(VDJ.directory = "10x_output/VDJ/",
                      remove.divergent.cells = TRUE,
                      complete.cells.only = TRUE,
                      trim.germlines = TRUE,
@@ -327,7 +318,7 @@ print(knitr::kable(data.frame(divergent.cells = c(360, 295, 79, 183 ,526),
 For illustration, the dummy VDJ dataframe below contains the data of clonotype 1-5 of S1:
 ```{r vdj_build-example-3-df, echo = FALSE}
 # Load the example VDJdataframe
-load("vdj_dummies/VDJ_OVA_dummy_3.RData")
+load("../data/VDJ_OVA_dummy_3.RData")
 # Print first 10 clonotypes of all samples
 DT::datatable(data = VDJ_OVA_dummy_3,
               rownames = FALSE,
@@ -575,12 +566,12 @@ In addition, there is also the option to import pre-constructed lineage trees fr
 
 ```{r load-AntibodyForests-objects, include = FALSE}
 # Load preconstructed AntibodyForests objects
-load("../objects/AntibodyForests_OVA_default.RData")
-load("../objects/AntibodyForests_OVA_mst.RData")
-load("../objects/AntibodyForests_OVA_nj.RData")
-load("../objects/AntibodyForests_OVA_mp.RData")
-load("../objects/AntibodyForests_OVA_ml.RData")
-load("../objects/AntibodyForests_OVA_IgPhyML.RData")
+load("objects/AntibodyForests_OVA_default.RData")
+load("objects/AntibodyForests_OVA_mst.RData")
+load("objects/AntibodyForests_OVA_nj.RData")
+load("objects/AntibodyForests_OVA_mp.RData")
+load("objects/AntibodyForests_OVA_ml.RData")
+load("objects/AntibodyForests_OVA_IgPhyML.RData")
 ```
 
 <div class=text-justify>
@@ -924,8 +915,7 @@ for(sample in paste0("S", 1:5)){
                          clonotype = clonotype,
                          edge.label = "lv",
                          main.title = "Lineage tree - Default algorithm",
-                         sub.title = paste0("OVA - ", sample, " - ", clonotype),
-                         output.file = paste0("imgs/trees/default/", sample, "/", clonotype))
+                         sub.title = paste0("OVA - ", sample, " - ", clonotype))
     }
   }
 }
@@ -1615,7 +1605,250 @@ create_image_carousel(list.files("imgs/trees/IgPhyML/without_in/S5", full.names 
 </div>
 
 
-## 4. Calculate metrics and compare antibody lineage trees with the `AntibodyForests_compare()` function
+## 4. Quantifying evolution and comparing antibody lineage trees
+
+[...]
+```{r}
+
+```
+<br>
+
+## 5. Assessing evolutionary likelihood of somatic hypermutation with Protein Language Models (PLM)
+
+### Summary
+
+<div class=text-justify>
+
+PLMs have demonstrated success in understanding the unique features of antibody evolution, [such as germline gene usage and somatic hypermutation (SHM)](https://www.sciencedirect.com/science/article/pii/S2666389922001052?via%3Dihub). The probabilities resulting from PLMs can be used as an estimate for [evolutionary likelihood](https://www.sciencedirect.com/science/article/pii/S2405471222000382?via%3Dihub), both at the per-residue as the per-sequence (pseudolikelihood) level. These likelihoods can be incorporated into AntibodyForests to evaluate patterns in pseudolikelihood and tree topology, and to evaluate mutations along the edges of the trees.  
+<br>
+The pseudolikelihoods and probability matrices can be supplied manually, or easily generated using the [PLM-pipeline](https://github.com/dvginneken/PLM-pipeline). Here, a VDJ-dataframe can be used as input CSV file, and the pipeline can generate the pseudolikelihoods and probability matrices of those sequences using different PLMs. The resulting pseudolikelihoods can be incoporates as node feature in the AntibodyForests-object using the **`AntibodyForests_add_node_feature()`** function. The pseudolikelihoods can be visualized using the **`AntibodyForests_plot()`** function, and the correlation with distance to the germline can be visualized using the **`AntibodyForests_distance_scatterplot`** function.  
+<br>
+PLM-generated probability matrices can be supplied to the function **`AntibodyForests_PLM_dataframe()`** to generate a dataframe with the ranks and probabilities of the mutations along the edges of the lineage trees. These ranks and probabilties of both the mutated amino acids and the original amino acid can be visualized using the **`AntibodyForests_PLM_plot()`** function.  
+<br>
+
+</div>
+
+### Parameters
+
+#### **AntibodyForests_add_node_feature()**
+
+`AntibodyForests_object`
+
+* **Description:** An AntibodyForests object as obtained from the **`AntibodyForests()`** function.  
+* **Example:** `AntibodyForests_OVA_default`  
+* **Default:** *None*  
+<br>
+
+`feature.df`
+
+* **Description:** Preferably a VDJ-dataframe as obtained from the **`Platypus::VDJ_build()`** function with a column containing the node features to add. Or a data frame containing at least the columns `sample_id`, `clonotype_id` and `barcode` matching the AntibodyForests object.
+* **Example:** `VDJ_df`  
+* **Default:** *None*  
+<br>
+
+`feature.names`
+
+* **Description:** Column names of the input data frame to be added as node_features to the AntibodyForests object.
+* **Example:** `c("pseudolikelihood","VDJ_vgene")`  
+* **Default:** *None*  
+<br>
+
+
+#### **AntibodyForests_distance_scatterplot()**
+
+`AntibodyForests_object`
+
+* **Description:** An AntibodyForests object as obtained from the **`AntibodyForests()`** function.  
+* **Example:** `AntibodyForests_OVA_default`  
+* **Default:** *None*  
+<br>
+
+`node.features`
+
+* **Description:** Numerical node features in the AntibodyForests-object to be plotted against the distance to the germline.
+* **Example:** `"pseudolikelihood"`  
+* **Default:** *None*  
+<br>
+
+`distance`
+
+* **Description:** Specifies how to calculate the distance to the germline. Either `"node.depth"` (The sum of edges on the shortest parth between germline and each node) or `"edge.length"` (The sum of edge lengths of the shortest path between germline and each node).
+* **Example:** `"node.depth"` 
+* **Default:** `"edge.length"`  
+<br>
+
+`min.nodes`
+
+* **Description:** The minimum number of nodes for a tree to be included in this analysis (this includes the germline).
+* **Example:** `10` 
+* **Default:** `2`  
+<br>
+
+`color.by`
+
+* **Description:** Specifies how to color the scatterplot. Either by a node.feature in the AntibodyForests-object, by the sample (`"sample"`), or no color (`"none"`).
+* **Example:** `"isotype"`
+* **Default:** `"none"`  
+<br>
+
+`color.by.numeric`
+
+* **Description:**  If TRUE, the color.by feature is treated as a numerical feature and a gradient color scheme will be used.
+* **Default:** `FALSE`  
+<br>
+
+`correlation`
+
+* **Description:**  Specifies the correlation coefficient method to be passed onto the `stats::cor.test` function. Either `"pearson"`, `"spearman"`, `"kendall"`, or `"none"` for no calculation of the correlation coefficient.
+* **Example:** `"pearson"`
+* **Default:** `"none"`  
+<br>
+
+`color.palette`
+
+* **Description:**  Specifies the color palette to use for the scatterplot. 
+* **Example:** `"c("blue","red")"`
+* **Default:** Default for numerical color.by is `"viridis"`, for categorical color.by the `ggplot2` default colors.  
+<br>
+
+`font.size`
+
+* **Description:**  Specifies the font size for the scatterplot. 
+* **Example:** `20`
+* **Default:** `12`  
+<br>
+
+`ylabel`
+
+* **Description:**  Specifies the label(s) of the y-axis. In case of multiple `node.features`, `ylabel` should be in the same order as the `node.features`. Default is the node.features
+* **Example:** `"Ablang Pseudolikelihood"`
+* **Default:** `node.features`  
+<br>
+
+`point.size`
+
+* **Description:**  Specifies the size of the points in the scatterplot.
+* **Example:** `2`
+* **Default:** `1`  
+<br>
+
+`output.file`
+
+* **Description:** If a path is specified, the generated plot is saved as a PNG or PDF file at that location.  
+* **Example:** `"/directory/scatterplot.png"`  
+* **Default:** `NULL`   
+<br>
+
+#### **AntibodyForests_PLM_dataframe()**
+
+`AntibodyForests_object`
+
+* **Description:** An AntibodyForests object as obtained from the **`AntibodyForests()`** function.  
+* **Example:** `AntibodyForests_OVA_default`  
+* **Default:** *None*  
+<br>
+
+`sequence.name`
+
+* **Description:** Name of the sequence column in the AntibodyForests object as obtained from the **`AntibodyForests()`** function.  
+* **Example:** `VDJ_sequence_aa_trimmed`  
+* **Default:** *None*  
+<br>
+
+`path_to_probabilities`
+
+* **Description:** Path to the folder containing [probability matrices](https://github.com/dvginneken/PLM-pipeline) for all sequences. Probability matrices should be in CSV format and the file name should be in the format `sample_id` _ `clonotype_id` _ `node number` (example: `S1_clonotype1_node1`), matching the AntibodyForests object.
+* **Example:** `"/directory/ProbabilityMatrix"`  
+* **Default:** *None*  
+<br>
+
+#### **AntibodyForests_PLM_plot()**
+
+`PLM_dataframe`
+
+* **Description:** A dataframe as obtained from the **`AntibodyForests_PLM_dataframe()`** function.
+* **Example:** `PLM_dataframe`
+* **Default:** *None*  
+<br>
+
+`values`
+
+* **Description:** Specifies the values to be plotted or the mutated or original residue at the site of mutation along the edge. Either `"substitution_rank"`, `"substitution_probability"`, `"original_rank"`, or `"original_probability"`.
+* **Example:** `"original_probability"`
+* **Default:** `"substitution_rank"`
+<br>
+
+`group.by`
+
+* **Description:** Plot a seperate line per sample (`"sample_id"`) or all edges together (`"none"`).
+* **Example:** `"sample_id"`
+* **Default:** `"none"`  
+<br>
+
+`colors`
+
+* **Description:** Specifies the colors to be used in the plot. When `group.by` is `"sample_id"`, this should be a vector of the same length as the number of samples.
+* **Example:** `c("blue","red")`
+* **Default:** Default `ggplot2` colors.  
+
+`font.size`
+
+* **Description:**  Specifies the font size for the scatterplot. 
+* **Example:** `20`
+* **Default:** `16`  
+<br>
+
+`output.file`
+
+* **Description:** If a path is specified, the generated plot is saved as a PNG or PDF file at that location.  
+* **Example:** `"/directory/scatterplot.png"`  
+* **Default:** `NULL`   
+<br>
+
+### Examples {.tabset}
+
+<div class=text-justify>
+
+Pseudolikelihoods were calculated with the [PLM-pipeline](https://github.com/dvginneken/PLM-pipeline) for the sequences in the VDJ dataframe. These pseudolikelihoods first have to be added to the AntibodyForests object. Then we plot the pseudolikelihood against the distance to the germline based on the `edge.length` and the `node.depth`.
+
+```{r, add_pseudolikelihood_example, eval=FALSE}
+# Add pseudolikelihood as node feature to the AntibodyForests object
+af <- AntibodyForests_add_node_feature(AntibodyForests_object = af, feature.df = vdj,
+                                       feature.names = "pseudolikelihood")
+```
+
+```{r, load_pseudolikelihood_data, echo=FALSE}
+load("objects/AntibodyForests_example_pseudolikelihood.RData")
+load("objects/VDJ_example_pseudolikelihood.RData")
+```
+
+#### 1. Edge length {.tabset}
+
+```{r, plot_pseudolikelihood_example1}
+# Plot pseudolikelihood against distance to the germline
+AntibodyForests_distance_scatterplot(AntibodyForests_object = af, 
+                                     node.features = "pseudolikelihood",
+                                     distance = "edge.length",
+                                     min.nodes = 5,
+                                     correlation = "pearson",
+                                     color.by = "sample")
+```
+
+#### 2. Node Depth {.tabset}
+
+```{r, plot_pseudolikelihood_example2}
+# Plot pseudolikelihood against distance to the germline
+AntibodyForests_distance_scatterplot(AntibodyForests_object = af, 
+                                     node.features = "pseudolikelihood",
+                                     distance = "node.depth",
+                                     min.nodes = 5,
+                                     correlation = "spearman")
+```
+</div>
+
+<br>
+
+## 6. Investigate the evolution of antibody structure along the lineage trees
 
 [...]
 ```{r}
@@ -1747,18 +1980,31 @@ BuildTrees.py -d ../data/OVA_scRNA-seq_data/VDJ/airr_rearrangement.tsv --collaps
 ```
 <br>
 
+## j. Integrate bulk RNA-seq sequences {#supplementary-j}
+
+[...]
+```{r}
+
+```
+<br>
+
 </div>
 
-## Acknowledgements
+## Contributions
 
 <div class=text-justify>
 
-The AntibodyForests package originated from the Platypus ecosystem of packages, where the fundamental functions `VDJ_build()` and `AntibodyForests()` were initially developed. Subsequently, significant refinements were made, and they were migrated to this standalone package. Contributions have been made by:  
+The AntibodyForests package originated from the [Platypus](https://academic.oup.com/bioinformatics/article/39/9/btad553/7264179) ecosystem of packages, where the fundamental function `AntibodyForests()` were initially developed. Subsequently, significant refinements were made, and they were migrated to this standalone package. 
 
-* Valentijn Tromp, B.Sc.
-* Daphne van Ginneken, M.Sc.
-* Tudor-Stefan Cotet, M.Sc.
-* Victor Kreiner, M.Sc.
-* Dr. Alexander Yermanos
+Contributors:  
+* Alexander Yermanos  
+* Daphne van Ginneken  
+* Valentijn Tromp  
+* Tudor-Stefan Cotet  
+* Victor Kreiner  
+* Lucas Stalder  
+* Anamay Samant  
+
+
 
 </div>
