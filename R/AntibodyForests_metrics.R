@@ -37,6 +37,7 @@ AntibodyForests_metrics <- function(input,
   if(missing(input)){stop("Please provide a valid input object.")}
   #Set defaults
   if(missing(multiple.objects)){multiple.objects = F}
+  if(missing(min.nodes)){min.nodes <- 1}
   if(missing(metrics)){metrics <- c("mean.depth", "nr.nodes")}
   if(missing(parallel)){parallel <- FALSE}
   if(missing(group.node.feature)){group.node.feature = NA}
