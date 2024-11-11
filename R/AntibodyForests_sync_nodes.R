@@ -6,11 +6,11 @@
 #' @return Returns the subject AntibdoyForests object in which all nodes of each clonotypes within all samples are renamed.
 #' @examples
 #' \dontrun{
-#' AntibodyForests_sync(reference = AntibodyForests_object1, 
+#' AntibodyForests_sync_nodes(reference = AntibodyForests_object1, 
 #'                      subject = AntibodyForests_object2)
 #'}
 
-AntibodyForests_sync <- function(reference,
+AntibodyForests_sync_nodes <- function(reference,
                                  subject){
   
   # Check whether both a reference AntibodyForests object and a subject AntibodyForests object is provided

@@ -57,7 +57,7 @@ pre code, pre, code {
 source("~/Documents/GitHub/AntibodyForests/R/VDJ_import_IgBLAST_annotations.R")
 source("~/Documents/GitHub/AntibodyForests/R/VDJ_to_AIRR.R")
 source("~/Documents/GitHub/AntibodyForests/R/AntibodyForests.R")
-source("~/Documents/GitHub/AntibodyForests/R/AntibodyForests_sync.R")
+source("~/Documents/GitHub/AntibodyForests/R/AntibodyForests_sync_nodes.R")
 source("~/Documents/GitHub/AntibodyForests/R/AntibodyForests_plot.R")
 source("~/Documents/GitHub/AntibodyForests/R/AntibodyForests_add_node_feature.R")
 source("~/Documents/GitHub/AntibodyForests/R/AntibodyForests_PLM_plot.R")
@@ -424,7 +424,7 @@ In addition, there is also the option to import pre-constructed lineage trees fr
 
 `aa.model`
 
-* **Description:** When a distance-based method is specified in the `construction.method` parameter, an evolutionary protein model can be specified that is to be used during the pairwise distance calculation. Currently, the following models are included: 'WAG', 'JTT', 'LG', 'Dayhoff', 'cpREV', 'mtmam', 'mtArt', 'MtZoa', 'mtREV24', 'VT', 'RtREV', 'HIVw', 'HIVb', 'FLU', 'Blosum62', 'Dayhoff_DCMut', and 'JTT_DCMut'. The pairwise-distance matrix is calculated using the `phangorn::dist.ml()` function. When the `construction.method` parameter is set to 'phylo.tree.ml', an amino acid subsitution model can be specified that is to be use during the maximum likelihood tree-inference. Currently, the following amino acid substitution models are included: 'WAG', 'JTT', 'LG', 'Dayhoff', 'cpREV', 'mtmam', 'mtArt', 'MtZoa', 'mtREV24', 'VT', 'RtREV', 'HIVw', 'HIVb', 'FLU', 'Blosum62', 'Dayhoff_DCMut', and 'JTT-DCMut'. When set to `"all"`, all available nucleotide substitution models will be tested using the `phangorn::modelTest()` function, after which the result is given to the `phangorn::pml_bb()` function for the maximum likelihood tree inference.  
+* **Description:** When a distance-based method is specified in the `construction.method` parameter, an evolutionary protein model can be specified that is to be used during the pairwise distance calculation. Currently, the following models are included: "WAG", "JTT", "LG", "Dayhoff", "VT", "Dayhoff_DCMut" and "JTT-DCMut". The pairwise-distance matrix is calculated using the `phangorn::dist.ml()` function. When the `construction.method` parameter is set to 'phylo.tree.ml', an amino acid subsitution model can be specified that is to be use during the maximum likelihood tree-inference. Currently, the following amino acid substitution models are included: "WAG", "JTT", "LG", "Dayhoff", "VT", "Dayhoff_DCMut" and "JTT-DCMut". When set to `"all"`, all available nucleotide substitution models will be tested using the `phangorn::modelTest()` function, after which the result is given to the `phangorn::pml_bb()` function for the maximum likelihood tree inference.  
 * **Example:** `"all"`  
 * **Default:** *None* (when a distance-based method is specified with the `construction.method`parameter) and `"all"` (when the `construction.method` parameter is set to "phylo.tree.ml").  
 <br>
@@ -489,6 +489,12 @@ In addition, there is also the option to import pre-constructed lineage trees fr
   <br>
   + **`"max.germline.edges"`**  
   Selects the node(s) with the highest possible number of edges to the germline node.  
+  <br>
+  + **`"min.descendants"`**  
+  Selects the node(s) with the lowest possible number of descendants.  
+  <br>
+  + **`"max.descendants"`**  
+  Selects the node(s) with the highest possible number of descendants.  
   <br>
   + **`"random"`** 
   Selects a random node.  
@@ -675,17 +681,17 @@ AntibodyForests_OVA_IgPhyML <- AntibodyForests(VDJ = VDJ_OVA,
 </div>
 
 
-### Synchronize node names of AntibodyForests objects with the `AntibodyForests_sync()` function
+### Synchronize node names of AntibodyForests objects with the `AntibodyForests_sync_nodes()` function
 
 <div class=text-justify>
 
 When multiple AntibodyForests objects are created from the same VDJ dataframe and using the same sequence columns, the nodes in the resulting igraph objects should be the same. However, selecting different sequence columns may result in a different number of nodes and different node names. Additionally, the IgPhyML tool does not label the nodes according to their size but rather by using barcodes. When comparing tree topologies, having synchronized node names is essential.  
 <br>
-To achieve this, the AntibodyForests_sync() function can be used. This function takes one AntibodyForests object as a reference and renames the nodes of all clonotypes within all samples of another AntibodyForests object to match the reference. The function matches the nodes using barcodes.  
+To achieve this, the AntibodyForests_sync_nodes() function can be used. This function takes one AntibodyForests object as a reference and renames the nodes of all clonotypes within all samples of another AntibodyForests object to match the reference. The function matches the nodes using barcodes.  
 <br>
 If the barcodes of one node in the reference object are found in multiple nodes in the subject object, the nodes in the subject will get suffixes A, B, etc. (e.g., node4 will become node4A and node4B). Conversely, if the barcodes of multiple nodes in the reference object are found in only one node in the subject object, the node in the subject object will get the concatenated names of the nodes in the reference object (e.g., node2 and node4 will become node2+4).
-```{r AntibodyForests_sync, eval = FALSE}
-AntibodyForests_OVA_IgPhyML <- AntibodyForests_sync(reference = AntibodyForests_OVA_default,
+```{r AntibodyForests_sync_nodes, eval = FALSE}
+AntibodyForests_OVA_IgPhyML <- AntibodyForests_sync_nodes(reference = AntibodyForests_OVA_default,
                                                     subject = AntibodyForests_OVA_IgPhyML)
 ```
 <br>
