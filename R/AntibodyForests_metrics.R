@@ -1,7 +1,7 @@
 #' Function to calculate metrics for each tree in an AntibodyForests-object
 #' @description Function to calculate metrics for each tree in an AntibodyForests-object
 #' @param input AntibodyForests-object(s), output from AntibodyForests()
-#' @param min.nodes The minimum number of nodes in a tree to calculate metrics.
+#' @param min.nodes The minimum number of nodes in a tree to calculate metrics (including the germline).
 #' @param multiple.objects If TRUE: input should contain multiple AntibodyForests-objects (default FALSE)
 #' @param metrics The metrics to be calculated (default mean.depth and nr.nodes)
 #' 'nr.nodes'         : The total number of nodes
