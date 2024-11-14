@@ -15,10 +15,11 @@
 #' @param group.order Order of the groups on the x-axis. (default is alphabetical/numerical)
 #' @param significance If TRUE, the significance of the difference (paired t-test) between the groups is plotted. (default FALSE)
 #' @param parallel If TRUE, the metric calculations are parallelized across clonotypes. (default FALSE)
+#' @param output.file string - specifies the path to the output file (PNG of PDF). Defaults to NULL.
 #' @return A ggplot object with the grouped boxplot of the distance to the germline.
 #' @export
 
-AntibodyForests_distance <- function(input,
+AntibodyForests_distance_boxplot <- function(input,
                                      distance,
                                      min.nodes,
                                      groups,
@@ -29,7 +30,8 @@ AntibodyForests_distance <- function(input,
                                      x.label,
                                      group.order,
                                      significance,
-                                     parallel){
+                                     parallel,
+                                     output.file){
   
   #Set defaults and check for missing input
   if(missing(input)){stop("Please provide an AntibodyForests-object as input.")}
@@ -43,6 +45,7 @@ AntibodyForests_distance <- function(input,
   if(missing(significance)){significance = F}
   if(missing(unconnected)){unconnected = F}
   if(missing(group.order)){group.order = NA}
+  if(missing(output.file)){output.file <- NULL}  
   #Check if group are in the metric dataframe
   #if(!(all(groups %in% colnames(metric_df)))){stop("Groups are not in the column names of the metric dataframe.")}
   
@@ -127,6 +130,18 @@ AntibodyForests_distance <- function(input,
     p <- p + ggplot2::geom_point(data = df_na, color = "darkgrey", ggplot2::aes(x=group, y=depth))
   }
   
-  return(p)
+  if(!is.null(output.file)){
+    # Check if the output.file is png or pdf
+    if (grepl(pattern = ".png$", output.file)){
+      png(file = output.file)
+      print(p)
+      dev.off()
+    }else if (grepl(pattern = ".pdf$", output.file)){
+      pdf(file = output.file)
+      print(p)
+      dev.off()
+    }
+  }else{print(p)}
+  
 
 }
