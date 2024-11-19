@@ -9,6 +9,7 @@
 #' @param color.by Color the scatterplot by a node.feature in the AntibodyForests-object, by the sample, or no color ("none). Default is "none".
 #' @param color.by.numeric Logical. If TRUE, the color.by feature is treated as a numerical feature. Default is FALSE.
 #' @param correlation "pearson", "spearman", "kendall", or "none"
+#' @param geom_smooth.method "none", lm" or "loess". Default is "none".
 #' @param color.palette The color palette to use for the scatterplot. Default for numerical color.by is "viridis".
 #' @param font.size The font size of the plot. Default is 12.
 #' @param ylabel The labels of the y-axis, in the same order as the node.features. Default is the node.features
@@ -24,6 +25,7 @@ AntibodyForests_distance_scatterplot <- function(AntibodyForests_object,
                                                  color.by,
                                                  color.by.numeric,
                                                  correlation,
+                                                 geom_smooth.method,
                                                  color.palette,
                                                  font.size,
                                                  ylabel,
@@ -51,7 +53,9 @@ AntibodyForests_distance_scatterplot <- function(AntibodyForests_object,
   if(missing(font.size)){font.size <- 12}
   if(missing(ylabel)){ylabel <- NULL}
   if(missing(point.size)){point.size <- 1}
-  if(missing(output.file)){output.file <- NULL}  
+  if(missing(output.file)){output.file <- NULL}
+  if(missing(geom_smooth.method)){geom_smooth.method <- "none"}
+  if(!(geom_smooth.method %in% c("none", "lm", "loess"))){stop("Please provide a valid geom_smooth method ('none', 'lm', or 'loess').")}
   
   #Create input for ggplot
   #Create empty dataframe
@@ -150,11 +154,14 @@ AntibodyForests_distance_scatterplot <- function(AntibodyForests_object,
     }
     #If no color.palette is provided and the color.by is numeric, color by viridis palette
     else if(is.null(color.palette) & color.by.numeric){p <- p + viridis::scale_color_viridis()}
-    
+    #Add correlation coefficient
     if (correlation != "none"){
       cor <- stats::cor.test(as.numeric(df$germline), df[,feature], method = correlation, exact = F)
-      p <- p + ggplot2::ggtitle(paste0(correlation, " R\u00b2 = ", round(cor$estimate, digits = 2))) +
-        ggplot2::geom_smooth(method = "lm", se = F)
+      p <- p + ggplot2::ggtitle(paste0(correlation, " R\u00b2 = ", round(cor$estimate, digits = 2)))
+    }
+    #Add geom_smooth
+    if (geom_smooth.method != "none"){
+      p <- p + ggplot2::geom_smooth(method = geom_smooth.method, color = "black")
     }
     
     if(!is.null(output.file)){
