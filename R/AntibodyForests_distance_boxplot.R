@@ -41,7 +41,7 @@ AntibodyForests_distance_boxplot <- function(input,
   if(missing(text.size)){text.size = 20}
   if(missing(min.nodes)){min.nodes = 0}
   if(missing(parallel)){parallel <- F}
-  if(missing(x.label)){x_label = node.feature}
+  if(missing(x.label)){x.label = node.feature}
   if(missing(significance)){significance = F}
   if(missing(unconnected)){unconnected = F}
   if(missing(group.order)){group.order = NA}
