@@ -12,6 +12,8 @@ AntibodyForests_compare_repertoires <- function(AntibodyForests_list, #list of a
     stop("Unknown metric")
   }
   
+  output_plot <- list()
+  
   #Name the list of AntibodyForests objects if not named
   if (is.null(names(AntibodyForests_list))){names(AntibodyForests_list) <- paste0("group",1:length(AntibodyForests_list))}
   
@@ -56,13 +58,13 @@ AntibodyForests_compare_repertoires <- function(AntibodyForests_list, #list of a
       
       #Plot
       if (plot == "freqpoly"){
-        ggplot2::ggplot(betweennness_df, ggplot2::aes(betweenness)) +
-          ggplot2::geom_freqpoly(binwidth = 1, ggplot2::aes(colour = group)) +
+        output_plot[["betweenness"]] <- ggplot2::ggplot(betweennness_df, ggplot2::aes(betweenness)) +
+          ggplot2::geom_freqpoly(binwidth = max(as.numeric(betweenness_df$betweenness))/1000, ggplot2::aes(colour = group)) +
           ggplot2::scale_x_continuous(trans='log10') +
           ggplot2::theme_minimal()
       }
       if (plot == "boxplot"){
-        ggplot2::ggplot(betweennness_df, ggplot2::aes(y = betweenness, fill = group)) +
+        output_plot[["betweenness"]] <- ggplot2::ggplot(betweennness_df, ggplot2::aes(x = group, y = betweenness, fill = group)) +
           ggplot2::geom_boxplot() +
           ggplot2::scale_y_continuous(trans='log10') +
           ggplot2::theme_minimal()
@@ -86,13 +88,13 @@ AntibodyForests_compare_repertoires <- function(AntibodyForests_list, #list of a
       
       #Plot
       if (plot == "freqpoly"){
-        ggplot2::ggplot(degree_df, ggplot2::aes(degree)) +
-          ggplot2::geom_freqpoly(binwidth = 1, ggplot2::aes(colour = group)) +
+        output_plot[["degree"]] <- ggplot2::ggplot(degree_df, ggplot2::aes(degree)) +
+          ggplot2::geom_freqpoly(binwidth = max(as.numeric(betweenness_df$betweenness))/1000, ggplot2::aes(colour = group)) +
           ggplot2::scale_x_continuous(trans='log10') +
           ggplot2::theme_minimal()
       }
       if (plot == "boxplot"){
-        ggplot2::ggplot(degree_df, ggplot2::aes(y = degree, fill = group)) +
+        output_plot[["degree"]] <- ggplot2::ggplot(degree_df, ggplot2::aes(x = group, y = degree, fill = group)) +
           ggplot2::geom_boxplot() +
           ggplot2::scale_y_continuous(trans='log10') +
           ggplot2::theme_minimal()
@@ -108,7 +110,8 @@ AntibodyForests_compare_repertoires <- function(AntibodyForests_list, #list of a
     metrics_list <- list()
     for (group in names(AntibodyForests_list)){
       #Calculate the metrics
-      metrics_df <- AntibodyForests_metrics(input = AntibodyForests_list[[group]], metrics = metrics)
+      if("spectral.density" %in% metrics){min.nodes = 3}else{min.nodes = 1}
+      metrics_df <- AntibodyForests_metrics(input = AntibodyForests_list[[group]], metrics = metrics, min.nodes)
       metrics_df$group <- group
       #Add to the metrics_list
       metrics_list[[group]] <- metrics_df
@@ -121,23 +124,22 @@ AntibodyForests_compare_repertoires <- function(AntibodyForests_list, #list of a
     
     #Plot
     for (metric in metrics){
+      temp_metrics_df <- metrics_df[!is.na(metrics_df[,metric]),]
       if (plot == "freqpoly"){
-        p <- ggplot2::ggplot(metrics_df, ggplot2::aes(.data[[metric]])) +
-          ggplot2::geom_freqpoly(binwidth = 1, ggplot2::aes(colour = group)) +
-          ggplot2::scale_x_continuous(trans='log10') +
+        output_plot[[metric]] <- ggplot2::ggplot(temp_metrics_df, ggplot2::aes(.data[[metric]])) +
+          ggplot2::geom_freqpoly(binwidth = max(as.numeric(temp_metrics_df[,metric]))/30, ggplot2::aes(colour = group)) +
+          #ggplot2::scale_x_continuous(trans='log10') +
           ggplot2::theme_minimal() +
           ggplot2::xlab(metric)
-        print(p)
       }
       if (plot == "boxplot"){
-        p <- ggplot2::ggplot(metrics_df, ggplot2::aes(y = .data[[metric]], fill = group)) +
+        output_plot[[metric]] <- ggplot2::ggplot(metrics_df, ggplot2::aes(x = group, y = .data[[metric]], fill = group)) +
           ggplot2::geom_boxplot() +
-          ggplot2::scale_y_continuous(trans='log10') +
+          #ggplot2::scale_y_continuous(trans='log10') +
           ggplot2::theme_minimal() +
           ggplot2::ylab(metric)
-        print(p)
       }
     }
   }
-  
+  return(output_plot)
 }
