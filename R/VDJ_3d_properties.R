@@ -1,13 +1,16 @@
-#' Function to calculate 3D-structure propoperties such as the average charge, hydrophobicity, pKa shift and free energy of PDB files and add them to an AntibodyForests-object
+#' Function to calculate 3D-structure propoperties such as the average charge and hydrophobicity, pKa shift, free energy, RMSD of PDB files and add them to an AntibodyForests-object
 #' @description Function to calculate protein 3D-structure properties of antibodies (or antibody-antigen complexes) and integrate them into an AntibodyForests-object.
 #' @param VDJ a dataframe with V(D)J information such as the output of Platypus::VDJ_build(). Must contain columns sample_id, clonotype_id, barcode.
 #' @param pdb.dir a directory containing PDB files.
-#' @param file.df a dataframe of filenames (column file_name) to be used and sequence IDs (column sequence) corresponding to the the barcodes column of the VDJ dataframe.
+#' @param file.df a dataframe of pdb filenames (column file_name) to be used and sequence IDs (column sequence) corresponding to the the barcodes column of the VDJ dataframe.
 #' @param properties a vector of properties to be calculated. Default is c("charge", "hydrophobicity").
 #' - charge
 #' - hydrophobicity
+#' - RMSD_germline: the root mean square deviation to the germline structure (needs the germline pdb)
+#' - 3di_germline: the edit distance between the 3di sequence of each sequences and the germline sequence (needs foldseek output).
 #' - pKa_shift: the acid dissociation constant shift upon binding of the antibody to the antigen (needs Propka output)
 #' - free_energy: the free energy of binding of the antibody to the antigen at a certain pH (needs Propka output)
+#' - pLDDT: the pLDDT score of the model
 #' @param free_energy_pH the pH to be used to calculate the free energy of binding. Default is 7.
 #' @param sequence.region a character vector of the sequence region to be used to calculate properties. Default is "full.sequence".
 #' - full.sequence: the full sequence(s) in the PDB file
@@ -22,6 +25,9 @@
 #' - AG: antigen, assuming chain C is the antigen.
 #' - whole.complex: the whole complex of antibody-antigen (all available chains in the pdb file).
 #' @param propka.dir a directory containing Propka output files. The propka filenames should be similar to the PDB filenames.
+#' @param foldseek.dir a directory containing dataframes with the Foldseek 3di sequence per chain for each sequence. Filenames should be similar to the PDB filenames and it needs to have column "chain" containing the 'A', 'B', and/or 'C' chain. Default is NULL.
+#' @param germline.pdb PDB filename of the germline. Default is NULL.
+#' @return the input VDJ dataframe with the calculated 3D-structure properties.
 
 
 VDJ_3d_properties <- function(VDJ,
@@ -32,7 +38,9 @@ VDJ_3d_properties <- function(VDJ,
                               chain,
                               propka.dir,
                               free_energy_pH,
-                              sub.sequence.column){
+                              sub.sequence.column,
+                              germline.pdb,
+                              foldseek.dir){
   
   #Check for missing or false input
   if(missing(VDJ)){stop("VDJ dataframe is missing")}
@@ -47,7 +55,7 @@ VDJ_3d_properties <- function(VDJ,
   if(missing(chain)){chain = "HC+LC"}
   if(!chain %in% c("HC+LC", "HC", "LC", "AG", "whole.complex")){stop("chain must be one of 'HC+LC', 'HC', 'LC', 'AG', 'whole.complex'")}
   if(missing(properties)){properties = c("charge", "hydrophobicity")}
-  if(!all(properties %in% c("charge", "hydrophobicity", "pKa_shift", "free_energy"))){stop("properties must be one or more of 'charge', 'hydrophobicity', 'pKa_shift', 'free_energy'")}
+  if(!all(properties %in% c("charge", "hydrophobicity", "pKa_shift", "free_energy", "RMSD_germline", "pLDDT", "3di_germline"))){stop("properties must be one or more of 'charge', 'hydrophobicity', 'RMDS_germline', '3di_germline', 'pLDDT', 'pKa_shift', 'free_energy'")}
   if(missing(propka.dir)){propka.dir = NULL} 
   if(is.null(propka.dir) & any(c("pKa_shift", "free_energy") %in% properties)){stop("propka.dir is missing")}
   if(!(is.null(propka.dir))){if(!dir.exists(propka.dir)){stop("propka.dir does not exist")}}
@@ -56,6 +64,13 @@ VDJ_3d_properties <- function(VDJ,
   if(missing(sub.sequence.column)){sub.sequence.column = NULL}
   if(!is.null(sub.sequence.column)){if(!sub.sequence.column %in% colnames(VDJ)){stop("sub.sequence.column does not exist in VDJ dataframe")}}
   if(sequence.region == "sub.sequence" & is.null(sub.sequence.column)){stop("sub.sequence.column is missing")}
+  if(missing(germline.pdb)){germline.pdb = NULL}
+  if(!is.null(germline.pdb)){if(!file.exists(germline.pdb)){stop("germline.pdb does not exist")}}
+  if("RMDS_germline" %in% properties & is.null(germline.pdb)){stop("germline.pdb is missing")}
+  if(missing(foldseek.dir)){foldseek.dir = NULL}
+  if(!is.null(foldseek.dir)){if(!dir.exists(foldseek.dir)){stop("foldseek.dir does not exist")}}
+  if("3di_germline" %in% properties & is.null(foldseek.dir)){stop("foldseek.dir is missing")}
+
     
   
   #Based on Lucas' VDJ_structure_analysis function
@@ -103,7 +118,7 @@ VDJ_3d_properties <- function(VDJ,
     coord_binder <- atoms_binder[, c("x", "y", "z")]
     coord_ligand <- atoms_ligand[, c("x", "y", "z")]
     # Calculate the distance matrix
-    dist_mat <- dist.xyz(coord_binder, coord_ligand)
+    dist_mat <- bio3d::dist.xyz(coord_binder, coord_ligand)
     # Apply cutoff to distance matrix
     dist_mat_bin <- dist_mat <= cutoff
     # Get binding site residues
@@ -131,7 +146,7 @@ VDJ_3d_properties <- function(VDJ,
   }
   
   #From Steropodon
-  get_propka_df <- function(propka.dir, filename, chains, resnos){
+  get_propka_df <- function(propka_out, filename, chains, resnos){
 
     start <- grep('SUMMARY OF THIS PREDICTION', propka_out)
     end <- grep('Free energy of', propka_out)
@@ -181,6 +196,44 @@ VDJ_3d_properties <- function(VDJ,
     free_energy <- df[df$V1 == free_energy_pH, "V2"]
     return(free_energy)
   }
+  
+  #Calculate the RMSD to the germline
+  calculate_RMSD_germline <- function(pdb, germline.pdb, chains, resnos){
+    #Germline pdb and CA indices
+    pdb_germline <- bio3d::read.pdb(germline.pdb)
+    ca.inds.germline <- bio3d::atom.select(pdb_germline, "calpha", chain = chains, resno = resnos)
+    
+    #Calculate RMSD from germline
+    ca.inds <- bio3d::atom.select(pdb, "calpha", chain = chains, resno = resnos)
+    rmsd <- bio3d::rmsd(pdb, pdb_germline, fit = T, a.inds = ca.inds, b.inds = ca.inds.germline)
+    
+    return(rmsd)
+  }
+  
+  #Calculate the edit distance between the 3di sequences of a node and the germline
+  calculate_3di_distance <- function(foldseek.dir, file.name, germline.df, chains, resnos){
+    #Read the sequence 3Di dataframe
+    seqs_3di <- read.table(paste0(foldseek.dir,substr(file.name, 1, nchar(file.name)-4),
+                                  ".csv"), header = T, sep = ",")
+    #Paste the chains together
+    seqs_chain_vector <- c()
+    germline_chain_vector <- c()
+    for (chain in chains){
+      seqs_chain_vector <- c(seqs_chain_vector, seqs_3di[seqs_3di$chain == chain,2])
+      germline_chain_vector <- c(germline_chain_vector, germline.df[germline.df$chain == chain,2])
+    }
+    pasted_3di <- paste(seqs_chain_vector, collapse = "")
+    germline_pasted_3di <- paste(germline_chain_vector, collapse = "")
+    distance_3di <- stringdist::stringdist(pasted_3di, germline_pasted_3di, method = 'lv')
+    return(distance_3di)
+  }
+  
+  #Add the pLDDT score to the VDJ dataframe, this is stored in the b-factor field of the pdb file (unlike a b-factor, higher pLDDT is better)
+  calculate_plddt <- function(pdb, chains, resnos){
+    average_plddt <- mean(pdb$atom[pdb$atom$resno %in% resnos & pdb$atom$chain %in% chains,"b"])
+    return(average_plddt)
+  }
+
 
   
   #Get list of files if file.df is null
@@ -189,8 +242,10 @@ VDJ_3d_properties <- function(VDJ,
   #Add the empty properties columns to the VDJ dataframe
   if("charge" %in% properties){VDJ$average_charge <- NA}
   if("hydrophobicity" %in% properties){VDJ$average_hydrophobicity <- NA}
+  if("RMSD_germline" %in% properties){VDJ$RMSD_germline <- NA}
   if("pKa_shift" %in% properties){VDJ$average_pKa_shift <- NA}
   if("free_energy" %in% properties){VDJ$free_energy <- NA}
+  if("pLDDT" %in% properties){VDJ$average_pLDDT <- NA}
   
   #Set the chains
   if(chain == "HC+LC"){chains = c("A", "B")}
@@ -199,14 +254,12 @@ VDJ_3d_properties <- function(VDJ,
   if(chain == "AG"){chains = "C"}
   if(chain == "whole.complex"){chains = c("A", "B", "C")}
   
-
-  
   #Calculate properties for each structure
   for(row in seq(1:nrow(file.df))){
     file = file.df[row,]
     if(file$sequence %in% VDJ$barcode){
       #Read in the pdb file
-      pdb <- bio3d::read.pdb(paste0("~/OneDrive - UMC Utrecht/Documenten/Structure_Daphne/PDBS_superimposed/", file$file_name))
+      pdb <- bio3d::read.pdb(paste0(pdb.dir, file$file_name))
       
       #Get the residues for calculations of average properties
       if(sequence.region == "full.sequence"){
@@ -233,10 +286,34 @@ VDJ_3d_properties <- function(VDJ,
         #Add to the VDJ dataframe
         VDJ[VDJ$barcode == file$sequence,]$average_hydrophobicity <- average_hydrophobicity
       }
+      if("RMSD_germline" %in% properties){
+        #Calculate the RMSD to the germline
+        RMSD_germline <- calculate_RMSD_germline(pdb, germline.pdb, chains, resnos)
+        #Add to the VDJ dataframe
+        VDJ[VDJ$barcode == file$sequence,]$RMSD_germline <- RMSD_germline
+      }
+      if("3di_germline" %in% properties){
+        #Get the germline 3di sequence
+        germline_3di <- tryCatch({
+          germline_3di <- read.csv(paste0(foldseek.dir, "/", substr(file.df[file.df$sequence == "germline", "file_name"], 1, 
+                                                                    nchar(file.df[file.df$sequence == "germline", "file_name"])-4),".csv"),
+                                   header = T, sep = ",")
+        }, error = function(e){
+          print(paste0("Sequence ", file$sequence, " not found in foldseek output"))
+          germline_3di = NULL
+        })
+        if(!is.null(germline_3di)){
+          #Calculate the 3di distance to the germline
+          foldseek_germline <- calculate_3di_distance(foldseek.dir, germline.df = germline_3di, file.name = file$file_name,
+                                                      chains, resnos)
+          #Add to the VDJ dataframe
+          VDJ[VDJ$barcode == file$sequence,"3di_germline"] <- foldseek_germline
+        }
+      }
       if("pKa_shift" %in% properties | "free_energy" %in% properties){
         #Read in the propka output
-        propka_out <- readLines(paste0(propka.dir, "/", substr(file$file_name, 1, nchar(file$file_name)-4),".pka"))
-        
+        propka_out <- readLines(paste0(propka.dir, "/", substr(file$file_name, 1, nchar(file$file_name)-4),".pka")
+        )
         if("pKa_shift" %in% properties){
           #Calculate the pKa shift
           average_pKa_shift <- calculate_pKa_shift(propka_out, file$file_name, chains, resnos)
@@ -250,8 +327,12 @@ VDJ_3d_properties <- function(VDJ,
           VDJ[VDJ$barcode == file$sequence,]$free_energy <- free_energy
         }
       }
-
-
+      if("pLDDT" %in% properties){
+        #Calculate the pLDDT
+        average_pLDDT <- calculate_plddt(pdb, chains, resnos)
+        #Add the pLDDT score to the VDJ dataframe
+        VDJ[VDJ$barcode == file$sequence,]$average_pLDDT <- average_pLDDT
+      }
     } else {
       print(paste0("Sequence ", file$sequence, " not found in VDJ dataframe"))
       next
