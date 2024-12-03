@@ -1,6 +1,6 @@
 #' Function to create a distribution plot of the Protein Language Model probabilities and ranks of the mutations along the edges of B cell lineage trees.
 #' @description Function to create a distribution plot of the Protein Language Model probabilities and ranks of the mutations along the edges of B cell lineage trees.
-#' @param PLM_dataframe Dataframe resulting from AntibodyForests_PLM_dataframe(). This contains the Protein Language Model probabilities and ranks of the mutations along the edges of B cell lineage trees.
+#' @param PLM_dataframe Dataframe resulting from Af_PLM_dataframe(). This contains the Protein Language Model probabilities and ranks of the mutations along the edges of B cell lineage trees.
 #' @param values What values to plot. Can be "rank" (default) or "probability".
 #' "substitution_rank" will plot the rank of the mutation along the edge of the tree (Highest probability is rank 1).
 #' "substitution_probability" will plot the probability of the mutation along the edge of the tree.
@@ -12,10 +12,11 @@
 #' @param colors Color to use for the lines. When group_by = "sample_id": This should be a vector of the same length as the number of samples.
 #' @param font.size Font size for the plot. Default is 16.
 #' @param output.file string - specifies the path to the output file (PNG of PDF). Defaults to NULL.
-#' @return 
-#' 
+#' @export
+#' @examples
+#' Af_plot_PLM(PLM_dataframe = PLM_dataframe, values = "original_probability", group_by = "sample_id")
 
-AntibodyForests_PLM_plot <- function(PLM_dataframe,
+Af_plot_PLM <- function(PLM_dataframe,
                                      values,
                                      group_by,
                                      colors,
@@ -23,9 +24,9 @@ AntibodyForests_PLM_plot <- function(PLM_dataframe,
                                      output.file){
   
   #Check input
-  if(missing(PLM_dataframe)){stop("Please provide a PLM dataframe resulting from AntibodyForests_PLM_dataframe function.")}
+  if(missing(PLM_dataframe)){stop("Please provide a PLM dataframe resulting from Af_PLM_dataframe function.")}
   if(all(colnames(PLM_dataframe) %in% c("sample", "clonotype", "n_subs", "node1", "node2", "mean_substitution_rank", "
-                                  mean_substitution_probability"))){stop("Please provide a PLM dataframe resulting from AntibodyForests_PLM_dataframe function.")}
+                                  mean_substitution_probability"))){stop("Please provide a PLM dataframe resulting from Af_PLM_dataframe function.")}
   
   #Set defaults
   if(missing(values)){values <- "substitution_rank"}

@@ -1,8 +1,8 @@
 #' Function to create a barplot of the cluster composition of selected features from each tree in an AntibodyForests-object
 #' @description Function to create a barplot of the cluster composition of selected features from each tree in an AntibodyForests-object
-#' @param input AntibodyForests-object(s), output from AntibodyForests()
+#' @param input AntibodyForests-object(s), output from Af_build()
 #' @param features Character vector of features to include in the barplot. (these features need to be present in the nodes of the trees)
-#' @param clusters Named vector with the cluster assignments of the trees, output from AntibodyForests_compare_clonotypes().
+#' @param clusters Named vector with the cluster assignments of the trees, output from Af_compare_within_repertoires().
 #' @param fill identify each unique feature per tree (unique, default), or assign the most observed feature to the tree (max)
 #' @param colors Color palette to use for the features.
 #' @param text.size Size of the text in the plot. Default is 12.
@@ -10,7 +10,7 @@
 #' @return A list with barplots for each provided feature.
 #' @export
 
-AntibodyForests_cluster_composition <- function(input,
+Af_cluster_node_features <- function(input,
                                                 features,
                                                 clusters,
                                                 fill,

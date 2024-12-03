@@ -1,7 +1,7 @@
 #' Function to make a grouped boxplot of metrics from clusters of clonotypes
 #' @description Function to compare metrics between clusters of clontoypes
-#' @param af - list - AntibodyForests-object with node features to compare distance to the germline
-#' @param clusters - named integer - The clusters as output from AntibodyForests_compare_clonotypes
+#' @param af - list - AntibodyForests-object as output from Af_build()
+#' @param clusters - named integer - The clusters as output from Af_compare_within_repertoires()
 #' @param metrics - string - The metrics to be calculated per tree
 #' 'nr.nodes'         : The total number of nodes
 #' 'nr.cells'         : The total number of cells in this clonotype
@@ -14,15 +14,16 @@
 #'    - asymmetry             : Shallow or deep branching events
 #'    - principal eigenvalue  : Phylogenetic diversity
 #'    - modalities            : The number of different structures within the tree
-#' @param min.nodes The minimum number of nodes for a tree to be included in this analysis (this included the germline). This should be the same as for the AntibodyForests_compare_clonotypes() functions.
+#' @param min.nodes The minimum number of nodes for a tree to be included in this analysis (this included the germline). This should be the same as for the Af_compare_within_repertoires() functions.
 #' @param colors - string -  Optionally specific colors for the clusters
 #' @param text.size Font size in the plot (default 20).
 #' @param significane - boolean - If TRUE, the significance of a T test between the groups is plotted (default FALSE)
 #' @param parallel If TRUE, the metric calculations are parallelized across clonotypes. (default FALSE)
 #' @return - list - A list with boxplots per metric
 #' @export
+#' @examples
 
-AntibodyForests_clusters <- function(af,
+Af_cluster_metrics <- function(af,
                                      clusters,
                                      metrics,
                                      min.nodes,
@@ -44,15 +45,15 @@ AntibodyForests_clusters <- function(af,
   #if(!(all(groups %in% colnames(metric_df)))){stop("Groups are not in the column names of the metric dataframe.")}
   
   #Calculate the metrics
-  metric_df <- AntibodyForests_metrics(af,
+  metric_df <- Af_metrics(af,
                                        parallel = parallel,
                                        min.nodes = min.nodes,
                                        metrics = metrics)
 
   
   #Check if clonotypes are the same between metric_df and clusters
-  if (nrow(metric_df) < length(clusters)){stop("Make sure that min.nodes threshold is not higher then min.nodes used when running AntibodyForests_compare_clonotypes().")}
-  #AntibodyForests_metrics sometimes adds an X in front of the rownames, if this happenend remove it.
+  if (nrow(metric_df) < length(clusters)){stop("Make sure that min.nodes threshold is not higher then min.nodes used when running Af_compare_within_repertoires().")}
+  #Af_metrics sometimes adds an X in front of the rownames, if this happenend remove it.
   if(all(gsub("^X", "", rownames(metric_df)) == names(clusters))){rownames(metric_df) <- gsub("^X", "", rownames(metric_df))}
   #Check if the names of the trees are the same
   if (!(all(names(clusters) %in% rownames(metric_df)))){stop("The names of the clonotypes in the AntibodyForests-object and the clusters should be the same.")}

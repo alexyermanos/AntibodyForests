@@ -1,6 +1,6 @@
 #' Function to make a grouped boxplot of distance between nodes from specific groups and the germline of lineage trees constructed with AntibodyForests.
 #' @description Function to compare trees.
-#' @param input AntibodyForests-object with node features to compare distance to the germline
+#' @param AntibodyForests_object AntibodyForests-object, output from Af_build()
 #' @param node.feature Node feature in the AntibodyForests-object to compare.
 #' @param distance - string - How to calculate the distance to the germline.
 #' 'node.depth'     : Average of the sum of edges on the shortest parth between germline and nodes from this group. 
@@ -16,10 +16,24 @@
 #' @param significance If TRUE, the significance of the difference (paired t-test) between the groups is plotted. (default FALSE)
 #' @param parallel If TRUE, the metric calculations are parallelized across clonotypes. (default FALSE)
 #' @param output.file string - specifies the path to the output file (PNG of PDF). Defaults to NULL.
-#' @return A ggplot object with the grouped boxplot of the distance to the germline.
 #' @export
+#' @examples
+#' Af_distance_boxplot(AntibodyForests_object, 
+#'   distance = "edge.length", 
+#'   min.nodes = 5, 
+#'   groups = c("IgM", "IgG"), 
+#'   node.feature = "isotype", 
+#'   unconnected = TRUE, 
+#'   colors = c("red", "blue"), 
+#'   text.size = 20, 
+#'   x.label = "Isotype", 
+#'   group.order = c("IgM", "IgG"), 
+#'   significance = TRUE, 
+#'   parallel = FALSE, 
+#'   output.file = "output.png")
+#' 
 
-AntibodyForests_distance_boxplot <- function(input,
+Af_distance_boxplot <- function(AntibodyForests_object,
                                      distance,
                                      min.nodes,
                                      groups,
@@ -34,7 +48,7 @@ AntibodyForests_distance_boxplot <- function(input,
                                      output.file){
   
   #Set defaults and check for missing input
-  if(missing(input)){stop("Please provide an AntibodyForests-object as input.")}
+  if(missing(AntibodyForests_object)){stop("Please provide an AntibodyForests-object as input.")}
   if(missing(node.feature)){stop("Please provide a node feature to compare.")}
   if(missing(groups)){groups = NA}
   if(missing(distance)){distance = "edge.length"}
@@ -52,7 +66,7 @@ AntibodyForests_distance_boxplot <- function(input,
   print("Warning: This function takes a long runtime if the AntibodyForests-object is large.")
   
   #Calculate the average distance to the germline per group
-  metric_df <- AntibodyForests_metrics(input,
+  metric_df <- Af_metrics(AntibodyForests_object,
                                        parallel = parallel,
                                        min.nodes = min.nodes,
                                        metrics = paste0("group.",distance),

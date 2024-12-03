@@ -1,11 +1,12 @@
 #' Function to compare tree topology of B cell lineages
 #' @description Function to compare trees of clonotypes.
-#' @param input - list - An AntibodyForests-object
+#' @param input - list - An AntibodyForests-object, output from Af_build()
 #' @param min.nodes - integer - The minimum number of nodes in a tree to include in the comparison
 #' @param distance.method - string - The method to calculate distance (default ...)
 #' 'none'           : No distance metric, analyze similarity directly from distance.metrics
 #' 'euclidean'      : 
 #' 'jensen-shannon' : Jensen-Shannon distance between spectral density profiles of trees.
+#' 'GBLD'           : Generalized Branch Length Distance between trees.
 #' @param distance.metrics - string - If distance.method is "none" or "euclidean", these metrics will be used to calculate clusters and PCA/MDS dimensions and are used for plotting. (Default is mean.depth and nr.nodes)
 #' 'nr.nodes'         : The total number of nodes
 #' 'nr.cells'         : The total number of cells in this clonotype
@@ -33,8 +34,9 @@
 #' @param num.cores Number of cores to be used when parallel = TRUE (Defaults to all available cores - 1)
 #' @return - list - Returns a distance matrix, clustering, and various plots based on visualization.methods
 #' @export
+#' @examples
 
-AntibodyForests_compare_clonotypes <- function(input,
+Af_compare_within_repertoires <- function(input,
                                     min.nodes,
                                     distance.method,
                                     distance.metrics,
@@ -50,15 +52,18 @@ AntibodyForests_compare_clonotypes <- function(input,
   #1. Set defaults and check for missing or incorrect input
   if(missing(input)){stop("Please provide a valid input object.")}
   if (class(input) != "AntibodyForests"){stop("The input is not in the correct format.")}
+  if(missing(min.nodes)){min.nodes = 2}
   if(missing(visualization.methods)){visualization.methods = "PCA"}
   #if(missing(metrics.to.visualize)){metrics.to.visualize = "none"}
   if(missing(distance.metrics)){distance.metrics = c("mean.depth", "nr.nodes")}
+  if(missing(distance.method)){distance.method = "none"}
   if(missing(clustering.method)){clustering.method = "none"}
   if(missing(plot.label)){plot.label = F}
   if(missing(text.size)){text.size = 12}
   if(missing(point.size)){point.size = 2}
   if(missing(parallel)){parallel <- F}
   if(parallel == TRUE && missing(num.cores)){num.cores <- parallel::detectCores() -1}
+  if (!distance.method %in% c("none", "euclidean", "jensen-shannon", "GBLD")){stop("Please provide a valid distance method.")}
 
   #3. Define functions
   calculate_euclidean <- function(df){
@@ -110,13 +115,14 @@ AntibodyForests_compare_clonotypes <- function(input,
   
   
   calculate_JS <- function(af, min.nodes){
+    message("Calculating the Jensen-Shannon divergence can have a long runtime for large AntibodyForests-objects.")
     #Convert the igraph trees to phylo trees and store in list
     phylo_list <- list()
     for(sample in names(af)){
       for(clonotype in names(af[[sample]])){
         #Only keep trees with a minimum number of nodes (min.nodes)
         if (igraph::vcount(af[[sample]][[clonotype]][['igraph']]) >= min.nodes){
-          phylo_tree <- AntibodyForests_phylo(af[[sample]][[clonotype]][['igraph']], solve_multichotomies = F)
+          phylo_tree <- igraph_to_phylo(af[[sample]][[clonotype]][['igraph']], solve_multichotomies = F)
           phylo_list[[paste0(gsub("-", ".", sample),".",clonotype)]] <- phylo_tree
         }
       }
@@ -187,7 +193,7 @@ AntibodyForests_compare_clonotypes <- function(input,
   output <- list()
   
   #1. Calculate metrics
-  metric_df <- AntibodyForests_metrics(input = input, min.nodes = min.nodes, metrics = distance.metrics,
+  metric_df <- Af_metrics(input = input, min.nodes = min.nodes, metrics = distance.metrics,
                           parallel = parallel, num.cores = num.cores)
   
   #1. Distance matrix
@@ -200,6 +206,11 @@ AntibodyForests_compare_clonotypes <- function(input,
   else if (distance.method == "jensen-shannon"){
     distance_matrix <- calculate_JS(input, min.nodes)
   }
+  #If distance.method is "GBLD" use the trees with at least min.nodes in the AntibodyForests-object to calculate distance
+  else if (distance.method == "GBLD"){
+    distance_matrix <- calculate_GBLD(input, min.nodes)
+  }
+  #If distance.method is "euclidean" use the metric dataframe to calculate the distance matrix
   else if(distance.method == "euclidean"){
     #Row with NA will be removed for visualization
     metric_df <- stats::na.omit(metric_df)

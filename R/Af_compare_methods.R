@@ -1,11 +1,11 @@
 #' Function to compare trees created with different algorithms from the same clonotype.
 #' @description Function to compare different trees from the same clonotype to compare various graph construction and phylogenetic reconstruction methods.
-#' @param input A list of AntibodyForests-objects as output from the function AntibodyForests(). These objects should contain the same samples/clonotypes. For easy interpretation of the results, please name the objects in the list according to their tree-construction method.
+#' @param input A list of AntibodyForests-objects as output from the function Af_build(). These objects should contain the same samples/clonotypes. For easy interpretation of the results, please name the objects in the list according to their tree-construction method.
 #' @param min.nodes The minimum number of nodes in a tree to include in the comparison, this includes the germline. Default is 2 (this includes all trees).
 #' @param include.average If TRUE, the average distance matrix and visualizations between the trees is included in the output (default FALSE)
 #' @param distance.method The method to calculate the distance between trees (default euclidean)
-#' 'euclidean' : Euclidean distance between the depth of each node in the tree
-#' 'GBLD'      : Generalized Branch Length Distance, derived from Mahsa Farnia & Nadia Tahiri, Algorithms Mol Biol 19, 22 (2024). https://doi.org/10.1186/s13015-024-00267-1
+#' 'euclidean'      : Euclidean distance between the depth of each node in the tree
+#' 'GBLD'           : Generalized Branch Length Distance, derived from Mahsa Farnia & Nadia Tahiri, Algorithms Mol Biol 19, 22 (2024). https://doi.org/10.1186/s13015-024-00267-1
 #' @param depth If distance.methods is 'euclidean', method to calculate the germline-to-node depth (default edge.count)
 #' 'edge.count'   : The number of edges between each node and the germline
 #' 'edge.length'  : The sum of edge lengths between each node and the germline
@@ -21,8 +21,9 @@
 #' @param num.cores Number of cores to be used when parallel = TRUE. (Defaults to all available cores - 1)
 #' @return A list with all clonotypes that pass the min.nodes threshold including the distance matrix, possible clustering and visualization
 #' @export
+#' @examples
 
-AntibodyForests_compare_methods <- function(input,
+Af_compare_methods <- function(input,
                                     min.nodes,
                                     include.average,
                                     distance.method,
@@ -168,6 +169,7 @@ AntibodyForests_compare_methods <- function(input,
     #Return the named vector of depths per node
     return(depths)
   }
+
   
   #Remove entries from (nested) lists that contain NA
   remove_na_entries <- function(lst) {

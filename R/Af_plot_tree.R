@@ -1,7 +1,6 @@
 #' Plots lineage tree of clonotype from AntibodyForests object
-#' Authors: Valentijn Tromp, Daphne van Ginneken
 #' @description This function retrieves the igraph object from the provided AntibodyForests object for the specified clone within the specified sample and plots the lineage tree using the specified plotting parameters.
-#' @param AntibodyForests_object AntibodyForests object - AntibodyForests object as obtained from the 'AntibodyForests()' function in Platypus.
+#' @param AntibodyForests_object AntibodyForests object - AntibodyForests object as obtained from the 'Af_build()' function in Platypus.
 #' @param sample string - denotes the sample that contains the clonotype.
 #' @param clonotype string - denotes the clonotype from which the lineage tree should be plotted.
 #' @param show.inner.nodes boolean - if TRUE, the tree with inner nodes is plotted (only present when the trees are created with the 'phylo.tree.nj', 'phylo.tree.mp', phylo.tree.ml', or 'phylo.tree.IgPhyML' construction algorithm). Defaults to FALSE.
@@ -32,14 +31,14 @@
 #' @export
 #' @examples
 #' \dontrun{
-#' AntibodyForests_plot(AntibodyForests_object,
+#' Af_plot_tree(AntibodyForests_object,
 #'                      sample = "S1",
 #'                      clonotype = "clonotype1",
 #'                      main.title = "Lineage tree",
 #'                      sub.title = "Sample 1 - clonotype 1)
 #'}
 
-AntibodyForests_plot <- function(AntibodyForests_object,
+Af_plot_tree <- function(AntibodyForests_object,
                                  sample,
                                  clonotype,
                                  show.inner.nodes,
@@ -73,7 +72,6 @@ AntibodyForests_plot <- function(AntibodyForests_object,
     # Calculates optimal horizontal x scaling factor to prevent nodes of a lineage tree from overlapping
     # Arguments:
     # - tree: igraph object with the names of the nodes stored in 'igraph::V(tree)$name' and the sizes stored in 'igraph::V(tree)$size'
-    # Authors: Valentijn Tromp, Daphne van Ginneken
     
     # Retrieve the node names from the igraph object
     node_names <- igraph::V(tree)$name
@@ -161,7 +159,6 @@ AntibodyForests_plot <- function(AntibodyForests_object,
     # - ylim: vector of integers/floats specifying the limits of the y axis of the plot on which the lineage tree will be plotted (determines the vertical node spacing)
     # - legend: bool indicating whether (a) legend(s) are to be plotted on the right side of the plot (if so, +1.5 is added to the upper limit of the horizontal axis)
     # - title: bool inidicating whether (a) title(s) are to be plotted on top of the plot (if so, +0.5 is added to the upper limit of the vertical axis)
-    # Authors: Valentijn Tromp, Daphne van Ginneken
     
     # Save input object as 'graph' and ensure that the input object is an igraph object
     graph <- tree
@@ -349,7 +346,6 @@ AntibodyForests_plot <- function(AntibodyForests_object,
     # Determines the most optimal set of numbers to describe a range, whereby the set is returned as a vector of five floats in scientific notation
     # Arguments:
     # - values: list of numerical values 
-    # Authors: Valentijn Tromp, Daphne van Ginneken
     
     # Convert values to numeric
     values <- as.numeric(values)

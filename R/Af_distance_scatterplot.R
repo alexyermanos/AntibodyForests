@@ -1,6 +1,6 @@
 #' Function to scatterplot the distance to the germline to a numerical node feature of the AntibodyForests-object
 #' @description Function to scatterplot the distance to the germline to a numerical node feature of the AntibodyForests-object
-#' @param AntibodyForests_object AntibodyForests-object, output from AntibodyForests()
+#' @param AntibodyForests_object AntibodyForests-object, output from Af_build()
 #' @param node.features Node features in the AntibodyForests-object to compare (needs to be numerical)
 #' @param distance - string - How to calculate the distance to the germline.
 #' 'node.depth'     : The sum of edges on the shortest parth between germline and each node
@@ -15,10 +15,18 @@
 #' @param ylabel The labels of the y-axis, in the same order as the node.features. Default is the node.features
 #' @param point.size The size of the points in the scatterplot. Default is 1.
 #' @param output.file string - specifies the path to the output file (PNG of PDF). Defaults to NULL.
-#' @return 
 #' @export
+#' @examples
+#' Af_distance_scatterplot(AntibodyForests_object = AntibodyForests_OVA_default, 
+#'  node.features = "SHM_count",
+#'  distance = "edge.length",
+#'  min.nodes = 5,
+#'  color.by = "sample",
+#'  color.by.numeric = F,
+#'  geom_smooth.method = "lm",
+#'  correlation = "pearson")
 
-AntibodyForests_distance_scatterplot <- function(AntibodyForests_object,
+Af_distance_scatterplot <- function(AntibodyForests_object,
                                                  node.features,
                                                  distance,
                                                  min.nodes,

@@ -11,8 +11,7 @@
 #' AntibodyForests_phylo(trees)
 #'}
 
-
-AntibodyForests_phylo <- function(tree,
+igraph_to_phylo <- function(tree,
                            solve_multichotomies){
   
   #Function taken from the aphylo package as it could not be loaded properly

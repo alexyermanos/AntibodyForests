@@ -1,6 +1,6 @@
 #' Function to get the sequences from the nodes in an AntibodyForest object
 #' @description Function to get the sequences from the nodes in an AntibodyForest object
-#' @param AntibodyForests_object AntibodyForests-object, output from AntibodyForests()
+#' @param AntibodyForests_object AntibodyForests-object, output from Af_build()
 #' @param sequence.name character, name of the sequence column in the AntibodyForests object (example VDJ_sequence_aa_trimmed)
 #' @param min.nodes integer, minimum number of nodes in the tree (not including germline)
 #' @param min.edges integer, minimum number of edges in the tree (not including edges to the germline)
@@ -8,7 +8,7 @@
 #' @export
 #' 
 
-AntibodyForests_get_sequences <- function(AntibodyForests_object,
+Af_get_sequences <- function(AntibodyForests_object,
                                           sequence.name,
                                           min.nodes,
                                           min.edges){

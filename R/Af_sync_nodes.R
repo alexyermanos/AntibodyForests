@@ -1,16 +1,15 @@
 #' Function to synchronize the node labels/names of all clonotypes within all samples of two AntibodyForests objects.
-#' Authors: Valentijn Tromp, Daphne van Ginneken
 #' @description The nodes of each clonotype within each sample of the subject AntibodyForests object will be named according to the names of the nodes of the clonotypes within the samples of the reference AntibodyForests object. The node names present in all the objects within the  Therefore, the sample IDs and clonotype IDs should be the same. Note: if a node in the reference AntibodyForests object is divided over two nodes in the subject AntibodyForests object, the nodes will get a letter as suffix (for example, 'node2' in the reference object would become 'node2A' and 'node2B' in the subject object). Note: if multiple nodes in the reference AntibodyForests object are together in one node in the subject AntibodyForests object, the number of the nodes are pasted together with a '+' (for example, 'node5' and 'node6' in the reference object would become 'node5+6' in the subject object). 
-#' @param reference AntibodyForests object - AntibodyForests object as obtained from the 'AntibodyForests()' function in Platypus. This object will be used as a reference.
-#' @param subject AntibodyForests object - AntibodyForests object as obtained from the 'AntibodyForests()' function in Platypus. For each clonotype, the names of the nodes will be synced with the names of the nodes in the reference AntibodyForests object, by matching the barcodes.  
+#' @param reference AntibodyForests object - AntibodyForests object as obtained from the 'Af_build()' function in Platypus. This object will be used as a reference.
+#' @param subject AntibodyForests object - AntibodyForests object as obtained from the 'Af_build()' function in Platypus. For each clonotype, the names of the nodes will be synced with the names of the nodes in the reference AntibodyForests object, by matching the barcodes.  
 #' @return Returns the subject AntibdoyForests object in which all nodes of each clonotypes within all samples are renamed.
 #' @examples
 #' \dontrun{
-#' AntibodyForests_sync_nodes(reference = AntibodyForests_object1, 
+#' Af_sync_nodes(reference = AntibodyForests_object1, 
 #'                      subject = AntibodyForests_object2)
 #'}
 
-AntibodyForests_sync_nodes <- function(reference,
+Af_sync_nodes <- function(reference,
                                  subject){
   
   # Check whether both a reference AntibodyForests object and a subject AntibodyForests object is provided
@@ -26,7 +25,6 @@ AntibodyForests_sync_nodes <- function(reference,
     # - reference: AntibodyForests object that will be used as 'reference' and with which the subject AntibodyForests object will be synchronized
     # - subject: AntibodyForests object of which the nodes of all clonotypes will be renamed
     # - clone: string specifying the sample and clonotype in the format 'S1_clonotype1'
-    # Authors: Valentijn Tromp, Daphne van Ginneken
     
     # Retrieve sample ID and clonotype ID from 'clone'
     sample <- strsplit(clone, split="_")[[1]][1]

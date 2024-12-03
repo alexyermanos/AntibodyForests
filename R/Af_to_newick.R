@@ -1,12 +1,12 @@
 #'Saves an AntibodyForests-object into a newick file
 #'@description Saves an AntibodyForests-object into a newick file. The node labels will have the format node\@size where size is the size of the node.
-#' @param AntibodyForests_object AntibodyForests-object, output from AntibodyForests()
+#' @param AntibodyForests_object AntibodyForests-object, output from Af_build()
 #' @param min.nodes The minimum number of nodes in a tree to calculate metrics (including the germline).
 #' @param output.file string - specifies the path to the output file
 #' @export
 #' @examples
 
-AntibodyForests_to_newick <- function(AntibodyForests_object,
+Af_to_newick <- function(AntibodyForests_object,
                                       min.nodes,
                                       output.file){
   

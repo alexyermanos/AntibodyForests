@@ -1,11 +1,11 @@
 #' Function to create a dataframe of the Protein Language Model probabilities and ranks of the mutations along the edges of B cell lineage trees.
 #' @description Function to create a dataframe of the Protein Language Model probabilities and ranks of the mutations along the edges of B cell lineage trees.
-#' @param AntibodyForests_object AntibodyForests-object, output from AntibodyForests()
+#' @param AntibodyForests_object AntibodyForests-object, output from Af_build()
 #' @param sequence.name character, name of the sequence column in the AntibodyForests object (example VDJ_sequence_aa_trimmed)
 #' @param path_to_probabilities character, path to the folder containing probability matrices for all sequences. Probability matrices should be in CSV format and the filename should include sampleID_clonotypeID_nodeNR, matching the AntibodyForests-object.
 #' @return a dataframe with the sample, clonotype, node numbers, number of substitutions, mean substitution rank and mean substitution probability
 
-AntibodyForests_PLM_dataframe <- function(AntibodyForests_object,
+Af_PLM_dataframe <- function(AntibodyForests_object,
                                           sequence.name,
                                           path_to_probabilities){
   

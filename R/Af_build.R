@@ -1,5 +1,4 @@
 #' Function to infer B cell evolutionary networks for all clonotypes in VDJ dataframe as obtained from the 'VDJ_build()' function.
-#' Authors: Valentijn Tromp, Daphne van Ginneken
 #' @description This function takes a VDJ dataframe and uses the specified sequence columns to build a tree/network for each clonotype and stores them in an AntibodyForests object, together with the sequences and other specified features. These trees/networks provide insights into the evolutionary relationships between B cell sequences from each clonotype. The resulting object of class 'AntibodyForests' can be used for downstream analysis as input for...
 #' @param VDJ dataframe - VDJ object as obtained from the VDJ_build() function in Platypus, or object of class dataframe that contains the columns 'sample_id', 'clonotype_id', and the columns specified in 'sequence.columns', 'germline.columns', and 'node.features'.
 #' @param sequence.columns string or vector of strings - denotes the sequence column(s) in the VDJ dataframe that contain the sequences that will be used to infer B cell lineage trees. Nodes in the trees will represent unique combinations of the selected sequences. Defaults to 'c("VDJ_sequence_nt_trimmed", "VJ_sequence_nt_trimmed")'.
@@ -70,7 +69,7 @@
 #' @export
 #' @examples
 #' \dontrun{
-#' AntibodyForests(VDJ, 
+#' Af_build(VDJ, 
 #'                 sequence.columns = c("VDJ_sequence_aa_trimmed","VJ_sequence_aa_trimmed"),
 #'                 germline.columns = c("VDJ_germline_aa_trimmed","VJ_germline_aa_trimmed"), 
 #'                 concatenate.sequences = TRUE,
@@ -79,10 +78,10 @@
 #'                 construction.method = "phylo.network.default",
 #'                 resolve.ties = c("max.expansion", "close.germline.dist", "close.germline.edges", "random"),
 #'                 include = c("nodes", "dist", "igraph", "edges", "metrics"),
-#'                 parallel = TRUE)
+#'                 parallel = F)
 #'}
 
-AntibodyForests <- function(VDJ,
+Af_build <- function(VDJ,
                             sequence.columns,
                             germline.columns,
                             concatenate.sequences,
@@ -268,7 +267,6 @@ AntibodyForests <- function(VDJ,
     # - resolve.ties: string or vector of strings denoting the way ties are handled in the 'phylo.network.default' algorithm
     # - remove.internal.nodes: string denoting if and how internal nodes should be removed from phylogenetic tree-derived lineage trees
     # - nodes.list: nested list containing sequences and selected features in a list per node 
-    # Authors: Valentijn Tromp, Daphne van Ginneken
     
     
     count_edges_between_two_nodes <- function(node1, node2, edge.matrix){
@@ -278,7 +276,6 @@ AntibodyForests <- function(VDJ,
       # - node1: the starting node (up in the network/tree)
       # - node2: the ending node (down in the network/tree)
       # - edge_matrix: 2-column matrix containing nodes of a directed network in which each row represent an edge, while the first column contains the upper node and the second column contains the lower node
-      # Authors: Valentijn Tromp, Daphne van Ginneken
       
       # Save input edge matrix in 'edge_matrix'
       edge_matrix <- edge.matrix
@@ -310,7 +307,6 @@ AntibodyForests <- function(VDJ,
       # Converts an igraph object into phylo format (based on the 'alakazam::graphToPhylo()' function)
       # Arguments:
       # - igraph_object: igraph object
-      # Author: Valentijn Tromp, Daphne van Ginneken
       
       # Convert igraph object into 'edges_df' dataframe, in which each row represent one edge
       edges_df <- igraph::as_data_frame(igraph_object)
@@ -377,7 +373,6 @@ AntibodyForests <- function(VDJ,
       # Reorganizes the edges in a dataframe to enable the construction of a directed graph, ensuring that the 'germline' node is placed in the first row and in the 'upper.node' column, and all its descendants are in subsequent rows. 
       # Arguments:
       # - edges: dataframe that contains two columns ('upper.node' and 'lower.node') that contain names of the nodes of the network/tree, whereby each row represent an edge
-      # Author: Valentijn Tromp, Daphne van Ginneken
       
       # Retrieve the names of all the nodes in the input dataframe
       nodes <- unique(c(edges$upper.node, edges$lower.node))
@@ -1156,7 +1151,6 @@ AntibodyForests <- function(VDJ,
     # - resolve.ties: string denoting the way ties are handled when the 'network.tree' network algorithm is being used 
     # - remove.internal.nodes: bool indicating whether to remove internal nodes from trees constructed with 'phylo.nj' algorithm
     # - include: vector of strings specifying the output object that should be included in the output AntibodyForests object
-    # Authors: Valentijn Tromp, Daphne van Ginneken
     
     # 1. Create a nested list 'nodes_list', in which each sublist represents a clone/node in the graph, and each node represent a unique combination of sequences of the columns selected in 'sequence.columns'
     # Each node/sublist contains the following items:

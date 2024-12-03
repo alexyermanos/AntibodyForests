@@ -1,6 +1,6 @@
 #' Function to calculate metrics for each tree in an AntibodyForests-object
 #' @description Function to calculate metrics for each tree in an AntibodyForests-object
-#' @param input AntibodyForests-object(s), output from AntibodyForests()
+#' @param input AntibodyForests-object(s), output from Af_build()
 #' @param min.nodes The minimum number of nodes in a tree to calculate metrics (including the germline).
 #' @param multiple.objects If TRUE: input should contain multiple AntibodyForests-objects (default FALSE)
 #' @param metrics The metrics to be calculated (default mean.depth and nr.nodes)
@@ -23,8 +23,10 @@
 #' @param output.format The format of the output. If set to "dataframe", a dataframe is returned. If set to "AntibodyForests", the metrics are added to the AntibodyForests-object. (default "dataframe")
 #' @return Returns either a dataframe where the rows are trees and the columns are metrics or an AntibodyForests-object with the metrics added to trees
 #' @export
+#' @examples
+#' 
 
-AntibodyForests_metrics <- function(input,
+Af_metrics <- function(input,
                                     min.nodes,
                                     node.feature,
                                     group.node.feature,
@@ -83,17 +85,9 @@ AntibodyForests_metrics <- function(input,
     return(depth)
   }
   
-  # calculate_colless_number <- function(tree){
-  #   #transform igraph network into bifurcating phylo tree
-  #   phylo_tree <- AntibodyForests_phylo(tree, solve_multichotomies = T)
-  #   #calculate the colless number
-  #   colless <- phyloTop::colless.phylo(phylo_tree, normalise = T)
-  #   return(colless)
-  # }
-  
   calculate_spectral_density <- function(tree){
     #transform igraph network into bifurcating phylo tree
-    phylo_tree <- AntibodyForests_phylo(tree, solve_multichotomies = F)
+    phylo_tree <- igraph_to_phylo(tree, solve_multichotomies = F)
     #Calculate the spectral density of the tree
     sd <- RPANDA::spectR(phylo_tree, meth = "normal")
     return(sd)
@@ -128,6 +122,7 @@ AntibodyForests_metrics <- function(input,
         #Add to the metrics vector
         metrics_vector["sackin.index"] <- si
       }
+      
       
       if ("spectral.density" %in% metrics){
         if (igraph::vcount(clonotype$igraph) > 3){

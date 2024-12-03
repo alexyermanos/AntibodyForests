@@ -1,12 +1,12 @@
 #' Function to add node features to an AntibodyForests-object
 #' @description Function to add node features to an AntibodyForests-object
-#' @param AntibodyForests_object AntibodyForests-object, output from AntibodyForests()
+#' @param AntibodyForests_object AntibodyForests-object, output from Af_build()
 #' @param feature.df Dataframe with features for each node. Must contain columns sample_id, clonotype_id, barcode and the features to be added.
 #' @param feature.names Character vector with the names of the features to be added.
 #' @return Returns an AntibodyForests-object with the features added to the nodes.
 #' @export
 
-AntibodyForests_add_node_feature <- function(AntibodyForests_object,
+Af_add_node_feature <- function(AntibodyForests_object,
                                              feature.df,
                                              feature.names){
   
