@@ -142,7 +142,7 @@ VDJ_3d_properties <- function(VDJ,
     #Get the corresponding resnos
     resnos <- resids_df$resno[ind]
     
-    return(resnos)
+    return(as.numeric(resnos))
   }
   
   #From Steropodon
@@ -270,7 +270,7 @@ VDJ_3d_properties <- function(VDJ,
       }
       if(sequence.region == "sub.sequence"){
         #get the subsequence
-        sub_seq <- VDJ[VDJ$barcode == file$sequence,sub.sequence]
+        sub_seq <- VDJ[VDJ$barcode == file$sequence,sub.sequence.column]
         resnos <- get_subseq_res(pdb, sub_seq, chains)
       }
       
