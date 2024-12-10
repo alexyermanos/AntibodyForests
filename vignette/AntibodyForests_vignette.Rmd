@@ -1,6 +1,6 @@
 ---
 title: 'AntibodyForests vignette: a comprehensive guide for importing 10x single-cell V(D)J sequencing data, building lineage trees, and comparing trees within and across repertoires'
-date: "05-11-2024"
+date: "10-12-2024"
 output:
   html_document:
     theme: flatly
@@ -64,6 +64,15 @@ source("~/Documents/GitHub/AntibodyForests/R/Af_plot_PLM.R")
 source("~/Documents/GitHub/AntibodyForests/R/Af_PLM_dataframe.R")
 source("~/Documents/GitHub/AntibodyForests/R/Af_distance_scatterplot.R")
 source("~/Documents/GitHub/AntibodyForests/R/Af_get_sequences.R")
+source("~/Documents/GitHub/AntibodyForests/R/Af_compare_methods.R")
+source("~/Documents/GitHub/AntibodyForests/R/Af_compare_within_repertoires.R")
+source("~/Documents/GitHub/AntibodyForests/R/Af_metrics.R")
+source("~/Documents/GitHub/AntibodyForests/R/igraph_to_phylo.R")
+source("~/Documents/GitHub/AntibodyForests/R/Af_cluster_metrics.R")
+source("~/Documents/GitHub/AntibodyForests/R/Af_cluster_node_features.R")
+source("~/Documents/GitHub/AntibodyForests/R/Af_distance_boxplot.R")
+
+library(magrittr)
 ```
 <br>
 
@@ -682,23 +691,6 @@ AntibodyForests_OVA_IgPhyML <- Af_build(VDJ = VDJ_OVA,
 ```
 <br>
 
-</div>
-
-
-### Synchronize node names of AntibodyForests objects with the `Af_sync_nodes()` function
-
-<div class=text-justify>
-
-When multiple AntibodyForests objects are created from the same VDJ dataframe and using the same sequence columns, the nodes in the resulting igraph objects should be the same. However, selecting different sequence columns may result in a different number of nodes and different node names. Additionally, the IgPhyML tool does not label the nodes according to their size but rather by using barcodes. When comparing tree topologies, having synchronized node names is essential.  
-<br>
-To achieve this, the Af_sync_nodes() function can be used. This function takes one AntibodyForests object as a reference and renames the nodes of all clonotypes within all samples of another AntibodyForests object to match the reference. The function matches the nodes using barcodes.  
-<br>
-If the barcodes of one node in the reference object are found in multiple nodes in the subject object, the nodes in the subject will get suffixes A, B, etc. (e.g., node4 will become node4A and node4B). Conversely, if the barcodes of multiple nodes in the reference object are found in only one node in the subject object, the node in the subject object will get the concatenated names of the nodes in the reference object (e.g., node2 and node4 will become node2+4).
-```{r Af_sync_nodes, eval = FALSE}
-AntibodyForests_OVA_IgPhyML <- Af_sync_nodes(reference = AntibodyForests_OVA_default,
-                                                    subject = AntibodyForests_OVA_IgPhyML)
-```
-<br>
 
 </div>
 
@@ -1617,19 +1609,723 @@ create_image_carousel(list.files("imgs/trees/IgPhyML/without_in/S5", full.names 
 </div>
 
 
-## 4. Quantifying evolution and comparing antibody lineage trees
+## 4. Compare tree construction methods with the `Af_compare_methods()` function
+
+### Summary
 
 <div class=text-justify>
 
-[...]
-```{r}
+To investigate the influence of different tree constructions methods on the resulting tree topologies, the AntibodyForests package allows for the comparison of trees generated using different algorithms. The `Af_compare_methods()` function can be used to compare the tree topologies of multiple AntibodyForests objects. This function calculates the distance between the trees of the different objects, clusters the trees, and visualizes the results. Various distance metrics can be used, such as the euclidean distance between the germline-to-node distance for each node or the [Generalized Branch Length Distance (GBLD)](https://doi.org/10.1186/s13015-024-00267-1) between the trees. Visualization of the results can be done using a heatmap, an MDS or PCA plot. The function returns a list of the calculated distances, the clustering, and the visualization for each clonotype. Additionally the results can be averaged over all clonotypes.  
+<br>
+When multiple AntibodyForests objects are created from the same VDJ dataframe and using the same sequence columns, the nodes in the resulting igraph objects should be the same. However, selecting different sequence columns may result in a different number of nodes and different node names. Additionally, the IgPhyML tool does not label the nodes according to their size but rather by using barcodes. When comparing tree topologies, having synchronized node names is essential.To achieve this, `the Af_sync_nodes()` function can be used. This function takes one AntibodyForests object as a reference and renames the nodes of all clonotypes within all samples of another AntibodyForests object to match the reference. The function matches the nodes using barcodes. If the barcodes of one node in the reference object are found in multiple nodes in the subject object, the nodes in the subject will get suffixes A, B, etc. (e.g., node4 will become node4A and node4B). Conversely, if the barcodes of multiple nodes in the reference object are found in only one node in the subject object, the node in the subject object will get the concatenated names of the nodes in the reference object (e.g., node2 and node4 will become node2+4). 
+<br>
 
+### Parameters
+
+<br>
+
+#### **Af_sync_nodes()**
+
+`reference`
+
+* **Description:** An AntibodyForests object as obtained from the **`Af_build()`** function.  
+* **Example:** `AntibodyForests_OVA_default`  
+* **Default:** *None*  
+<br>
+
+`subject`
+
+* **Description:** An AntibodyForests object as obtained from the **`Af_build()`** function.  
+* **Example:** `AntibodyForests_OVA_IgPhyML`  
+* **Default:** *None*  
+<br>
+
+#### **Af_compare_methods()**
+
+`input`
+
+* **Description:** A list of AntibodyForests objects as obtained from the **`Af_build()`** function.  
+* **Example:** `list("Default" = AntibodyForests_OVA_default, "MST" = AntibodyForests_OVA_mst, "IgPhyML" = AntibodyForests_OVA_IgPhyML)`  
+* **Default:** *None*  
+<br>
+
+`min.nodes`
+
+* **Description:** The minimum number of nodes for a tree to be included in this analysis (this includes the germline).
+* **Example:** `10` 
+* **Default:** `2`  
+<br>
+
+`include.average`
+
+* **Description:** Whether to include the average over all clonotypes in the results.
+* **Example:** `TRUE`
+* **Default:** `FALSE`  
+<br>
+
+`distance.method`
+
+* **Description:** The distance method to use for the comparison. Options are `euclidean` of node depths or `GBLD`.
+* **Example:** `GBLD`
+* **Default:** `euclidean`  
+<br>
+
+`depth`
+
+* **Description:** The depth of the nodes to use for the euclidean distance calculation. Options are `edge.count` or `edge.length`.
+* **Example:** `edge.length`
+* **Default:** `edge.count`
+<br>
+
+`clustering.method`
+
+* **Description:** The clustering method to use for the comparison. Options are `mediods` or `NULL`.
+* **Example:** `mediods`
+* **Default:** `NULL`  
+<br>
+
+`visualization.methods`
+
+* **Description:** The visualization methods to use for the comparison. Options are `heatmap`, `MDS`, `PCA` or `NULL`.
+* **Example:** `heatmap`
+* **Default:** `NULL`  
+<br>
+
+`parallel`
+
+* **Description:** If `TRUE`, the depth calculations are executed in parallel (parallelized across clonotypes) using either the `parallel::parLapply()` function (on Windows) or the `parallel:mclapply()` function (on Linux/MacOS).  
+* **Default:** `FALSE`  
+<br>
+
+`num.cores`
+
+* **Description:** Number of cores to be used when the `parallel` parameter is set to `TRUE`.  
+* **Example:** `4`  
+* **Default:** All available cores - 1.  
+<br>
+</div>
+
+### Examples {.tabset}
+
+<div class=text-justify>
+
+First, node labels need to be synchronized between the different AntibodyForests objects. This can be done using the **`Af_sync_nodes()`** function. Here, the nodes of the AntibodyForests objects created with the IgPhyML tool, MST, NJ, and ML algorithms are synchronized with the nodes of the AntibodyForests object created with the default algorithm.  
+
+```{r Af_sync_nodes}
+# Synchronize the nodes of the different AntibodyForests objects
+AntibodyForests_OVA_IgPhyML <- Af_sync_nodes(reference = AntibodyForests_OVA_default,
+                                                    subject = AntibodyForests_OVA_IgPhyML)
+AntibodyForests_OVA_mst <- Af_sync_nodes(reference = AntibodyForests_OVA_default,
+                                subject = AntibodyForests_OVA_mst)
+AntibodyForests_OVA_nj <- Af_sync_nodes(reference = AntibodyForests_OVA_default,
+                                subject = AntibodyForests_OVA_nj)
+AntibodyForests_OVA_mp <- Af_sync_nodes(reference = AntibodyForests_OVA_default,
+                                subject = AntibodyForests_OVA_mp)
+AntibodyForests_OVA_ml <- Af_sync_nodes(reference = AntibodyForests_OVA_default,
+                                subject = AntibodyForests_OVA_ml)
+```
+
+Now we can calculate the distance between the trees of the different AntibodyForests objects using the **`Af_compare_methods()`** function. The distance between the trees is calculated using both methods, and the average results are visualized using a heatmap.
+
+#### 1. Euclidean distance {.tabset}
+
+```{r, compare_methods_example1, results='hide'}
+# Calculate the euclidean distance between different trees based on the number of edges to the germline for each node
+out <- Af_compare_methods(input = list("Default" = AntibodyForests_OVA_default,
+                                       "MST" = AntibodyForests_OVA_mst,
+                                       "NJ" = AntibodyForests_OVA_nj,
+                                       "MP" = AntibodyForests_OVA_mp,
+                                       "ML" = AntibodyForests_OVA_ml, 
+                                       "IgPhyML" = AntibodyForests_OVA_IgPhyML),
+                          min.nodes = 10,
+                          depth = "edge.count",
+                          visualization.methods = "heatmap",
+                          include.average = T)
+out$average$Heatmap
+```
+
+<br>
+
+#### 2. Generalized Branch Lenght Distance {.tabset}
+
+```{r, compare_methods_example2, results = 'hide'}
+# Calculate the euclidean distance between different trees based on the GBLD
+out <- Af_compare_methods(input = list("Default" = AntibodyForests_OVA_default,
+                                       "MST" = AntibodyForests_OVA_mst,
+                                       "NJ" = AntibodyForests_OVA_nj,
+                                       "MP" = AntibodyForests_OVA_mp,
+                                       "ML" = AntibodyForests_OVA_ml, 
+                                       "IgPhyML" = AntibodyForests_OVA_IgPhyML),
+                          min.nodes = 10,
+                          distance.method = "GBLD",
+                          visualization.methods = "heatmap",
+                          include.average = T)
+# Plot the average heatmap
+out$average$Heatmap
+```
+
+<br>
+
+</div>
+
+## 5. Quantify evolution within repertoires with the `Af_compare_within_repertoires()` function
+
+### Summary
+
+<div class=text-justify>
+
+The complex process of somatic hypermutation in a repertoire can be analyzed by comparing lineage tree topologies between clonotypes to identify different evolutionary patterns. The AntibodyForests package provides a function, **`Af_compare_within_repertoires()`**, to calculates the distance between all trees in the repertoire. This can be the euclidean distance between various calculated metrics, or the Jensen-Shannon distance between [spectral density profiles](https://academic.oup.com/sysbio/article/65/3/495/2468938) of trees. The function can cluster the trees and visualize the results using a heatmap, MDS, or PCA plot. The function returns a list containing the distance matrix, the assigned clusters, and the visualization. The functions **`Af_cluster_metrics()`** and **`Af_cluster_node_features()`** can be used to analyze the differences between the clusters of trees.  
+<br>
+The function **`Af_metrics()`** is used internally in different AntibodyForests function, but can also be used as standalone function to calculate metrics for each clonotype. Basic metrics such as the average germline-to-node depth, total number of nodes and cells, and sackin index can be calculated, as well as more complex metrics based on the Laplacian Spectrum of the trees. These metrics can be returned in a dataframe, or added to the AntibodyForests object.  
+<br>
+The functions **`Af_distance_boxplot()`** and [**`Af_distance_scatterplot`**]({#distance_scatterplot}) can be used to observe patterns between the distance to the germline and various node features in the AntibodyForests object.
+<br>
+
+
+### Parameters
+
+<br>
+
+#### **Af_metrics()**
+
+`input`
+
+* **Description:** One or multiple AntibodyForests objects as obtained from the **`Af_build()`** function.  
+* **Example:** `AntibodyForests_OVA_default`  
+* **Default:** *None*  
+<br>
+
+`min.nodes`
+
+* **Description:** The minimum number of nodes for a tree to be included in this analysis (this includes the germline).
+* **Example:** `10` 
+* **Default:** `1`  
+<br>
+
+`multiple.objects`
+
+* **Description:** Whether the input contains multiple AntibodyForests objects.
+* **Example:** `TRUE` 
+* **Default:** `FALSE`  
+<br>
+
+`metrics`
+
+* **Description:** The metrics to calculate per tree. Options include:  
+<br>
+  + **`"nr.nodes"`** 
+  The total number of nodes.  
+  <br>
+  + **`"nr.cells"`** 
+  The total number of cells.  
+  <br>
+  + **`"mean.depth"`**
+  The average number of edges connecting each node to the germline along the shortest path.  
+  <br>
+  + **`"mean.edge.length"`** 
+  The average sum of edge lengths connecting each node to the germline along the shortest path.  
+  <br>
+    + **`"sackin.index"`** 
+  The sackin index is used to quantify the imbalance of a tree. This is calculated as the sum of the depths of all leaves in the tree, normalized by the number of leaves.  
+  <br>
+    + **`"spectral.density"`**
+  This option constructs the spectral density profile of a tree to identify the underlying shape of the phylogeny. This option outputs four metrics: `spectral.peakedness` for tree imbalance, `spectral.asymmetry` to quantify skewness of branching events, `spectral.principal.eigenvalue` as indicator for diversity, and `modalities` as the number of different density profiles within this tree.
+  <br>
+  + **`"group.node.depth"`** 
+  The average number of edges connecting each node to the germline along the shortest path per group (node features). This option is used internally in AntibodyForests function, we do not recommend used it externally.  
+  <br>
+  + **`"group.edge.length"`** 
+  The average sum of edge lengths connecting each node to the germline along the shortest path per group (node features). This option is used internally in AntibodyForests function, we do not recommend used it externally.  
+  <br>
+* **Example:** `c("mean.depth","spectral.density","mean.edge.length")` 
+* **Default:** `c("mean.depth", "nr.nodes")`  
+<br>
+
+`node.feature`
+
+* **Description:** The node feature to be used for the group.edge.length or group.nodes.depth metric. This option is used internally in AntibodyForests function, we do not recommend used it externally.  
+* **Example:** `"isotype"` 
+* **Default:** `None`  
+<br>
+
+`group.node.feature`
+
+* **Description:** The groups in the node feature to be used for the group.edge.length or group.nodes.depth metric. This option is used internally in AntibodyForests function, we do not recommend used it externally.  
+* **Example:** `c("IgM", "IgG")` 
+* **Default:** `NA`  
+<br>
+
+`parallel`
+
+* **Description:** If `TRUE`, the metric calculation is executed in parallel (parallelized across clonotypes) using either the `parallel::parLapply()` function (on Windows) or the `parallel:mclapply()` function (on Linux/MacOS).  
+* **Default:** `FALSE`  
+<br>
+
+`num.cores`
+
+* **Description:** Number of cores to be used when the `parallel` parameter is set to `TRUE`.  
+* **Example:** `4`  
+* **Default:** All available cores - 1.  
+<br>
+
+`output.format`
+
+* **Description:** Wether to return the output at dataframe, or to add it to the AntibodyForests object.
+<br>
+  + **`"dataframe"`** 
+  <br>
+  + **`"AntibodyForests"`** 
+  <br>
+* **Default:** "dataframe"
+<br>
+
+#### **Af_compare_within_repertoires()**
+
+`input`
+
+* **Description:** One or multiple AntibodyForests objects as obtained from the **`Af_build()`** function.  
+* **Example:** `AntibodyForests_OVA_default`  
+* **Default:** *None*  
+<br>
+
+`min.nodes`
+
+* **Description:** The minimum number of nodes for a tree to be included in this analysis (this includes the germline).
+* **Example:** `10` 
+* **Default:** `2`  
+<br>
+
+`distance.method`
+
+* **Description:** The distance method to use for the comparison. Options are `euclidean` of node depths or `jensen-shannon` of spectral density profiles.
+* **Example:** `jensen-shannon`
+* **Default:** `euclidean`  
+<br>
+
+`distance.metrics`
+
+* **Description:** The metrics to calculate per tree. Options include:  
+<br>
+  + **`"nr.nodes"`** 
+  The total number of nodes.  
+  <br>
+  + **`"nr.cells"`** 
+  The total number of cells.  
+  <br>
+  + **`"mean.depth"`**
+  The average number of edges connecting each node to the germline along the shortest path.  
+  <br>
+  + **`"mean.edge.length"`** 
+  The average sum of edge lengths connecting each node to the germline along the shortest path.  
+  <br>
+    + **`"sackin.index"`** 
+  The sackin index is used to quantify the imbalance of a tree. This is calculated as the sum of the depths of all leaves in the tree, normalized by the number of leaves.  
+  <br>
+    + **`"spectral.density"`**
+  This option constructs the spectral density profile of a tree to identify the underlying shape of the phylogeny. This option outputs four metrics: `spectral.peakedness` for tree imbalance, `spectral.asymmetry` to quantify skewness of branching events, `spectral.principal.eigenvalue` as indicator for diversity, and `modalities` as the number of different density profiles within this tree.
+  <br>
+* **Example:** `c("mean.depth","spectral.density","mean.edge.length")` 
+* **Default:** `c("mean.depth", "nr.nodes")`  
+<br>
+
+`clustering.method`
+
+* **Description:** The clustering method to use for the comparison. Options are `mediods` or `NULL`.
+* **Example:** `mediods`
+* **Default:** `NULL`  
+<br>
+
+`visualization.methods`
+
+* **Description:** The visualization methods to use for the comparison. Options are `heatmap`, `MDS`, `PCA` or `NULL`.
+* **Example:** `heatmap`
+* **Default:** `NULL`  
+<br>
+
+`plot.label`
+
+* **Description:** If true, label the points in the MDS and PCA with the clonotype names.
+* **Example:** `TRUE`
+* **Default:** `FALSE`  
+<br>
+
+`text.size`
+
+* **Description:**  Specifies the font size for the plots. 
+* **Example:** `20`
+* **Default:** `12`  
+<br>
+
+`point.size`
+
+* **Description:**  Specifies the size of the points in the scatterplot.
+* **Example:** `5`
+* **Default:** `2`  
+<br>
+
+`parallel`
+
+* **Description:** If `TRUE`, the metrics calculation is executed in parallel (parallelized across clonotypes) using either the `parallel::parLapply()` function (on Windows) or the `parallel:mclapply()` function (on Linux/MacOS).  
+* **Default:** `FALSE`  
+<br>
+
+`num.cores`
+
+* **Description:** Number of cores to be used when the `parallel` parameter is set to `TRUE`.  
+* **Example:** `4`  
+* **Default:** All available cores - 1.  
+<br>
+
+#### **Af_cluster_metrics()**
+
+`input`
+
+* **Description:** AntibodyForests objects as obtained from the **`Af_build()`** function.  
+* **Example:** `AntibodyForests_OVA_default`  
+* **Default:** *None*  
+<br>
+
+`clusters`
+
+* **Description:** The assigned clusters as output from **`Af_compare_within_repertoires()`**.
+* **Example:** `out$clustering` 
+* **Default:** *None*  
+<br>
+
+`metrics`
+
+* **Description:** The metrics to calculate per tree. Options include:  
+<br>
+  + **`"nr.nodes"`** 
+  The total number of nodes.  
+  <br>
+  + **`"nr.cells"`** 
+  The total number of cells.  
+  <br>
+  + **`"mean.depth"`**
+  The average number of edges connecting each node to the germline along the shortest path.  
+  <br>
+  + **`"mean.edge.length"`** 
+  The average sum of edge lengths connecting each node to the germline along the shortest path.  
+  <br>
+    + **`"sackin.index"`** 
+  The sackin index is used to quantify the imbalance of a tree. This is calculated as the sum of the depths of all leaves in the tree, normalized by the number of leaves.  
+  <br>
+    + **`"spectral.density"`**
+  This option constructs the spectral density profile of a tree to identify the underlying shape of the phylogeny. This option outputs four metrics: `spectral.peakedness` for tree imbalance, `spectral.asymmetry` to quantify skewness of branching events, `spectral.principal.eigenvalue` as indicator for diversity, and `modalities` as the number of different density profiles within this tree.
+  <br>
+* **Example:** `c("mean.depth","spectral.density","mean.edge.length")` 
+* **Default:** `c("mean.depth", "nr.nodes")`  
+<br>
+
+`min.nodes`
+
+* **Description:** The minimum number of nodes for a tree to be included in this analysis (this includes the germline).
+* **Example:** `10` 
+* **Default:** `2`  
+<br>
+
+`colors`
+
+* **Description:** Vector of colors for each cluster.
+* **Example:** `c("red", "blue", "green")`
+* **Default:** `Default ggplot colors`  
+<br>
+
+
+`text.size`
+
+* **Description:**  Specifies the font size for the plots. 
+* **Example:** `12`
+* **Default:** `20`  
+<br>
+
+`significance`
+
+* **Description:**  If TRUE, the adjusted p-value of a T test between the groups is plotted.
+* **Example:** `FALSE`
+* **Default:** `TRUE`  
+<br>
+
+`parallel`
+
+* **Description:** If `TRUE`, the metrics calculation is executed in parallel (parallelized across clonotypes) using either the `parallel::parLapply()` function (on Windows) or the `parallel:mclapply()` function (on Linux/MacOS).  
+* **Default:** `FALSE`  
+<br>
+
+`num.cores`
+
+* **Description:** Number of cores to be used when the `parallel` parameter is set to `TRUE`.  
+* **Example:** `4`  
+* **Default:** All available cores - 1.  
+<br>
+
+#### **Af_cluster_node_features()**
+
+`input`
+
+* **Description:** AntibodyForests objects as obtained from the **`Af_build()`** function.  
+* **Example:** `AntibodyForests_OVA_default`  
+* **Default:** *None*  
+<br>
+
+`clusters`
+
+* **Description:** The assigned clusters as output from **`Af_compare_within_repertoires()`**.
+* **Example:** `out$clustering` 
+* **Default:** *None*  
+<br>
+
+`features`
+
+* **Description:** Node features in the AntibodyForest object to compare between the clusters.
+* **Example:** `c("vgene_family", "timepoint", "isotype")` 
+* **Default:** *None*  
+<br>
+
+`fill`
+
+* **Description:** Whether to identify each unique node feature in a tree (`unique`), or to assign the most common node feature (`max`).
+* **Example:** `max` 
+* **Default:** `unique`  
+<br>
+
+`colors`
+
+* **Description:** Vector of colors for each cluster.
+* **Example:** `c("red", "blue", "green")`
+* **Default:** `Default ggplot colors`  
+<br>
+
+
+`text.size`
+
+* **Description:**  Specifies the font size for the plots. 
+* **Example:** `20`
+* **Default:** `12`  
+<br>
+
+`significance`
+
+* **Description:**  If TRUE, the adjusted p-value of a Chi-squared Test between the groups is plotted.
+* **Example:** `FALSE`
+* **Default:** `TRUE`  
+<br>
+
+#### **Af_distance_boxplot()**
+
+`AntibodyForests_object`
+
+* **Description:** An AntibodyForests object as obtained from the **`Af_build()`** function.  
+* **Example:** `AntibodyForests_OVA_default`  
+* **Default:** *None*  
+<br>
+
+`node.feature`
+
+* **Description:** Categorical node feature in the AntibodyForests-object.
+* **Example:** `"isotype"`  
+* **Default:** *None*  
+<br>
+
+`distance`
+
+* **Description:** Specifies how to calculate the distance to the germline. Either `"node.depth"` (The sum of edges on the shortest parth between germline and each node) or `"edge.length"` (The sum of edge lengths of the shortest path between germline and each node).
+* **Example:** `"node.depth"` 
+* **Default:** `"edge.length"`  
+<br>
+
+`min.nodes`
+
+* **Description:** The minimum number of nodes for a tree to be included in this analysis (this includes the germline).
+* **Example:** `10` 
+* **Default:** `2`  
+<br>
+
+`groups`
+
+* **Description:** The groups in the `node.features` to compare. 
+* **Example:** `c("IgM", "IgG")` 
+* **Default:** `NA`  
+<br>
+
+`unconnected`
+
+* **Description:** If TRUE, trees that don't have all groups will be plotted in grey, but not included in significance analysis. If false, these trees will be excluded from the plot.
+* **Example:** `"TRUE"`
+* **Default:** `"FALSE"`  
+<br>
+
+`colors`
+
+* **Description:**  Specifies the color palette to use for the boxplots. 
+* **Example:** `"c("blue","red")"`
+* **Default:** The `ggplot2` default colors.  
+<br>
+
+`text.size`
+
+* **Description:**  Specifies the font size for the boxplot. 
+* **Example:** `12`
+* **Default:** `20`  
+<br>
+
+`x.label`
+
+* **Description:**  Specifies the label of the x-axis. Default is the node.feature
+* **Example:** `"Isotype"`
+* **Default:** `node.feature`  
+<br>
+
+`group.order`
+
+* **Description:**  Order of the groups on the x-axis. By default the alphabetical or numerical order is used.
+* **Example:** `c("IgM", "IgG")`
+* **Default:** `NULL`  
+<br>
+
+`significance`
+
+* **Description:**  If TRUE, the adjusted p-value of a paired T test between the groups is plotted.
+* **Example:** `FALSE`
+* **Default:** `TRUE`  
+<br>
+
+`parallel`
+
+* **Description:** If `TRUE`, the metrics calculation is executed in parallel (parallelized across clonotypes) using either the `parallel::parLapply()` function (on Windows) or the `parallel:mclapply()` function (on Linux/MacOS).  
+* **Default:** `FALSE`  
+<br>
+
+`output.file`
+
+* **Description:** If a path is specified, the generated plot is saved as a PNG or PDF file at that location.  
+* **Example:** `"/directory/scatterplot.png"`  
+* **Default:** `NULL`   
+<br>
+</div>
+
+### Examples {.tabset}
+
+<div class=text-justify>
+
+As an example, we calculate the metric dataframe of an AntibodyForests object for trees with at least 10 nodes. The rownames include the sample ID, followed by the clonotype ID.
+
+```{r, metric_dataframe}
+# Calculate the metric dataframe for the AntibodyForests object
+metric_df <- Af_metrics(input = AntibodyForests_OVA_default,
+                        min.nodes = 10,
+                        metrics = c("mean.depth", "sackin.index", "spectral.density"))
+
+# Print the dataframe
+DT::datatable(data = metric_df,
+              rownames = TRUE,
+              options = list(scrollX = TRUE)
+)
+```
+
+We also investigate if nodes from the IgA isotype are closer to the germline in these trees than nodes from the IgG isotype. We visualize the results in a boxplot and observe no significant difference.
+
+```{r, compare_distance_isotype}
+# Cluster the trees in the repertoire based on the euclidean distance between various metrics of each tree
+Af_distance_boxplot(AntibodyForests_object = AntibodyForests_OVA_default,
+                    node.feature = "isotype",
+                    distance = "node.depth",
+                    min.nodes = 8,
+                    groups = c("IgG1", "IgA"),
+                    text.size = 16,
+                    unconnected = T,
+                    significance = T)
+```
+
+
+#### 1. Euclidean distance {.tabset}
+
+Now we cluster the trees in this AntibodyForests object based on the euclidean distance between these metrics. We visualize the results in a PCA plot and observe three clusters.
+
+```{r, compare_within_repertoire_example1}
+# Cluster the trees in the repertoire based on the euclidean distance between various metrics of each tree
+out <- Af_compare_within_repertoires(input = AntibodyForests_OVA_default,
+                                     min.nodes = 8,
+                                     distance.method = "euclidean",
+                                     distance.metrics = c("mean.depth", "sackin.index", "spectral.density"),
+                                     clustering.method = "mediods",
+                                     visualization.methods = "PCA")
+# Plot the PCA colored on the assigned clusters
+out$plots$PCA_clusters
+```
+
+Next, we analyze the difference between the clusters with the functions **`Af_cluster_metrics()`** and **`Af_cluster_node_features()`**. Here, we observe that cluster 1 contains trees with a relatively high sackin index and a low number of spectral density modalities. Cluster 2 contains trees with a low sackin index and a high number of spectral density modalities. Cluster 3 contains trees with a low sackin index and a low number of spectral density modalities. And cluster 3 contains trees with a low sackin index and a high number of spectral density modalities. Moreover, there is no significant difference in isotype distribution between the clusters.
+
+```{r, cluster_metrics_example1}
+# Analyze the difference between the clusters based on the calculated sackin.index
+plots <- Af_cluster_metrics(input = AntibodyForests_OVA_default,
+                   clusters = out$clustering,
+                   metrics = c("sackin.index", "spectral.density"),
+                   min.nodes = 8,
+                   significance = T)
+
+plots$sackin.index
+plots$modalities
+```
+
+```{r, cluster_node_features_example1}
+# Analyze the difference between the clusters based on the calculated sackin.index
+plots <- Af_cluster_node_features(input = AntibodyForests_OVA_default,
+                   clusters = out$clustering,
+                   features = "isotype",
+                   fill = "max",
+                   significance = T)
+
+plots$isotype
+```
+
+<br>
+
+#### 2. Laplacian Spectral Density {.tabset}
+
+Now we cluster the trees in this AntibodyForests object based on the Jensen-Shannon divergence between the Spectral Density profiles. We visualize the results in a heatmap and observe two clusters.
+
+```{r, compare_within_repertoire_example2}
+# Cluster the trees in the repertoire based on the Jensen-Shannon divergence between the Spectral Density profiles
+out <- Af_compare_within_repertoires(input = AntibodyForests_OVA_default,
+                                     min.nodes = 8,
+                                     distance.method = "jensen-shannon",
+                                     clustering.method = "mediods",
+                                     visualization.methods = "heatmap")
+# Plot the heatmap
+out$plots$heatmap
+```
+
+Next, we analyze the difference between the clusters with the functions **`Af_cluster_metrics()`** and **`Af_cluster_node_features()`**. Here, we observe that cluster 1 contains trees with a high spectral asymmetry and a low number of spectral density modalities, and cluster 2 vice versa. Again, we observe no significant difference in isotype distribution between the clusters.
+
+```{r, cluster_metrics_example2}
+# Analyze the difference between the clusters based on the calculated sackin.index
+plots <- Af_cluster_metrics(input = AntibodyForests_OVA_default,
+                   clusters = out$clustering,
+                   metrics = "spectral.density",
+                   min.nodes = 8,
+                   significance = T)
+
+plots$spectral.asymmetry
+plots$modalities
+```
+
+```{r, cluster_node_features_example2}
+# Analyze the difference between the clusters based on the calculated sackin.index
+plots <- Af_cluster_node_features(input = AntibodyForests_OVA_default,
+                   clusters = out$clustering,
+                   features = "isotype",
+                   fill = "max",
+                   significance = T)
+
+plots$isotype
 ```
 <br>
 
 </div>
 
-## 5. Assessing evolutionary likelihood of somatic hypermutation with Protein Language Models (PLM)
+## 7. Assessing evolutionary likelihood of somatic hypermutation with Protein Language Models (PLM)
 
 ### Summary
 
@@ -1670,7 +2366,7 @@ The pseudolikelihoods and probability matrices can be supplied manually, or easi
 <br>
 
 
-#### **Af_distance_scatterplot()**
+#### **Af_distance_scatterplot()** {#distance_scatterplot}
 
 `AntibodyForests_object`
 
@@ -1974,7 +2670,7 @@ Af_plot_PLM(PLM_dataframe = PLM_dataframe,
 
 <br>
 
-## 6. Investigate the evolution of antibody structure along the lineage trees
+## 8. Investigate the evolution of antibody 3D structure along the lineage trees
 
 [...]
 ```{r}
@@ -2119,6 +2815,8 @@ BuildTrees.py -d ../data/OVA_scRNA-seq_data/VDJ/airr_rearrangement.tsv --collaps
 <br>
 
 </div>
+
+
 
 ## Contributions
 
