@@ -22,6 +22,11 @@
 #' @return A list with all clonotypes that pass the min.nodes threshold including the distance matrix, possible clustering and visualization
 #' @export
 #' @examples
+#' Af_compare_methods(input = list("Default" = AntibodyForests_OVA_default,
+#'                                 "MST" = AntibodyForests_OVA_mst,
+#'                                 "NJ" = AntibodyForests_OVA_nj),
+#'                    depth = "edge.count",
+#'                     visualization.methods = "heatmap")
 
 Af_compare_methods <- function(input,
                                     min.nodes,
@@ -277,11 +282,12 @@ Af_compare_methods <- function(input,
       #print(clusters)
       #Plot the clustered heatmap
       p <- pheatmap::pheatmap(as.matrix(df),
-                         annotation_col = clusters)
+                         annotation_col = clusters,
+                         silent = T)
     }
     #If there are no clusters
     else{
-      p <- pheatmap::pheatmap(as.matrix(df))}
+      p <- pheatmap::pheatmap(as.matrix(df), silent = T)}
     
     return(p)
   }
@@ -475,11 +481,22 @@ Af_compare_methods <- function(input,
         clonotype_antibodyforests <- lapply(names(input), function(x){return(input[[x]][[sample]][[clonotype]])})
         names(clonotype_antibodyforests) <- paste0(methods)
         
-        #Calculate the GBLD
-        distance_matrix <- tryCatch({calculate_GBLD_methods(clonotype_antibodyforests, min.nodes = min.nodes)},
-                                    error = function(e) {return(NA)})
-        #Add to the distance list
-        if(is.matrix(distance_matrix)){distance_list[[paste0(sample,".",clonotype)]] <- distance_matrix}
+        #Check if all trees have at least min.nodes
+        pass = T
+        for (method in names(clonotype_antibodyforests)){
+          tree_igraph <- clonotype_antibodyforests[[method]][['igraph']]
+          if (is.null(tree_igraph)){pass = F}
+          else if (igraph::vcount(tree_igraph) < min.nodes){pass = F}
+        }
+        if(pass){
+          #Calculate the GBLD
+          distance_matrix <- tryCatch({calculate_GBLD_methods(clonotype_antibodyforests, min.nodes = min.nodes)},
+                                      error = function(e) {return(NA)})
+          #Add to the distance list
+          if(is.matrix(distance_matrix)){distance_list[[paste0(sample,".",clonotype)]] <- distance_matrix}
+        } 
+
+
         }
     }
     return(distance_list)

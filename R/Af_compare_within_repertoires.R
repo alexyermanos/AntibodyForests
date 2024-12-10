@@ -6,14 +6,13 @@
 #' 'none'           : No distance metric, analyze similarity directly from distance.metrics
 #' 'euclidean'      : 
 #' 'jensen-shannon' : Jensen-Shannon distance between spectral density profiles of trees.
-#' 'GBLD'           : Generalized Branch Length Distance between trees.
 #' @param distance.metrics - string - If distance.method is "none" or "euclidean", these metrics will be used to calculate clusters and PCA/MDS dimensions and are used for plotting. (Default is mean.depth and nr.nodes)
 #' 'nr.nodes'         : The total number of nodes
 #' 'nr.cells'         : The total number of cells in this clonotype
 #' 'mean.depth'       : Mean of the number of edges connecting each node to the germline
 #' 'mean.edge.length' : Mean of the edge lengths between each node and the germline
 #' 'group.depth'      : Mean of the number of edges connecting each node per group (node.features of the AntibodyForests-object) to the germline. (default FALSE)
-#' 'sackin.index'     : Sum of the number of nodes between each node and the germline
+#' 'sackin.index'     : Sum of the number of nodes between each terminal node and the germline, normalized for the number of terminal nodes.
 #' 'spectral.density' : Metrics of the spectral density profiles (calculated with package RPANDA)
 #'    - peakedness            : Tree balance
 #'    - asymmetry             : Shallow or deep branching events
@@ -26,7 +25,6 @@
 #' 'PCA'            : Scatterplot of the first two principal components. This is usefull when distance.method is "none".
 #' 'MDS'            : Scatterplot of the first two dimensions using multidimensional scaling. Usefull for all distance methods
 #' 'heatmap'        : A (clustered) heatmap of the distance between clonotypes. If distance.method is "none", euclidean distance will be calculated.
-# #' @param metrics.to.visualize - string - Other metrics from the input to use for visualization.
 #' @param plot.label - boolean - Label clonotypes in the PCA/MDS plot (default FALSE)
 #' @param text.size - integer - Size of the text in the plots (default 12)
 #' @param point.size - integer - Size of the points in the plots (default 2)
@@ -42,7 +40,6 @@ Af_compare_within_repertoires <- function(input,
                                     distance.metrics,
                                     clustering.method,
                                     visualization.methods,
-                                    #metrics.to.visualize,
                                     plot.label,
                                     text.size,
                                     point.size = 2,
@@ -54,7 +51,6 @@ Af_compare_within_repertoires <- function(input,
   if (class(input) != "AntibodyForests"){stop("The input is not in the correct format.")}
   if(missing(min.nodes)){min.nodes = 2}
   if(missing(visualization.methods)){visualization.methods = "PCA"}
-  #if(missing(metrics.to.visualize)){metrics.to.visualize = "none"}
   if(missing(distance.metrics)){distance.metrics = c("mean.depth", "nr.nodes")}
   if(missing(distance.method)){distance.method = "none"}
   if(missing(clustering.method)){clustering.method = "none"}
@@ -181,10 +177,11 @@ Af_compare_within_repertoires <- function(input,
       #Plot the clustered heatmap
       p <- pheatmap::pheatmap(as.matrix(df),
                               annotation_col = clusters,
-                              fontsize = text.size)
+                              fontsize = text.size,
+                              silent = T)
     }
     #If there are no clusters
-    else{p <- pheatmap::pheatmap(as.matrix(df))}
+    else{p <- pheatmap::pheatmap(as.matrix(df), silent = T)}
     
     return(p)
   }

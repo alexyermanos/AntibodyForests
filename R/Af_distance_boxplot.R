@@ -112,10 +112,7 @@ Af_distance_boxplot <- function(AntibodyForests_object,
     ggplot2::theme_classic() +
     ggplot2::theme(text = ggplot2::element_text(size = text.size),
                    legend.position = "none")  +
-    # ggplot2::scale_x_discrete(breaks=paste0(groups,".", distance),
-    #                  labels=groups) +
-    ggplot2::ggtitle(paste0("Distance (", distance, ") to germline")) +
-    ggplot2::xlab(x.label)
+    ggplot2::xlab(x.label) + ggplot2::ylab(paste0("Distance (", distance, ") to germline"))
   
   #Add significance to the plot
   if(significance){

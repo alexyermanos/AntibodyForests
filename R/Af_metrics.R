@@ -10,13 +10,13 @@
 #' 'mean.edge.length' : Mean of the edge lengths between each node and the germline
 #' 'group.node.depth'      : Mean of the number of edges connecting each node per group (node.features of the AntibodyForests-object) to the germline. (default FALSE)
 #' 'group.edge.length'    : Mean of the sum of edge length of the shortest path between germline and nodes per group (node.features of the AntibodyForests-object) 
-#' 'sackin.index'     : Sum of the number of nodes between each node and the germline
+#' 'sackin.index'     : Sum of the number of nodes between each terminal node and the germline, normalized by the total number of terminal nodes.
 #' 'spectral.density' : Metrics of the spectral density profiles (calculated with package RPANDA)
 #'    - peakedness            : Tree balance
 #'    - asymmetry             : Shallow or deep branching events
 #'    - principal eigenvalue  : Phylogenetic diversity
 #'    - modalities            : The number of different structures within the tree
-#' @param node.feature The node feature to be used for the group.depth metric.
+#' @param node.feature The node feature to be used for the group.edge.length or group.nodes.depth metric.
 #' @param group.node.feature The groups in the node feature to be plotted. Set to NA if all features should displayed. (default NA)
 #' @param parallel If TRUE, the metric calculations are parallelized (default FALSE)
 #' @param num.cores Number of cores to be used when parallel = TRUE. (Defaults to all available cores - 1)
@@ -78,10 +78,16 @@ Af_metrics <- function(input,
   
   
   calculate_sackin_index <- function(tree){
+    #Identify the leaves
+    leaves <- igraph::V(tree)[igraph::degree(tree, mode = "out") == 0]
     #Get the shortest paths between each node and the germline
-    paths <- igraph::shortest_paths(tree, from = "germline", output = "both")
+    depths <- sapply(leaves, function(leaf) {
+      igraph::shortest_paths(tree, from = "germline", to = leaf, mode = "out")$vpath[[1]] %>% length() - 1
+    })
     #Sum the number of nodes in the paths
-    depth <- sum(unlist(lapply(paths$vpath, length)))
+    depth <- sum(depths)
+    #Normalize by the number of leaves
+    depth <- depth/length(leaves)
     return(depth)
   }
   

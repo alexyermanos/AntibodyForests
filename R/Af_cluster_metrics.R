@@ -1,6 +1,6 @@
 #' Function to make a grouped boxplot of metrics from clusters of clonotypes
 #' @description Function to compare metrics between clusters of clontoypes
-#' @param af - list - AntibodyForests-object as output from Af_build()
+#' @param input - list - AntibodyForests-object as output from Af_build()
 #' @param clusters - named integer - The clusters as output from Af_compare_within_repertoires()
 #' @param metrics - string - The metrics to be calculated per tree
 #' 'nr.nodes'         : The total number of nodes
@@ -8,7 +8,7 @@
 #' 'mean.depth'       : Mean of the number of edges connecting each node to the germline
 #' 'mean.edge.length' : Mean of the edge lengths between each node and the germline
 #' 'group.depth'      : Mean of the number of edges connecting each node per group (node.features of the AntibodyForests-object) to the germline. (default FALSE)
-#' 'sackin.index'     : Sum of the number of nodes between each node and the germline
+#' 'sackin.index'     : Sum of the number of nodes between each terminal node and the germline, normalized by the total number of terminal nodes.
 #' 'spectral.density' : Metrics of the spectral density profiles (calculated with package RPANDA)
 #'    - peakedness            : Tree balance
 #'    - asymmetry             : Shallow or deep branching events
@@ -19,37 +19,42 @@
 #' @param text.size Font size in the plot (default 20).
 #' @param significane - boolean - If TRUE, the significance of a T test between the groups is plotted (default FALSE)
 #' @param parallel If TRUE, the metric calculations are parallelized across clonotypes. (default FALSE)
+#' @param num.cores Number of cores to be used when parallel = TRUE. (Defaults to all available cores - 1)
 #' @return - list - A list with boxplots per metric
 #' @export
 #' @examples
 
-Af_cluster_metrics <- function(af,
+Af_cluster_metrics <- function(input,
                                      clusters,
                                      metrics,
                                      min.nodes,
                                      colors,
                                      text.size,
                                      significance,
-                                     parallel){
+                                     parallel,
+                               num.cores){
   
   #Set defaults and check for missing input
-  if(missing(af)){stop("Please provide an AntibodyForests-object as input.")}
+  if(missing(input)){stop("Please provide an AntibodyForests-object as input.")}
   if(missing(clusters)){stop("Please provide clusters as input.")}
   if(missing(metrics)){stop("Please provide metrics to calculate.")}
   if(missing(min.nodes)){min.nodes = 0}
   if(missing(colors)){colors = scales::hue_pal()(length(unique(clusters)))}
   if(missing(text.size)){text.size = 20}
-  if(missing(significance)){significane = F}
+  if(missing(significance)){significance = F}
   if(missing(parallel)){parallel <- F}
+  # If 'parallel' is set to TRUE but 'num.cores' is not specified, the number of cores is set to all available cores - 1
+  if(parallel == TRUE && missing(num.cores)){num.cores <- parallel::detectCores() -1}
   #Check if group are in the metric dataframe
   #if(!(all(groups %in% colnames(metric_df)))){stop("Groups are not in the column names of the metric dataframe.")}
   
   #Calculate the metrics
-  metric_df <- Af_metrics(af,
+  metric_df <- Af_metrics(input,
                                        parallel = parallel,
                                        min.nodes = min.nodes,
                                        metrics = metrics)
-
+  #Remove the sample columns from the dataframe
+  metric_df <- metric_df[,!(colnames(metric_df) %in% c("sample"))]
   
   #Check if clonotypes are the same between metric_df and clusters
   if (nrow(metric_df) < length(clusters)){stop("Make sure that min.nodes threshold is not higher then min.nodes used when running Af_compare_within_repertoires().")}
@@ -75,8 +80,7 @@ Af_cluster_metrics <- function(af,
       ggplot2::theme_classic() +
       ggplot2::theme(text = ggplot2::element_text(size = text.size),
                      legend.position = "none") +
-      ggplot2::xlab("Cluster") +
-      ggplot2::ggtitle(paste0(metric, " per cluster"))
+      ggplot2::xlab("Cluster") + ggplot2::ylab(metric)
     
     #Add significance to the plot
     if(significance){
