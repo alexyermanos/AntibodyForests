@@ -8,7 +8,7 @@
 #' 'nr.cells'         : The total number of cells in this clonotype
 #' 'mean.depth'       : Mean of the number of edges connecting each node to the germline
 #' 'mean.edge.length' : Mean of the edge lengths between each node and the germline
-#' 'sackin.index'     : Sum of the number of nodes between each node and the germline
+#' 'sackin.index'     : Sum of the number of nodes between each terminal node and the germline, normalized by the number of terminal nodes
 #' 'spectral.density' : Metrics of the spectral density profiles (calculated with package RPANDA)
 #'    - peakedness            : Tree balance
 #'    - asymmetry             : Shallow or deep branching events
@@ -206,12 +206,11 @@ Af_compare_across_repertoires <- function(AntibodyForests_list,
       #Plot
       if (plot == "freqpoly"){
         output_plot[["degree"]] <- ggplot2::ggplot(degree_df, ggplot2::aes(degree)) +
-          ggplot2::geom_freqpoly(binwidth = max(as.numeric(betweenness_df$betweenness))/1000, ggplot2::aes(colour = group)) +
+          ggplot2::geom_freqpoly(binwidth = max(as.numeric(betweenness_df$betweenness))/1000, linewidth = 1, ggplot2::aes(colour = group)) +
           ggplot2::scale_colour_manual(values=colors) +
           ggplot2::scale_x_continuous(trans='log10') +
           ggplot2::theme_classic() +
-          ggplot2::theme(text = ggplot2::element_text(size = text.size),
-                         legend.position = "none")
+          ggplot2::theme(text = ggplot2::element_text(size = text.size))
       }
       if (plot == "boxplot"){
         p <- ggplot2::ggplot(degree_df, ggplot2::aes(x = group, y = degree, fill = group)) +
@@ -249,7 +248,7 @@ Af_compare_across_repertoires <- function(AntibodyForests_list,
     metrics_list <- lapply(names(AntibodyForests_list), function(group){
       #Calculate the metrics
       if("spectral.density" %in% metrics){min.nodes = 3}else{min.nodes = 1}
-      metrics_df <- Af_metrics(input = AntibodyForests_list[[group]], metrics = metrics, min.nodes = min.nodes, parallel = parallel)
+      metrics_df <- Af_metrics(input = AntibodyForests_list[[group]], metrics = metrics[which(metrics != c("betweenness", "degree"))], min.nodes = min.nodes, parallel = parallel)
       metrics_df$group <- group
       return(metrics_df)
     })
@@ -265,11 +264,10 @@ Af_compare_across_repertoires <- function(AntibodyForests_list,
       temp_metrics_df <- metrics_df[!is.na(metrics_df[,metric]),]
       if (plot == "freqpoly"){
         output_plot[[metric]] <- ggplot2::ggplot(temp_metrics_df, ggplot2::aes(.data[[metric]])) +
-          ggplot2::geom_freqpoly(binwidth = max(as.numeric(temp_metrics_df[,metric]))/30, ggplot2::aes(colour = group)) +
+          ggplot2::geom_freqpoly(binwidth = max(as.numeric(temp_metrics_df[,metric]))/30, linewidth = 1, ggplot2::aes(colour = group)) +
           #ggplot2::scale_x_continuous(trans='log10') +
           ggplot2::theme_classic() +
-          ggplot2::theme(text = ggplot2::element_text(size = text.size),
-                         legend.position = "none") +
+          ggplot2::theme(text = ggplot2::element_text(size = text.size)) +
           ggplot2::xlab(metric)
       }
       if (plot == "boxplot"){

@@ -249,6 +249,8 @@ Af_metrics <- function(input,
         metric_df <- metric_df[which(is.na(metric_df[,ncol(metric_df)]) == FALSE),]
         #Transform to dataframe
         metric_df <- as.data.frame(metric_df)
+        #Fix columnname if only 1 metric is supplied
+        if(length(metrics) == 1 && !(metrics %in% c('group.node.depth', 'group.edge.length'))){colnames(metric_df) <- metrics}
         #Add sample names to the dataframe
         metric_df$sample <- gsub(".clonotype(.*)$", "", rownames(metric_df))
         return(metric_df)
@@ -283,6 +285,8 @@ Af_metrics <- function(input,
         metric_df <- metric_df[which(is.na(metric_df[,ncol(metric_df)]) == FALSE),]
         #Transform to dataframe
         metric_df <- as.data.frame(metric_df)
+        #Fix columnname if only 1 metric is supplied
+        if(length(metrics) == 1 && !(metrics %in% c('group.node.depth', 'group.edge.length'))){colnames(metric_df) <- metrics}
         #Add sample names to the dataframe
         metric_df$sample <- gsub(".clonotype(.*)$", "", rownames(metric_df))
         return(metric_df)
@@ -316,6 +320,8 @@ Af_metrics <- function(input,
       metric_df <- metric_df[which(is.na(metric_df[,ncol(metric_df)]) == FALSE),]
       #Transform to dataframe
       metric_df <- as.data.frame(metric_df)
+      #Fix columnname if only 1 metric is supplied
+      if(length(metrics) == 1 && !(metrics %in% c('group.node.depth', 'group.edge.length'))){colnames(metric_df) <- metrics}
       #Add sample names to the dataframe
       metric_df$sample <- gsub(".clonotype(.*)$", "", rownames(metric_df))
       return(metric_df)
