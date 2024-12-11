@@ -71,6 +71,7 @@ source("~/Documents/GitHub/AntibodyForests/R/igraph_to_phylo.R")
 source("~/Documents/GitHub/AntibodyForests/R/Af_cluster_metrics.R")
 source("~/Documents/GitHub/AntibodyForests/R/Af_cluster_node_features.R")
 source("~/Documents/GitHub/AntibodyForests/R/Af_distance_boxplot.R")
+source("~/Documents/GitHub/AntibodyForests/R/Af_compare_across_repertoires.R")
 
 library(magrittr)
 ```
@@ -2294,7 +2295,7 @@ out <- Af_compare_within_repertoires(input = AntibodyForests_OVA_default,
                                      clustering.method = "mediods",
                                      visualization.methods = "heatmap")
 # Plot the heatmap
-out$plots$heatmap
+out$plots$heatmap_clusters
 ```
 
 Next, we analyze the difference between the clusters with the functions **`Af_cluster_metrics()`** and **`Af_cluster_node_features()`**. Here, we observe that cluster 1 contains trees with a high spectral asymmetry and a low number of spectral density modalities, and cluster 2 vice versa. Again, we observe no significant difference in isotype distribution between the clusters.
@@ -2321,6 +2322,146 @@ plots <- Af_cluster_node_features(input = AntibodyForests_OVA_default,
 
 plots$isotype
 ```
+<br>
+
+</div>
+
+## 6. Compare antibody lineage trees across repertoires with the `Af_compare_across_repertoires()` function
+
+### Summary
+
+<div class=text-justify>
+
+The quantify different evolutionary patterns between (groups of) repertoires within or across individuals, the AntibodyForests package provides a function, **`Af_compare_across_repertoires()`**, to calculates tree topology metrics of trees and compares them between repertoires. The function included different graph theory metrics such as the edge betweenness or the degree centrality, but it also includes all the metrics available in the **`Af_metrics()`** function. The function can plot these metrics in boxplots or frequency polygons per repertoire and calculates the statistical significance.
+<br>
+
+
+### Parameters
+
+<br>
+
+#### **Af_compare_across_repertoires()**
+
+`AntibodyForests_list`
+
+* **Description:** A list of AntibodyForests objects as obtained from the **`Af_build()`** function.  
+* **Example:** `list("repertoire1" = AntibodyForests_object1, "repertoire2" = AntibodyForests_object2)`  
+* **Default:** *None*  
+<br>
+
+`metrics`
+
+* **Description:** The metrics to calculate per tree. Options include:  
+<br>
+  + **`"betweenness"`**
+  The edge betweenness centrality of the trees, which is the number of shortest paths through each node.
+  <br>
+  + **`"degree"`**
+  The degree centrality of the trees, which is the total number of edges connected to each node.
+  <br>
+  + **`"nr.nodes"`** 
+  The total number of nodes.  
+  <br>
+  + **`"nr.cells"`** 
+  The total number of cells.  
+  <br>
+  + **`"mean.depth"`**
+  The average number of edges connecting each node to the germline along the shortest path.  
+  <br>
+  + **`"mean.edge.length"`** 
+  The average sum of edge lengths connecting each node to the germline along the shortest path.  
+  <br>
+    + **`"sackin.index"`** 
+  The sackin index is used to quantify the imbalance of a tree. This is calculated as the sum of the depths of all leaves in the tree, normalized by the number of leaves.  
+  <br>
+    + **`"spectral.density"`**
+  This option constructs the spectral density profile of a tree to identify the underlying shape of the phylogeny. This option outputs four metrics: `spectral.peakedness` for tree imbalance, `spectral.asymmetry` to quantify skewness of branching events, `spectral.principal.eigenvalue` as indicator for diversity, and `modalities` as the number of different density profiles within this tree.
+  <br>
+* **Example:** `c("mean.depth","spectral.density","betweenness")` 
+* **Default:** `c("betweenness", "degree")`  
+<br>
+
+`plot`
+
+* **Description:** The visualization methods to use for the comparison. Options are `boxplot` or `freqpoly`.
+* **Example:** `freqpoly`
+* **Default:** `boxplot`  
+<br>
+
+`text.size`
+
+* **Description:**  Specifies the font size for the plots. 
+* **Example:** `12`
+* **Default:** `20`  
+<br>
+
+`colors`
+
+* **Description:**  Specifies the color palette to use for the boxplots. 
+* **Example:** `"c("blue","red")"`
+* **Default:** The `ggplot2` default colors.  
+<br>
+
+
+`significance`
+
+* **Description:**  If TRUE, the adjusted p-value of a paired T test between the groups is plotted in the boxplot.
+* **Example:** `TRUE`
+* **Default:** `FALSE`  
+<br>
+
+`parallel`
+
+* **Description:** If `TRUE`, the metrics calculation is executed in parallel (parallelized across clonotypes) using either the `parallel::parLapply()` function (on Windows) or the `parallel:mclapply()` function (on Linux/MacOS).  
+* **Default:** `FALSE`  
+<br>
+
+`num.cores`
+
+* **Description:** Number of cores to be used when the `parallel` parameter is set to `TRUE`.  
+* **Example:** `4`  
+* **Default:** All available cores - 1.  
+<br>
+
+</div>
+
+### Examples {.tabset}
+
+<div class=text-justify>
+
+
+```{r, across_repertoire_import, echo = F}
+load("~/Documents/GitHub/AntibodyForests/vignette/objects/AntibodyForests_example_blood.RData")
+load("~/Documents/GitHub/AntibodyForests/vignette/objects/AntibodyForests_example_LN.RData")
+```
+
+#### 1. Boxplot {.tabset}
+
+We compare the difference in edge betweenness and degree centrality between B cell repertoires of different samples from blood and lymph nodes. We observe that the lymph node repertoire have a higher betweenness and lower mean depth in comparison to the blood repertoires, meaning more variants emerging from the same node instead of a deeper tree where variants emerge sequentially.
+
+```{r, compare_across_repertoire_example1}
+#Calculate the difference between the two groups of repertoires
+boxplots <- Af_compare_across_repertoires(list("Blood" = AntibodyForests_example_blood, "Lymph Nodes" = AntibodyForests_example_LN), metrics = c("betweenness", "mean.depth"), significance = T)
+
+#Plot the boxplots
+boxplots$betweenness
+boxplots$mean.depth
+```
+
+<br>
+
+#### 2. Frequency Polygon {.tabset}
+
+We compare the difference in spectral density profiles between B cell repertoires of different samples from blood and lymph nodes. We observe that lineage trees from the blood repertoire have an overall higher spectral principal eigenvalue in comparison to trees from the blood repertoires, meaning a lower phylogenetic diversity.
+
+```{r, compare_across_repertoire_example2}
+#Calculate the difference between the two groups of repertoires
+freqpoly <- Af_compare_across_repertoires(list("Blood" = AntibodyForests_example_blood, "Lymph Nodes" = AntibodyForests_example_LN), metrics = c("spectral.density"), plot = "freqpoly")
+
+#Plot the frequency polygon of the spectral principal eigenvalue
+freqpoly$spectral.principal.eigenvalue
+```
+
 <br>
 
 </div>
