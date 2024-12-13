@@ -18,6 +18,7 @@
 #' - whole.complex: the whole complex of antibody-antigen (all available chains in the pdb file).
 #' @param font.size The font size of the plot. Default is 12.
 #' @param point.size The size of the points in the scatterplot. Default is 1.
+#' @param color The color of the dots in the scatterplot. Default is "black".
 #' @param output.file string - specifies the path to the output file (PNG of PDF). Defaults to NULL.
 #' @return a dataframe with the sample, clonotype, node numbers, number of substitutions, and edge RMSD
 #' @export
@@ -33,6 +34,7 @@ Af_edge_RMSD <- function(AntibodyForests_object,
                          chain,
                          font.size,
                          point.size,
+                         color,
                          output.file){
   
   if(missing(AntibodyForests_object)){stop("Please provide an AntibodyForests object")}
@@ -53,6 +55,7 @@ Af_edge_RMSD <- function(AntibodyForests_object,
   if(missing(font.size)){font.size = 12}
   if(missing(point.size)){point.size = 1}
   if(missing(output.file)){output.file = NULL}
+  if(missing(color)){color = "black"}
   
   output_df <- data.frame(sample = character(), clonotype = character(), node1 = character(), node2 = character(),
                           n_subs = numeric(), edge_RMSD = numeric())
@@ -215,11 +218,11 @@ Af_edge_RMSD <- function(AntibodyForests_object,
   cor <- stats::cor.test(as.numeric(output_df$n_subs), output_df$edge_RMSD, method = "pearson", exact = F)
   
   p <- ggplot2::ggplot(output_df, ggplot2::aes(x = as.numeric(n_subs), y = edge_RMSD)) +
-    ggplot2::geom_point(size = point.size) +
+    ggplot2::geom_point(size = point.size, color = color) +
     ggplot2::theme_classic() +
     ggplot2::theme(text = ggplot2::element_text(size = font.size)) +
     ggplot2::geom_smooth(method = "lm", color = "black") +
-    ggplot2::ylab("Edge RMSD") + xlab("Number of substitutions") +
+    ggplot2::ylab("Edge RMSD") + ggplot2::xlab("Number of substitutions") +
     ggplot2::ggtitle(paste0("R\u00b2 = ", round(cor$estimate, digits = 2)))
   
   if(!is.null(output.file)){

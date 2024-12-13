@@ -137,7 +137,6 @@ Af_distance_scatterplot <- function(AntibodyForests_object,
     count = count + 1
     #Create the scatterplot
     p <- ggplot2::ggplot(shuffled_data, ggplot2::aes(x = as.numeric(germline), y = .data[[feature]])) +
-      ggplot2::geom_point(size = point.size) +
       ggplot2::theme_classic() +
       ggplot2::theme(text = ggplot2::element_text(size = font.size))
     
@@ -150,7 +149,10 @@ Af_distance_scatterplot <- function(AntibodyForests_object,
     
     #Color by color.by feature
     if (color.by != "none"){
-      p <- p + ggplot2::aes(color = .data[[color.by]])
+      p <- p + ggplot2::geom_point(size = point.size) +
+        ggplot2::aes(color = .data[[color.by]])
+    }else{
+      p <- p + ggplot2::geom_point(size = point.size, color = color.palette[1])
     }
     
     #If color.palette is provided, use that
