@@ -669,21 +669,21 @@ Af_build <- function(VDJ,
     if(approach == "tree" && algorithm == "mp"){
       
       # A maximum parsimony tree can only be build if there are 3 or more sequences
-      if(length(msa) > 2){
+      if(length(msa_obj) > 2){
         
         # Create maximum parsimony trees with the 'phangorn::pratchet()' function (and hide in-function printed message)
-        base::invisible(utils::capture.output(phylo_object <- phangorn::pratchet(msa)))
+        base::invisible(utils::capture.output(phylo_object <- phangorn::pratchet(msa_obj)))
         
         # Assign branch lengths to the trees 
-        phylo_object <- phangorn::acctran(phylo_object, msa)
+        phylo_object <- phangorn::acctran(phylo_object, msa_obj)
         
         # Remove node labels to enable conversion into igraph object
         phylo_object$node.label <- NULL
       }
       
       # If there are less than 3 sequences, the tree consists of a germline node and a single descendant ('node1'), with a distance that is equal to the hamming distance
-      if(length(msa) < 3){
-        edges <- data.frame(upper.node = "germline", lower.node = "node1", edge.length = stringdist::stringdist(as.character(phangorn::as.MultipleAlignment(msa))[1], as.character(phangorn::as.MultipleAlignment(msa))[2], method = "hamming"))
+      if(length(msa_obj) < 3){
+        edges <- data.frame(upper.node = "germline", lower.node = "node1", edge.length = stringdist::stringdist(as.character(phangorn::as.MultipleAlignment(msa_obj))[1], as.character(phangorn::as.MultipleAlignment(msa_obj))[2], method = "hamming"))
         igraph_object <- igraph::graph_from_data_frame(edges, directed = TRUE)
         
         # As no 'phylo_object' can be created, internal nodes are absent, and therefore the 'phylo_object', 'igraph_object_with_inner_nodes', and 'edges_with_inner_nodes' are set to NULL
@@ -698,21 +698,21 @@ Af_build <- function(VDJ,
     if(approach == "tree" && algorithm == "ml"){
       
       # A maximum likelihood tree can only be build if there are 3 or more sequences
-      if(length(msa) > 2){
+      if(length(msa_obj) > 2){
         
         # If there are over 4 nodes, next to the germline, bootstrapping is allowed during maximum likelihood tree inference, and 'rearrangement_method' is set to 'stochastic'
-        if(length(msa) > 4){rearrangement_method <- "stochastic"}
+        if(length(msa_obj) > 4){rearrangement_method <- "stochastic"}
         
         # If there are 4 nodes or less, no bootstrapping is conducted, to prevent the creation of trees with less than three edges (such a tree cannot be unrooted)
-        if(length(msa) <= 4){rearrangement_method <- "NNI"}
+        if(length(msa_obj) <= 4){rearrangement_method <- "NNI"}
         
         #Function to catch errors during maximum likelihood tree inference
-        likelihood_inference <- function(sequence.type, dna.model, aa.model, msa, rearrangement_method){
+        likelihood_inference <- function(sequence.type, dna.model, aa.model, msa_obj, rearrangement_method){
           tryCatch(
             # Create maximum likelihood tree with the 'phangorn::pml_bb()' function (and hide in-function printed message), and store the best model according to the BIC value from the 'phangorn::modelTest()' function in the 'metrics' list
             {
-              if(sequence.type == "DNA"){base::invisible(utils::capture.output(ml_tree <- phangorn::pml_bb(phangorn::modelTest(object = msa, model = dna.model), rearrangement = rearrangement_method))); metrics["dna.model"] <- ml_tree[["model"]]}
-              if(sequence.type == "AA"){base::invisible(utils::capture.output(ml_tree <- phangorn::pml_bb(phangorn::modelTest(object = msa, model = aa.model), rearrangement = rearrangement_method))); metrics["aa.model"] <- ml_tree[["model"]]}
+              if(sequence.type == "DNA"){base::invisible(utils::capture.output(ml_tree <- phangorn::pml_bb(phangorn::modelTest(object = msa_obj, model = dna.model), rearrangement = rearrangement_method))); metrics["dna.model"] <- ml_tree[["model"]]}
+              if(sequence.type == "AA"){base::invisible(utils::capture.output(ml_tree <- phangorn::pml_bb(phangorn::modelTest(object = msa_obj, model = aa.model), rearrangement = rearrangement_method))); metrics["aa.model"] <- ml_tree[["model"]]}
               return(ml_tree)
             },
             error = function(e){
@@ -720,8 +720,8 @@ Af_build <- function(VDJ,
               message(paste0("An error occurred during maximum likelihood tree inference in ", clone, ". NNI rearrangement is attempted."))
               ml_tree <- tryCatch(
                 {
-                  if(sequence.type == "DNA"){base::invisible(utils::capture.output(ml_tree <- phangorn::pml_bb(phangorn::modelTest(object = msa, model = dna.model), rearrangement = "NNI"))); metrics["dna.model"] <- ml_tree[["model"]]}
-                  if(sequence.type == "AA"){base::invisible(utils::capture.output(ml_tree <- phangorn::pml_bb(phangorn::modelTest(object = msa, model = aa.model), rearrangement = "NNI"))); metrics["aa.model"] <- ml_tree[["model"]]}
+                  if(sequence.type == "DNA"){base::invisible(utils::capture.output(ml_tree <- phangorn::pml_bb(phangorn::modelTest(object = msa_obj, model = dna.model), rearrangement = "NNI"))); metrics["dna.model"] <- ml_tree[["model"]]}
+                  if(sequence.type == "AA"){base::invisible(utils::capture.output(ml_tree <- phangorn::pml_bb(phangorn::modelTest(object = msa_obj, model = aa.model), rearrangement = "NNI"))); metrics["aa.model"] <- ml_tree[["model"]]}
                   return(ml_tree)
                 },
                 error = function(e){
@@ -735,7 +735,7 @@ Af_build <- function(VDJ,
           )
         }
         # Create maximum likelihood tree with the 'phangorn::pml_bb()' function (and hide in-function printed message), and store the best model according to the BIC value from the 'phangorn::modelTest()' function in the 'metrics' list
-        ml_tree <- likelihood_inference(sequence.type, dna.model, aa.model, msa, rearrangement_method)
+        ml_tree <- likelihood_inference(sequence.type, dna.model, aa.model, msa_obj, rearrangement_method)
         
         if(is.null(ml_tree)){
           # As no 'phylo_object' can be created, internal nodes are absent, and therefore the 'phylo_object', 'igraph_object_with_inner_nodes', and 'edges_with_inner_nodes' are set to NULL
@@ -752,8 +752,8 @@ Af_build <- function(VDJ,
           if(!all(is.na(codon.model)) & !is.null(phylo_object)){
             
             # Convert the multiple sequence alignment into a matrix and remove '-' characters and save in 'codon_msa'
-            codon_msa <- do.call(rbind, lapply(names(msa), function(x){strsplit(gsub(pattern = "-", replacement = "", do.call(paste0, as.list(as.character(msa)[x,]))), split = "")[[1]]}))
-            rownames(codon_msa) <- names(msa)
+            codon_msa <- do.call(rbind, lapply(names(msa_obj), function(x){strsplit(gsub(pattern = "-", replacement = "", do.call(paste0, as.list(as.character(msa_obj)[x,]))), split = "")[[1]]}))
+            rownames(codon_msa) <- names(msa_obj)
             
             # Convert the 'codon_msa' into the phyDat format, which will be the input for the 'phangorn::codonTest() function
             codon_msa <- phangorn::as.phyDat(codon_msa, type = "CODON")
@@ -775,8 +775,8 @@ Af_build <- function(VDJ,
       }
         
       # If there are less than 3 sequences, the tree consists of a germline node and a single descendant ('node1'), with a distance that is equal to the hamming distance normalized by the mean sequence length
-      if(length(msa) < 3){
-        edges <- data.frame(upper.node = "germline", lower.node = "node1", edge.length = stringdist::stringdist(as.character(phangorn::as.MultipleAlignment(msa))[1], as.character(phangorn::as.MultipleAlignment(msa))[2], method = "hamming")/((nchar(as.character(phangorn::as.MultipleAlignment(msa))[1]) + nchar(as.character(phangorn::as.MultipleAlignment(msa))[2]))/2))
+      if(length(msa_obj) < 3){
+        edges <- data.frame(upper.node = "germline", lower.node = "node1", edge.length = stringdist::stringdist(as.character(phangorn::as.MultipleAlignment(msa_obj))[1], as.character(phangorn::as.MultipleAlignment(msa_obj))[2], method = "hamming")/((nchar(as.character(phangorn::as.MultipleAlignment(msa_obj))[1]) + nchar(as.character(phangorn::as.MultipleAlignment(msa_obj))[2]))/2))
         igraph_object <- igraph::graph_from_data_frame(edges, directed = TRUE)
         
         # As no 'phylo_object' can be created, internal nodes are absent, and therefore the 'phylo_object', 'igraph_object_with_inner_nodes', and 'edges_with_inner_nodes' are set to NULL
@@ -1257,27 +1257,27 @@ Af_build <- function(VDJ,
         }
         
         # Make the multiple sequence alignment with the 'msa::msa()' function from the msa package (and hide in-function printed messages)
-        base::invisible(utils::capture.output(msa <- msa::msa(seqs)))
+        base::invisible(utils::capture.output(msa_obj <- msa::msa(seqs)))
       }
       
-      # If a pairwise distance matrix needs to be computed, while the 'dna.model' parameter is specified, the distance matrix is computed with the 'ape::dist.dna()' function using the 'msa' as input
-      if(construction.method %in% c("phylo.network.default", "phylo.network.mst", "phylo.tree.nj") && !all(is.na(dna.model))){dist_matrix <- ape::dist.dna(ape::as.DNAbin(msa), model = dna.model, as.matrix = TRUE)}
+      # If a pairwise distance matrix needs to be computed, while the 'dna.model' parameter is specified, the distance matrix is computed with the 'ape::dist.dna()' function using the 'msa_obj' as input
+      if(construction.method %in% c("phylo.network.default", "phylo.network.mst", "phylo.tree.nj") && !all(is.na(dna.model))){dist_matrix <- ape::dist.dna(ape::as.DNAbin(msa_obj), model = dna.model, as.matrix = TRUE)}
       
       # If a pairwise distance matrix needs to be computed, while the 'aa.model' parameter is specified, the distance matrix is computed with the 'phangorn::dist.ml()' function using the 'seqs' list as input
-      if(construction.method %in% c("phylo.network.default", "phylo.network.mst", "phylo.tree.nj") && !all(is.na(aa.model))){dist_matrix <- as.matrix(phangorn::dist.ml(phangorn::as.phyDat(msa, type = "AA"), model = aa.model))}
+      if(construction.method %in% c("phylo.network.default", "phylo.network.mst", "phylo.tree.nj") && !all(is.na(aa.model))){dist_matrix <- as.matrix(phangorn::dist.ml(phangorn::as.phyDat(msa_obj, type = "AA"), model = aa.model))}
       
       # If a distance matrix is computed, sort the columns and rows to enable proper summation later on
       if(exists("dist_matrix")){dist_matrix <- dist_matrix[names(nodes_list), names(nodes_list)]}
       
       # If a multiple sequence alignment is created, sort the sequences to enable proper merge later on
-      if(exists("msa")){msa@unmasked <- msa@unmasked[names(nodes_list)]}
+      if(exists("msa_obj")){msa_obj@unmasked <- msa_obj@unmasked[names(nodes_list)]}
       
       # If the 'dist_matrix' or 'msa' is not created, these objects are set to NA
       if(!exists("dist_matrix")){dist_matrix <- NA}
-      if(!exists("msa")){msa <- NA}
+      if(!exists("msa_obj")){msa_obj <- NA}
       
       # Return the distance matrix and 
-      return(list(dist_matrix = dist_matrix, msa = msa))
+      return(list(dist_matrix = dist_matrix, msa = msa_obj))
     })
     
     # Rename the items in the 'dist_msa' according to the column names in 'sequence_columns'
@@ -1285,7 +1285,7 @@ Af_build <- function(VDJ,
     
     # Retrieve the distance matrices and the multiple sequence alignments from the 'dist_msa' list and store in separate objects
     dist_matrices <- lapply(sequence.columns, function(x) dist_msa[[x]][["dist_matrix"]]); names(dist_matrices) <- sequence.columns
-    multiple_sequence_alignments <- lapply(sequence.columns, function(x) dist_msa[[x]][["msa"]]); names(multiple_sequence_alignments) <- sequence.columns
+    multiple_sequence_alignments <- lapply(sequence.columns, function(x) dist_msa[[x]][["msa_obj"]]); names(multiple_sequence_alignments) <- sequence.columns
     
     # Summarize the distance matrices into one matrix, which will be the input for the 'build_lineage_tree()' function next
     if(all(!is.na(dist_matrices))){
