@@ -4,8 +4,8 @@
 #' @param pdb.dir a directory containing PDB files.
 #' @param file.df a dataframe of pdb filenames (column file_name) to be used and sequence IDs (column sequence) corresponding to the the barcodes column of the VDJ dataframe.
 #' @param properties a vector of properties to be calculated. Default is c("charge", "hydrophobicity").
-#' - charge
-#' - hydrophobicity
+#' - charge: The net electrical charge at pH 7.0
+#' - hydrophobicity: The hypdrophobicity of each amino acid, devided by the sequence length.
 #' - RMSD_germline: the root mean square deviation to the germline structure (needs the germline pdb)
 #' - 3di_germline: the edit distance between the 3di sequence of each sequences and the germline sequence (needs foldseek output).
 #' - pKa_shift: the acid dissociation constant shift upon binding of the antibody to the antigen (needs Propka output)

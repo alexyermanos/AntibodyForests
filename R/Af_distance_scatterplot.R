@@ -152,7 +152,7 @@ Af_distance_scatterplot <- function(AntibodyForests_object,
       p <- p + ggplot2::geom_point(size = point.size) +
         ggplot2::aes(color = .data[[color.by]])
     }else{
-      p <- p + ggplot2::geom_point(size = point.size, color = color.palette[1])
+      p <- p + ggplot2::geom_point(size = point.size, color = "black")
     }
     
     #If color.palette is provided, use that

@@ -72,7 +72,8 @@ source("~/Documents/GitHub/AntibodyForests/R/Af_cluster_metrics.R")
 source("~/Documents/GitHub/AntibodyForests/R/Af_cluster_node_features.R")
 source("~/Documents/GitHub/AntibodyForests/R/Af_distance_boxplot.R")
 source("~/Documents/GitHub/AntibodyForests/R/Af_compare_across_repertoires.R")
-
+source("~/Documents/GitHub/AntibodyForests/R/VDJ_3d_properties.R")
+source("~/Documents/GitHub/AntibodyForests/R/Af_edge_RMSD.R")
 library(magrittr)
 ```
 <br>
@@ -81,7 +82,7 @@ library(magrittr)
 
 <div class=text-justify>
 
-This vignette provides a detailed explanation of the main functions from the AntibodyForests package, including the `VDJ_build()` function from the [Platypus package](https://github.com/alexyermanos/Platypus). These functions are designed for importing single-cell V(D)J sequencing data from 10x Genomics, constructing lineage trees, comparing the structure of these trees within and across repertoires, and incorporating features of protein structure and evolutionary likelihood from Protein Language models. Throughout this vignette, the dataset outlined by [Neumeier et al. (2022)](https://doi.org/10.1073/pnas.2113766119) and [Kim et al. (2022)](https://www.nature.com/articles/s41586-022-04527-1) will be used.  
+This vignette provides a detailed explanation of the main functions from the AntibodyForests package, including the `VDJ_build()` function from the [Platypus package](https://github.com/alexyermanos/Platypus). These functions are designed for importing single-cell V(D)J sequencing data from 10x Genomics, constructing lineage trees, comparing the structure of these trees within and across repertoires, and incorporating features of protein structure and evolutionary likelihood from Protein Language Models. Throughout this vignette, the dataset outlined by [Neumeier et al. (2022)](https://doi.org/10.1073/pnas.2113766119) and [Kim et al. (2022)](https://www.nature.com/articles/s41586-022-04527-1) will be used.  
 
 <br>
 
@@ -95,8 +96,21 @@ This vignette provides a detailed explanation of the main functions from the Ant
 
 <div class=text-justify>
 
-The AntibodyForests package integrates functions from various packages to provide a comprehensive toolkit for analyzing antibody sequence data. To ensure smooth execution of its functions, it's essential to have certain packages installed. The code below automates this process by checking for the required packages and installing them if necessary. Additionally, it sources the latest versions of the AntibodyForests package scripts from its GitHub repository, enabling you to access the most up-to-date functionalities.
-```{r installation, eval = FALSE}
+Both Platypus and AntibodyForests can be installed from CRAN.
+
+```{r, eval = FALSE}
+#Install from CRAN
+install.packages("Platypus")
+install.packages("AntibodyForests")
+```
+
+```{r, eval = FALSE}
+#Load the libraries
+library(Platypus)
+library(AntibodyForests)
+```
+
+```{r installation, echo = FALSE, eval = FALSE}
 # List of CRAN packages required to run all functions
 CRAN_packages <- c("Platypus", "alakazam", "ape", "base",
                    "base64enc", "BiocManager", "dplyr", 
@@ -128,8 +142,9 @@ for(package in c(CRAN_packages, Bioconductor_packages)){
 
 <div class=text-justify>
 
+This quick start gives a short use case of AntibodyForests. 10x output of five mouse immunized with Ovalbumin (OVA) from [Neumeier et al. (2022)](https://doi.org/10.1073/pnas.2113766119) are used to create a VDJ dataframe with [Platypus](https://github.com/alexyermanos/Platypus). AntibodyForests is used to create lineage trees for each B cell clonotype, these trees are then clustered and the difference in topology between the clusters is analyzed.  
 
-```{r quick-start, eval = FALSE}
+```{r quick-start1, eval = FALSE}
 # Import 10x Genomics output files into VDJ dataframe and only keep cells with one VDJ and one VJ transcript
 # For each clone, trim germline sequence and replace CDR3 region in germline with most-frequently observed CDR3 sequence
 VDJ_OVA <- Platypus::VDJ_build(VDJ.directory = "10x_output/VDJ/",
@@ -137,10 +152,57 @@ VDJ_OVA <- Platypus::VDJ_build(VDJ.directory = "10x_output/VDJ/",
                      complete.cells.only = TRUE,
                      trim.germlines = TRUE)
 
-# Build lineage trees for all clones present in the VDJ dataframe with the maximum parsimony (MP) algorithm
-AntibodyForests_OVA_mp <- Af_build(VDJ = VDJ_OVA,
-                                          construction.method = "phylo.tree.mp")
+# Build lineage trees for all clones present in the VDJ dataframe with the default algorithm
+AntibodyForests_OVA_default <- Af_build(VDJ = VDJ_OVA,
+                                          construction.method = "phylo.network.default")
 ```
+
+```{r load-AntibodyForests-objects, include = FALSE}
+# Load preconstructed AntibodyForests objects
+load("objects/AntibodyForests_OVA_default.RData")
+load("objects/AntibodyForests_OVA_mst.RData")
+load("objects/AntibodyForests_OVA_nj.RData")
+load("objects/AntibodyForests_OVA_mp.RData")
+load("objects/AntibodyForests_OVA_ml.RData")
+load("objects/AntibodyForests_OVA_IgPhyML.RData")
+load("objects/quick-start_out.RData")
+load("objects/quick-start_plots.RData")
+```
+
+```{r, quick-start2, eval = T}
+# Plot one of the lineage trees, constructed with the `phylo.network.default' method
+Af_plot_tree(AntibodyForests_object = AntibodyForests_OVA_default,
+                     sample = "S1",
+                     clonotype = "clonotype2")
+```
+```{r, quick-start3, eval = F}
+# Cluster the trees in the repertoire based on the euclidean distance between various metrics of each tree
+out <- Af_compare_within_repertoires(input = AntibodyForests_OVA_default,
+                                     min.nodes = 5,
+                                     distance.method = "euclidean",
+                                     distance.metrics = c("mean.depth", "sackin.index", "spectral.density"),
+                                     clustering.method = "mediods",
+                                     visualization.methods = "PCA",
+                                     plot.label = T)
+
+# Analyze the difference between the clusters based on the calculated sackin.index
+plots <- Af_cluster_metrics(input = AntibodyForests_OVA_default,
+                   clusters = out$clustering,
+                   metrics = c("spectral.density"),
+                   min.nodes = 5,
+                   significance = T)
+
+```
+
+```{r, quick-start4}
+# Plot the PCA colored on the assigned clusters
+out$plots$PCA_clusters
+
+# Plot the different number of modalities between the clusters
+plots$modalities
+```
+
+
 <br>
 </div>
 
@@ -586,16 +648,6 @@ In addition, there is also the option to import pre-constructed lineage trees fr
 
 ### Examples {.tabset}
 
-```{r load-AntibodyForests-objects, include = FALSE}
-# Load preconstructed AntibodyForests objects
-load("objects/AntibodyForests_OVA_default.RData")
-load("objects/AntibodyForests_OVA_mst.RData")
-load("objects/AntibodyForests_OVA_nj.RData")
-load("objects/AntibodyForests_OVA_mp.RData")
-load("objects/AntibodyForests_OVA_ml.RData")
-load("objects/AntibodyForests_OVA_IgPhyML.RData")
-```
-
 <div class=text-justify>
 
 #### 1. Default  
@@ -862,7 +914,7 @@ The **`Af_plot_tree()`** function retrieves the igraph object from the provided 
 `output.file`
 
 * **Description:** If a path is specified, the generated plot is saved as a PNG file at that location.  
-* **Example:** `"/directory/ineage_tree.png"`  
+* **Example:** `"/directory/lineage_tree.png"`  
 * **Default:** `NULL`   
 <br>
 </div>
@@ -2468,6 +2520,8 @@ freqpoly$spectral.principal.eigenvalue
 
 ## 7. Assessing evolutionary likelihood of somatic hypermutation with Protein Language Models (PLM)
 
+![](imgs/main/Pseudolikelihood.png)
+
 ### Summary
 
 <div class=text-justify>
@@ -2813,11 +2867,413 @@ Af_plot_PLM(PLM_dataframe = PLM_dataframe,
 
 ## 8. Investigate the evolution of antibody 3D structure along the lineage trees
 
-[...]
-```{r}
+![](imgs/main/Structure.png)
 
-```
+
+### Summary
+
+<div class=text-justify>
+
+AntibodyForests lineage trees reflect sequence-based variation during affinity maturation, but the 3D structure of the antibodies and antigens determine the actual binding. The 3D structure of antibodies can be predicted using computational methods such as homology modelling, or the structure can be inferred experimentally. AntibodyForests provides functions to incorporate 3D coordinates into the lineage trees, which allows the analysis of the evolution of the 3D structure together with somatic hypermutation.  
 <br>
+AntibodyForests needs as input superimposed PDB files of protein structures corresponding to the sequences of the nodes in the trees. For example, the structures can be inferred with [AlphaFold3](https://deepmind.google/technologies/alphafold/) and superimposed on the C-alpha backbone using the [Bio.PDB](https://biopython.org/docs/1.75/api/Bio.PDB.html) package in Python. Next to the PDB file, AntibodyForests can incorporate the 3Di sequence of the structures, which can be obtained using [mini3di](https://github.com/althonos/mini3di). Additionally, pKa values and free energy of antibody-antigen complexes can be integrated in the AntibodyForests object using the output of [propka](https://github.com/jensengroup/propka).  
+<br>
+The function **`VDJ_3d_properties()`** can be used to calculate various biophysical properties from the PDB files, such as the charge, hydrophobicity, pLDDT, RMSD or 3Di-distance to the germline, or the pKa shift and free energy. These properties can be added to the AntibodyForests object using the **`Af_add_node_feature()`** function. The 3D properties can be visualized using the **`Af_plot_tree()`** function, and the correlation with distance to the germline can be visualized using the **`Af_distance_scatterplot`** function. The function **`Af_edge_RMSD()`** can be used to calculate the RMSD between the 3D structures of the mutating sequences along the edges of the lineage trees.
+<br>
+
+</div>
+
+### Parameters
+
+#### **VDJ_3d_properties()**
+
+`VDJ`
+
+* **Description:** VDJ dataframe as obtained from the `VDJ_build()` function that was used to build the AntibodyForests object.
+* **Example:** `VDJ`  
+* **Default:** *None*  
+<br>
+
+
+`pdb.dir`
+
+* **Description:** The path to the directory containing the PDB files of the sequences in the VDJ dataframe.
+* **Example:** `/path/to/pdb/`  
+* **Default:** *None*  
+<br>
+
+`file.df`
+
+* **Description:** A dataframe of pdb filenames (column `file_name`) to be used and sequence IDs (column `sequence`) corresponding to the the `barcodes` in the VDJ dataframe and AntibodyForests-object.  
+* **Example:** `file_df`  
+* **Default:** *None*  
+<br>
+
+
+`properties`
+
+* **Description:** The properties to calculate. Options include:  
+<br>
+  + **`"charge"`** 
+  The net electrical charge at pH 7.0  
+  <br>
+  + **`"hydrophobicity"`** 
+  The sum of hypdrophobicities of each amino acid, divided by the sequence length.  
+  <br>
+  + **`"RMSD_germline"`**
+  The root mean square deviation to the germline structure, this needs a PDB file for the germline sequence.  
+  <br>
+  + **`"3di_germline"`** 
+  The levenshtein distance between the 3Di sequence of each node and the germline sequence, this needs foldseek output.  
+  <br>
+  + **`"pKa_shift"`** 
+  The acid dissociation constant shift upon binding of the antibody to the antigen, this needs Propka output.  
+  <br>
+  + **`"free_energy"`**
+  The free energy of binding of the antibody to the antigen at a certain pH, this needs Propka output.
+  <br>
+  + **`"pLDDT"`** 
+  The pLDDT score of the structure prediction model.   
+  <br>
+* **Default:** `c("charge", "hydrophobicity")`  
+<br>
+
+`free_energy_pH`
+
+* **Description:** The pH value to use when calculating the free energy of antibody-antigen binding.
+* **Example:** `5` 
+* **Default:** `7`  
+<br>
+
+`sequence.region`
+
+* **Description:** The region of the sequence to be used to calculate properties. Options include:
+<br>
+  + **`"full.sequence"`** 
+  Use the entire sequence in the PDB file. 
+  <br>
+  + **`"sub.sequence"`** 
+  Part of the full sequence, for example the CDR3 region. This sub sequence must be a column in the VDJ dataframe.  
+  <br>
+  + **`"binding.residues"`**
+  The binding residue in the PDB file when providing the whole antibody-antigen complex. 
+  <br>
+* **Default:** `"full.sequence"`  
+<br>
+
+`sub.sequence.column`
+
+* **Description:** The column name in the VDJ dataframe containing the sub sequence to be used to calculate properties when `sequence.region` is `"sub.sequence"`.
+* **Example:** `"VDJ_cdr3_aa"`
+* **Default:** `NULL`  
+<br>
+
+`chain`
+
+* **Description:**  The chain to be used to calculate properties. Assuming chain "A" is heavy chain, chain "B" is light chain, and possibly chain "C" is the antigen in the PDB file. Options include:
+<br>
+  + **`"HC+LC"`** 
+  Both the heavy and light chain. 
+  <br>
+  + **`"HC"`**
+  The heavy chain.
+  <br>
+  + **`"LC"`** 
+  The light chain. 
+  <br>
+  + **`"AG"`**
+  The antigen. 
+  <br>
+  + **`"whole.complex"`**
+  The whole antibody-antigen complex (all available chains in the PDB file).
+  <br>
+* **Default:** `"HC+LC"`  
+<br>
+
+`propka.dir`
+
+* **Description:**  The directory containing Propka output files. The propka filenames should be similar to the PDB filenames.
+* **Example:** `"/path/to/propka/"`
+* **Default:** `NULL`  
+<br>
+
+`foldseek.dir`
+
+* **Description:**  The directory containing dataframes with the Foldseek 3di sequence per chain for each sequence. Filenames should be similar to the PDB filenames and the dataframe needs to have the column `chain` containing the 'A', 'B', and/or 'C' chain.
+* **Example:** `"/path/to/foldseek/"`
+* **Default:** `NULL`
+<br>
+
+`germline.pdb`
+
+* **Description:**  The path to the PDB file for the germline sequence.  
+* **Example:** `20`
+* **Default:** `12`  
+<br>
+
+
+#### **Af_edge_RMSD()**
+
+`AntibodyForests_object`
+
+* **Description:** An AntibodyForests object as obtained from the **`Af_build()`** function.  
+* **Example:** `AntibodyForests_OVA_default`  
+* **Default:** *None*  
+<br>
+
+`VDJ`
+
+* **Description:** VDJ dataframe as obtained from the `VDJ_build()` function that was used to build the AntibodyForests object.
+* **Example:** `VDJ`  
+* **Default:** *None*  
+<br>
+
+`pdb.dir`
+
+* **Description:** The path to the directory containing the PDB files of the sequences in the VDJ dataframe and AntibodyForests object.
+* **Example:** `/path/to/pdb/`  
+* **Default:** *None*  
+<br>
+
+`file.df`
+
+* **Description:** A dataframe of pdb filenames (column `file_name`) to be used and sequence IDs (column `sequence`) corresponding to the the `barcodes` in the VDJ dataframe and AntibodyForests-object.  
+* **Example:** `file_df`  
+* **Default:** *None*  
+<br>
+
+`sequence.region`
+
+* **Description:** The region of the sequence to be used to calculate properties. Options include:
+<br>
+  + **`"full.sequence"`** 
+  Use the entire sequence in the PDB file. 
+  <br>
+  + **`"sub.sequence"`** 
+  Part of the full sequence, for example the CDR3 region. This sub sequence must be a column in the VDJ dataframe.  
+  <br>
+  + **`"binding.residues"`**
+  The binding residue in the PDB file when providing the whole antibody-antigen complex. 
+  <br>
+* **Default:** `"full.sequence"`  
+<br>
+
+`sub.sequence.column`
+
+* **Description:** The column name in the VDJ dataframe containing the sub sequence to be used to calculate properties when `sequence.region` is `"sub.sequence"`.
+* **Example:** `"VDJ_cdr3_aa"`
+* **Default:** `NULL`  
+<br>
+
+`chain`
+
+* **Description:**  The chain to be used to calculate properties. Assuming chain "A" is heavy chain, chain "B" is light chain, and possibly chain "C" is the antigen in the PDB file. Options include:
+<br>
+  + **`"HC+LC"`** 
+  Both the heavy and light chain. 
+  <br>
+  + **`"HC"`**
+  The heavy chain.
+  <br>
+  + **`"LC"`** 
+  The light chain. 
+  <br>
+  + **`"AG"`**
+  The antigen. 
+  <br>
+  + **`"whole.complex"`**
+  The whole antibody-antigen complex (all available chains in the PDB file).
+  <br>
+* **Default:** `"HC+LC"`  
+<br>
+
+
+`color`
+
+* **Description:** Specifies the colors to be used in the plot.
+* **Example:** `"red"`
+* **Default:** `"black"`
+<br>
+
+`font.size`
+
+* **Description:**  Specifies the font size for the scatterplot. 
+* **Example:** `20`
+* **Default:** `12`  
+<br>
+
+`point.size`
+
+* **Description:**  Specifies the size of the points for the scatterplot. 
+* **Example:** `3`
+* **Default:** `1`  
+<br>
+
+`output.file`
+
+* **Description:** If a path is specified, the generated plot is saved as a PNG or PDF file at that location.  
+* **Example:** `"/directory/scatterplot.png"`  
+* **Default:** `NULL`   
+<br>
+
+### Example1 {.tabset}
+
+<div class=text-justify>
+
+Protein structures of the antibodies of one of the trees from the OVA dataset were determined with [AlphaFold3](https://deepmind.google/technologies/alphafold/), together with the Ovalbumin sequence. These PDB files were superimposed and used as input for AntibodyForests.
+
+
+```{r, load_structure_data, echo=FALSE}
+load("objects/VDJ_structure_antibody.RData") #vdj_structure_antibody
+load("objects/VDJ_ova_structure.RData") #vdj
+load("objects/AntibodyForests_OVA_structure_antibody.RData") #af_structure_antibody
+load("objects/VDJ_structure_AbAg.RData") #vdj_structure_AbAg
+load("objects/AntibodyForests_OVA_structure_AbAg.RData") #af_structure_AbAg
+```
+
+#### 1. Full antibody sequence {.tabset}
+
+Calculate biophysical properties for the full length heavy and light chain sequences of the nodes in the AntibodyForests object.  
+
+```{r, structure_example1, eval = F}
+#Biophysical properties of the heavy and light chain sequence of the antibodies are calculated
+vdj_structure_antibody <- VDJ_3d_properties(VDJ = vdj,
+                                   pdb.dir = "~/path/PDBS_superimposed/",
+                                   file.df = files,
+                                   properties = c("charge", 
+                                                  "3di_germline", 
+                                                  "hydrophobicity", 
+                                                  "RMSD_germline", 
+                                                  "pKa_shift", 
+                                                  "free_energy", 
+                                                  "pLDDT"),
+                                   chain = "HC+LC",
+                                   sequence.region = "full.sequence",
+                                   propka.dir = "~/path/Propka_output/",
+                                   germline.pdb = "~/path/PDBS_superimposed/germline_5_model_0.pdb",
+                                   foldseek.dir = "~/path/3di_sequences/")
+
+#Add the biophysical properties to the AntibodyForests object
+af_structure_antibody <- Af_add_node_feature(AntibodyForests_object = af,
+                                                 feature.df = vdj_structure_antibody,
+                                                 feature.names = c("average_charge", 
+                                                                   "3di_germline", 
+                                                                   "average_hydrophobicity", 
+                                                                   "RMSD_germline", 
+                                                                   "average_pKa_shift", 
+                                                                   "free_energy", 
+                                                                   "average_pLDDT"))
+```
+
+Plot the average charge of the amino acids on the tree.  
+
+```{r, structure_example1_plot, eval = T}
+Af_plot_tree(af_structure_antibody,
+             sample = "S1",
+             clonotype = "clonotype1",
+             color.by = "average_charge")
+```
+
+Plot the correlation between the levenshtein sequence distance to the germline and the levenshtein 3Di distance to the germline, colored on the average pLDDT score of the structure prediction.  
+
+```{r, structure_example2_plot, eval = T}
+Af_distance_scatterplot(af_structure_antibody,
+                        node.features = "3di_germline",
+                        correlation = "pearson",
+                        color.by = "average_pLDDT",
+                        color.by.numeric = T,
+                        geom_smooth.method = "lm")
+```
+
+#### 2. Binding residues Antibody-Antigen {.tabset}
+
+Calculate biophysical properties for the binding residues between the antigen and the heavy and light chain sequences of the nodes in the AntibodyForests object.  
+
+```{r, structure_example2, eval = F}
+#Biophysical properties of the heavy and light chain sequence of the antibodies are calculated
+vdj_structure_AbAg <- VDJ_3d_properties(VDJ = vdj,
+                                   pdb.dir = "~/path/PDBS_superimposed/",
+                                   file.df = files,
+                                   properties = c("charge", 
+                                                  "3di_germline", 
+                                                  "hydrophobicity", 
+                                                  "RMSD_germline", 
+                                                  "pKa_shift", 
+                                                  "free_energy", 
+                                                  "pLDDT"),
+                                   chain = "whole.complex",
+                                   sequence.region = "binding.residues",
+                                   propka.dir = "~/path/Propka_output/",
+                                   germline.pdb = "~/path/PDBS_superimposed/germline_5_model_0.pdb",
+                                   foldseek.dir = "~/path/3di_sequences/")
+
+#Add the biophysical properties to the AntibodyForests object
+af_structure_AbAg <- Af_add_node_feature(AntibodyForests_object = af,
+                                                 feature.df = vdj_structure_AbAg,
+                                                 feature.names = c("average_charge", 
+                                                                   "3di_germline", 
+                                                                   "average_hydrophobicity", 
+                                                                   "RMSD_germline", 
+                                                                   "average_pKa_shift", 
+                                                                   "free_energy", 
+                                                                   "average_pLDDT"))
+```
+
+Plot the average hydrophobicity of the amino acids on the tree.  
+
+```{r, structure_example3_plot, eval = T}
+Af_plot_tree(af_structure_AbAg,
+             sample = "S1",
+             clonotype = "clonotype1",
+             color.by = "average_hydrophobicity")
+```
+
+Plot the correlation between the levenshtein sequence distance to the germline and the free energy, colored on the average pLDDT score of the structure prediction.  
+
+```{r, structure_example4_plot, eval = T}
+Af_distance_scatterplot(af_structure_AbAg,
+                        node.features = "free_energy",
+                        correlation = "pearson",
+                        color.by = "average_pLDDT",
+                        color.by.numeric = T,
+                        geom_smooth.method = "lm")
+```
+</div>
+
+### Example2 {.tabset}
+
+<div class=text-justify>
+
+We investigate the change in protein structure during somatic hypermutation for the heavy and light chain sequences of the antibody, and for the whole Antibody-Antigen complex.
+ 
+#### 1. Full antibody {.tabset}
+
+```{r, plot_structure_example1, eval = F}
+rmsd_df <- Af_edge_RMSD(af,
+             VDJ = vdj,
+             pdb.dir = "~/path/PDBS_superimposed/",
+             file.df = files,
+             sequence.region = "full.sequence",
+             chain = "HC+LC")
+```
+![](imgs/structure_Ab_distance.png)
+
+#### 2. Full Antibody-Antigen complex {.tabset}
+
+```{r, plot_structure_example2, eval = F}
+rmsd_df <- Af_edge_RMSD(af,
+             VDJ = vdj,
+             pdb.dir = "~/path/PDBS_superimposed/",
+             file.df = files,
+             sequence.region = "full.sequence",
+             chain = "whole.complex")
+```
+![](imgs/structure_AbAg_distance.png)
+
+</div>
+
+<br>
+
 
 ## i. Run IgPhyML on VDJ dataframe and import IgPhyML trees into AntibodyForests object {#supplementary-i}
 
