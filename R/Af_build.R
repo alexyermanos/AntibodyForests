@@ -1232,10 +1232,9 @@ Af_build <- function(VDJ,
       
       # If a pairwise distance matrix needs to be computed, while the 'string.dist.metric' parameter is specified, the distance matrix is computed with the 'stringdist::stringdistmatrix()' function using the 'seqs' list as input
       if((construction.method %in% c("phylo.network.default", "phylo.network.mst", "phylo.tree.nj") && !is.na(string.dist.metric))){dist_matrix <- suppressWarnings(stringdist::stringdistmatrix(seqs, seqs, method = string.dist.metric, useNames = "names"))}
-      
       # If a multiple sequence alignment needs to be made, the 'msa::msa()' function is used
       if((construction.method %in% c("phylo.network.default", "phylo.network.mst", "phylo.tree.nj") && (!is.na(dna.model) | !is.na(aa.model))) | construction.method %in% c("phylo.tree.mp", "phylo.tree.ml")){
-        
+
         # If the 'sequence.type' is set to "DNA"...
         if(sequence.type == "DNA"){
           
@@ -1262,7 +1261,7 @@ Af_build <- function(VDJ,
       
       # If a pairwise distance matrix needs to be computed, while the 'dna.model' parameter is specified, the distance matrix is computed with the 'ape::dist.dna()' function using the 'msa_obj' as input
       if(construction.method %in% c("phylo.network.default", "phylo.network.mst", "phylo.tree.nj") && !all(is.na(dna.model))){dist_matrix <- ape::dist.dna(ape::as.DNAbin(msa_obj), model = dna.model, as.matrix = TRUE)}
-      
+
       # If a pairwise distance matrix needs to be computed, while the 'aa.model' parameter is specified, the distance matrix is computed with the 'phangorn::dist.ml()' function using the 'seqs' list as input
       if(construction.method %in% c("phylo.network.default", "phylo.network.mst", "phylo.tree.nj") && !all(is.na(aa.model))){dist_matrix <- as.matrix(phangorn::dist.ml(phangorn::as.phyDat(msa_obj, type = "AA"), model = aa.model))}
       
@@ -1285,7 +1284,7 @@ Af_build <- function(VDJ,
     
     # Retrieve the distance matrices and the multiple sequence alignments from the 'dist_msa' list and store in separate objects
     dist_matrices <- lapply(sequence.columns, function(x) dist_msa[[x]][["dist_matrix"]]); names(dist_matrices) <- sequence.columns
-    multiple_sequence_alignments <- lapply(sequence.columns, function(x) dist_msa[[x]][["msa_obj"]]); names(multiple_sequence_alignments) <- sequence.columns
+    multiple_sequence_alignments <- lapply(sequence.columns, function(x) dist_msa[[x]][["msa"]]); names(multiple_sequence_alignments) <- sequence.columns
     
     # Summarize the distance matrices into one matrix, which will be the input for the 'build_lineage_tree()' function next
     if(all(!is.na(dist_matrices))){
