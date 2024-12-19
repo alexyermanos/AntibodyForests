@@ -22,16 +22,13 @@
 #' @param significane If TRUE, the significance of a T test between the groups is plotted in the boxplot (default FALSE)
 #' @param parallel If TRUE, the metric calculations are parallelized (default FALSE)
 #' @param num.cores Number of cores to be used when parallel = TRUE. (Defaults to all available cores - 1)
-#' @return
+#' @return Plots to compare the repertoires on the supplied metrics.
 #' @export
 #' @examples
-#' boxplots <- Af_compare_across_repertoires(list("Blood" = af_blood, "Lymph Nodes" = af_LN),
-#' metrics = c("spectral.density", "sackin.index", "mean.depth", "mean.edge.length",
-#' "nr.nodes", "nr.cells", "betweenness", "degree"),
-#' plot = "boxplot", text.size = 20, significance = T, colors = c("red", "orange"))
-#' 
+#' boxplots <- Af_compare_across_repertoires(list("S1" = AntibodyForests::small_af[1], "S2" = AntibodyForests::small_af[2]),
+#'             metrics = c("sackin.index", "betweenness", "degree"),
+#'             plot = "boxplot")
 #' boxplots$betweenness
-#' boxplots$spectral.principal.eigenvalue
 
 Af_compare_across_repertoires <- function(AntibodyForests_list,
                                           metrics,
@@ -41,7 +38,7 @@ Af_compare_across_repertoires <- function(AntibodyForests_list,
                                           significance,
                                           parallel,
                                           num.cores){
-  
+
   #Set defaults and check for input validity
   if(missing(AntibodyForests_list)){stop("A list of AntibodyForests objects must be provided")}
   if(missing(metrics)){metrics <- c("betweenness", "degree")}
@@ -50,22 +47,22 @@ Af_compare_across_repertoires <- function(AntibodyForests_list,
   if(missing(significance)){significance <- FALSE}
   if(missing(colors)){colors = scales::hue_pal()(length(AntibodyForests_list))}
   if (plot != "freqpoly" & plot != "boxplot"){stop("plot must be either 'freqpoly' or 'boxplot'")}
-  if (!(all(metrics %in% c("nr.nodes", "nr.cells", "mean.depth", "mean.edge.length", 
+  if (!(all(metrics %in% c("nr.nodes", "nr.cells", "mean.depth", "mean.edge.length",
                            "sackin.index", "spectral.density", "degree", "betweenness")))){
     stop("Unknown metric")
   }
   if(missing(parallel)){parallel <- FALSE}
   # If 'parallel' is set to TRUE but 'num.cores' is not specified, the number of cores is set to all available cores - 1
   if(parallel == TRUE && missing(num.cores)){num.cores <- parallel::detectCores() -1}
-  
+
   output_plot <- list()
-  
+
   #Name the list of AntibodyForests objects if not named
   if (is.null(names(AntibodyForests_list))){names(AntibodyForests_list) <- paste0("group",1:length(AntibodyForests_list))}
-  
+
   # If betweenness or degree is in the metrics, all igraph object must be combined
   if ("betweenness" %in% metrics | "degree" %in% metrics){
-    
+
     # If 'parallel' is set to FALSE, the VDJ dataframe construction is not parallelized
     if(!parallel){
       igraph_list <- lapply(names(AntibodyForests_list), function(group){
@@ -115,7 +112,7 @@ Af_compare_across_repertoires <- function(AntibodyForests_list,
       if(operating_system == "Windows"){
         # Create cluster
         cluster <- parallel::makeCluster(num.cores)
-        
+
         igraph_list <- parallel::parLapply(cluster, names(AntibodyForests_list), function(group){
           #Store all edges of this group
           edges <- c()
@@ -149,10 +146,10 @@ Af_compare_across_repertoires <- function(AntibodyForests_list,
         betweenness_df$group <- group
         return(betweenness_df)
       })
-      
+
       #Combine the betweenness dataframes
       betweenness_df <- do.call("rbind", betweenness_list)
-      
+
       #Plot
       if (plot == "freqpoly"){
         output_plot[["betweenness"]] <- ggplot2::ggplot(betweenness_df, ggplot2::aes(betweenness)) +
@@ -170,7 +167,7 @@ Af_compare_across_repertoires <- function(AntibodyForests_list,
           ggplot2::theme_classic() +
           ggplot2::theme(text = ggplot2::element_text(size = text.size),
                          legend.position = "none")
-        
+
         #Add significance to the plot
         if(significance){
           #Get the unique combinations of groups if there are more than 2 clusters
@@ -182,16 +179,16 @@ Af_compare_across_repertoires <- function(AntibodyForests_list,
           #Add to the existing plot
           p <- p + ggsignif::geom_signif(comparisons=combinations_list, step_increase = 0.1, test = "t.test")
         }
-        
+
         output_plot[["betweenness"]] <- p
       }
-      
+
     }
     #Calculate and plot the degree
     if ("degree" %in% metrics){
       #Store the degree values per group
       #degree_list <- list()
-      
+
       degree_list <- lapply(names(AntibodyForests_list), function(group){
         #Calculate the betweenness and write to dataframe
         degree_df <- data.frame(igraph::degree(igraph_list[[group]]))
@@ -199,10 +196,10 @@ Af_compare_across_repertoires <- function(AntibodyForests_list,
         degree_df$group <- group
         return(degree_df)
       })
-      
+
       #Combine the degree dataframes
       degree_df <- do.call("rbind", degree_list)
-      
+
       #Plot
       if (plot == "freqpoly"){
         output_plot[["degree"]] <- ggplot2::ggplot(degree_df, ggplot2::aes(degree)) +
@@ -219,7 +216,7 @@ Af_compare_across_repertoires <- function(AntibodyForests_list,
           ggplot2::theme_classic() +
           ggplot2::theme(text = ggplot2::element_text(size = text.size),
                          legend.position = "none")
-        
+
         #Add significance to the plot
         if(significance){
           #Get the unique combinations of groups if there are more than 2 clusters
@@ -236,29 +233,29 @@ Af_compare_across_repertoires <- function(AntibodyForests_list,
         output_plot[["degree"]] <- p
       }
     }
-    
-    
+
+
   }
-  
+
   # For the metrics "nr.nodes", "nr.cells", "mean.depth", "mean.edge.length", "sackin.index" and "spectral.density" run AntibodyForests_metrics
   if (any(metrics %in% c("nr.nodes", "nr.cells", "mean.depth", "mean.edge.length", "sackin.index", "spectral.density"))){
     #Store metrics per group
     #metrics_list <- list()
-    
+
     metrics_list <- lapply(names(AntibodyForests_list), function(group){
       #Calculate the metrics
       if("spectral.density" %in% metrics){min.nodes = 3}else{min.nodes = 1}
-      metrics_df <- Af_metrics(input = AntibodyForests_list[[group]], metrics = metrics[which(metrics != c("betweenness", "degree"))], min.nodes = min.nodes, parallel = parallel)
+      metrics_df <- Af_metrics(input = AntibodyForests_list[[group]], metrics = metrics[which(!metrics %in% c("betweenness", "degree"))], min.nodes = min.nodes, parallel = parallel)
       metrics_df$group <- group
       return(metrics_df)
     })
-    
+
     #Combine the metrics dataframes
     metrics_df <- do.call("rbind", metrics_list)
-    
+
     #Set new metric names
     metrics <- colnames(metrics_df)[!(colnames(metrics_df) %in% c("sample", "group"))]
-    
+
     #Plot
     for (metric in metrics){
       temp_metrics_df <- metrics_df[!is.na(metrics_df[,metric]),]
@@ -279,7 +276,7 @@ Af_compare_across_repertoires <- function(AntibodyForests_list,
           ggplot2::theme(text = ggplot2::element_text(size = text.size),
                          legend.position = "none") +
           ggplot2::ylab(metric)
-        
+
         #Add significance to the plot
         if(significance){
           #Get the unique combinations of groups if there are more than 2 clusters
@@ -291,7 +288,7 @@ Af_compare_across_repertoires <- function(AntibodyForests_list,
           #Add to the existing plot
           p <- p + ggsignif::geom_signif(comparisons=combinations_list, step_increase = 0.1, test = "t.test")
         }
-        
+
         output_plot[[metric]] <- p
       }
     }

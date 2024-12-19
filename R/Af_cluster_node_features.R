@@ -9,6 +9,12 @@
 #' @param significance Logical, whether to add Chi-squared Test p-value to the plot. Default is FALSE.
 #' @return A list with barplots for each provided feature.
 #' @export
+#' @examples
+#' plot <- Af_cluster_node_features(input = AntibodyForests::small_af,
+#'                                  clusters = AntibodyForests::compare_repertoire$clustering,
+#'                                  features = "isotype",
+#'                                  fill = "max")
+#' plot$isotype
 
 Af_cluster_node_features <- function(input,
                                                 features,

@@ -8,7 +8,7 @@
 #' @export
 #' @examples
 #' \dontrun{
-#' AntibodyForests_phylo(trees)
+#' AntibodyForests_phylo(tree)
 #'}
 
 igraph_to_phylo <- function(tree,

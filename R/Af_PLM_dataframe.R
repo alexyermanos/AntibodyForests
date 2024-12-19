@@ -4,6 +4,12 @@
 #' @param sequence.name character, name of the sequence column in the AntibodyForests object (example VDJ_sequence_aa_trimmed)
 #' @param path_to_probabilities character, path to the folder containing probability matrices for all sequences. Probability matrices should be in CSV format and the filename should include sampleID_clonotypeID_nodeNR, matching the AntibodyForests-object.
 #' @return a dataframe with the sample, clonotype, node numbers, number of substitutions, mean substitution rank and mean substitution probability
+#' @examples
+#' \dontrun{
+#' PLM_dataframe <- Af_PLM_dataframe(AntibodyForests_object = AntibodyForests::small_af, 
+#'                  sequence.name = "VDJ_sequence_aa_trimmed", 
+#'                  path_to_probabilities = "/directory/ProbabilityMatrix")
+#' }
 
 Af_PLM_dataframe <- function(AntibodyForests_object,
                                           sequence.name,

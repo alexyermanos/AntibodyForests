@@ -20,16 +20,16 @@ VDJ_to_AIRR <- function(VDJ,
                         complete.rows.only,
                         filter.rows.with.stop.codons,
                         output.file){
-  
+
   # If no 'VDJ' dataframe is provided, a message is returned and execution is stopped
   if(missing(VDJ)){stop("ERROR: Please provide a VDJ dataframe as obtained from the 'minimal_VDJ()' function in Platypus.")}
   # If the 'include' parameter is not specified, all samples and clonotypes are appended to the 'include' list
   if(missing(include)){include <- lapply(unique(VDJ$sample_id), function(x) unique(VDJ[VDJ$sample_id == x, "clonotype_id"])); names(include) <- unique(VDJ$sample_id)}
   # Set default columns for each required column in the AIRR-formatted TSV file
-  default_columns <- list(sequence_id = "barcode", 
+  default_columns <- list(sequence_id = "barcode",
                           clone_id = "clonotype_id",
-                          sequence = "VDJ_sequence_nt_raw", 
-                          sequence_alignment = "VDJ_sequence_alignment_nt_IgBLAST", 
+                          sequence = "VDJ_sequence_nt_raw",
+                          sequence_alignment = "VDJ_sequence_alignment_nt_IgBLAST",
                           germline_alignment = "VDJ_germline_alignment_nt_IgBLAST",
                           v_call = "VDJ_vgene_IgBLAST",
                           v_sequence_start = "VDJ_vgene_start_IgBLAST",
@@ -51,20 +51,20 @@ VDJ_to_AIRR <- function(VDJ,
   if(missing(filter.rows.with.stop.codons)){filter.rows.with.stop.codons <- TRUE}
   # If the 'output' parameter is not specified, the TSV is written to the working directory as 'airr_rearrangement.tsv'
   if(missing(output.file)){output.file <- paste0(getwd(), "/airr_rearrangement.tsv")}
-  
+
   # Make a subset of the VDJ dataframe with the specified samples and clonotypes in the 'include' parameter
   VDJ_subset <- do.call(rbind, lapply(names(include), function(x) VDJ[VDJ$sample_id == x & VDJ$clonotype_id %in% include[[x]], ]))
-  
+
   # If there are multiple samples present in the 'VDJ_subset' dataframe, the sample ID is pasted as a prefix to the barcodes and the clonotype IDs
   if(length(unique(VDJ_subset$sample_id)) > 1){VDJ_subset$barcode <- paste(VDJ_subset$sample_id, VDJ_subset$barcode, sep = "_"); VDJ_subset$clonotype_id <- paste(VDJ_subset$sample_id, VDJ_subset$clonotype_id, sep = "_")}
-  
+
   # Create the AIRR-formatted dataframe
   output_tsv <- VDJ_subset[, unlist(columns)]
   colnames(output_tsv) <- names(columns)
-  
+
   # If the 'complete.rows.only' parameter is set to TRUE, remove rows with NA values in the 'output_tsv' dataframe
-  if(complete.rows.only){output_tsv <- output_tsv[complete.cases(output_tsv), ]}
-  
+  if(complete.rows.only){output_tsv <- output_tsv[stats::complete.cases(output_tsv), ]}
+
   # If the 'filter.rows.with.stop.codons' parameter is set to TRUE, replace sequences with stop codons (TAA/TAG/TGA) in the 'sequence_alignment' and the 'germline_alignment' column with 'STOP'
   if(filter.rows.with.stop.codons){
     for(alignment in c("sequence_alignment", "germline_alignment")){
@@ -75,10 +75,10 @@ VDJ_to_AIRR <- function(VDJ,
       }))
     }
   }
-  
+
   # Remove rows with 'STOP' values in the 'sequence_alignment' column from the 'output_tsv' dataframe
   output_tsv <- output_tsv[output_tsv$sequence_alignment != "STOP", ]
-  
+
   # Iterate through the clones present in the 'output_tsv' dataframe
   for(clone in unique(output_tsv$clone_id)){
     # Iterate through the columns containing germline annotations
@@ -93,7 +93,7 @@ VDJ_to_AIRR <- function(VDJ,
       }
     }
   }
-  
+
   # Write the dataframe to the specified 'output.file'
-  write.table(output_tsv, file = output.file, sep = "\t", row.names = FALSE, quote = FALSE)
+  utils::write.table(output_tsv, file = output.file, sep = "\t", row.names = FALSE, quote = FALSE)
 }

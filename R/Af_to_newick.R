@@ -5,30 +5,36 @@
 #' @param output.file string - specifies the path to the output file
 #' @export
 #' @examples
+#' \dontrun{
+#' Af_to_newick(AntibodyForests_object = AntibodyForests::small_af, min.nodes = 2, output.file = "output.newick")
+#' }
 
 Af_to_newick <- function(AntibodyForests_object,
                                       min.nodes,
                                       output.file){
-  
+
   if(missing(AntibodyForests_object)){stop("Please provide an AntibodyForests object")}
   if(missing(output.file)){stop("Please provide an output file")}
   if(missing(min.nodes)){min.nodes <- 2}
-  
+
+  #Set global variable for CRAN
+  AntibodyForests_phylo <- NULL
+
   #Delete file if it exists
   if (file.exists(output.file)){file.remove(output.file)}
-  
+
   #loop over each tree
   for (sample in names(AntibodyForests_object)){
     for (tree in names(AntibodyForests_object[[sample]])){
       if(igraph::vcount(AntibodyForests_object[[sample]][[tree]]$igraph) >= min.nodes){
         #Transform igraph into phylo object
         phylo <- AntibodyForests_phylo(AntibodyForests_object[[sample]][[tree]]$igraph, solve_multichotomies = F)
-        
+
         #Add the node sizes to the tip and node labels
         size_list <- lapply(AntibodyForests_object[[sample]][[tree]]$nodes, function(x){if (is.null(x$size)){return(1)}else{return(x$size)}})
         phylo$tip.label <- paste0(sample, "_", tree, "_", phylo$tip.label, "@", size_list[phylo$tip.label])
         phylo$node.label <- paste0(sample, "_", tree, "_", phylo$node.label, "@", size_list[phylo$node.label])
-        
+
         #Write to newick format
         phylo$edge.length <- as.numeric(phylo$edge.length)
         ape::write.tree(phylo, file = output.file,

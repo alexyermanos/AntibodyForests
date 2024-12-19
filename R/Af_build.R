@@ -68,18 +68,12 @@
 #' @return An object of class 'AntibodyForests', structured as a nested list where each outer list represents a sample, and each inner list represents a clonotype. Each clonotype list contains the output objects specified in the 'include' parameter. For example, AntibodyForests[[1]][[2]] contains the list of output objects for the first sample and third clonotype (which would be equivalent to something like AntibodyForests$S1$clonotype3).
 #' @export
 #' @examples
-#' \dontrun{
-#' Af_build(VDJ, 
+#' af <- Af_build(VDJ = AntibodyForests::small_vdj, 
 #'                 sequence.columns = c("VDJ_sequence_aa_trimmed","VJ_sequence_aa_trimmed"),
-#'                 germline.columns = c("VDJ_germline_aa_trimmed","VJ_germline_aa_trimmed"), 
-#'                 concatenate.sequences = TRUE,
-#'                 node.features = c("VDJ_vgene", "VDJ_dgene", "VDJ_jgene", "isotype"),
+#'                 germline.columns = c("VDJ_germline_aa_trimmed","VJ_germline_aa_trimmed"),
+#'                 node.features = c("VDJ_vgene", "isotype"),
 #'                 string.dist.metric = "lv",
-#'                 construction.method = "phylo.network.default",
-#'                 resolve.ties = c("max.expansion", "close.germline.dist", "close.germline.edges", "random"),
-#'                 include = c("nodes", "dist", "igraph", "edges", "metrics"),
-#'                 parallel = F)
-#'}
+#'                 construction.method = "phylo.network.default")
 
 Af_build <- function(VDJ,
                             sequence.columns,

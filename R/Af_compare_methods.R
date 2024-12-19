@@ -22,11 +22,11 @@
 #' @return A list with all clonotypes that pass the min.nodes threshold including the distance matrix, possible clustering and visualization
 #' @export
 #' @examples
-#' Af_compare_methods(input = list("Default" = AntibodyForests_OVA_default,
-#'                                 "MST" = AntibodyForests_OVA_mst,
-#'                                 "NJ" = AntibodyForests_OVA_nj),
-#'                    depth = "edge.count",
-#'                     visualization.methods = "heatmap")
+#' plot <- Af_compare_methods(input = list("Default" = AntibodyForests::af_default,"MST" = AntibodyForests::af_mst,"NJ" = AntibodyForests::af_nj),
+#'                            depth = "edge.count",
+#'                            visualization.methods = "heatmap",
+#'                            include.average = T)
+#' plot$average
 
 Af_compare_methods <- function(input,
                                     min.nodes,
@@ -214,7 +214,8 @@ Af_compare_methods <- function(input,
         euclidean_matrix <- as.matrix(stats::dist(depth_df, method = "euclidean", diag = T, upper = T))
         
         #Add distance matrix to the list
-        distance_list[[paste0(sample,".",clonotype)]] <- euclidean_matrix
+        if(any(rowSums(euclidean_matrix) != 0)){distance_list[[paste0(sample,".",clonotype)]] <- euclidean_matrix}
+        
       }
     }
     return(distance_list)

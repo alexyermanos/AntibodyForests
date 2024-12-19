@@ -22,9 +22,13 @@
 #' @param num.cores Number of cores to be used when parallel = TRUE. (Defaults to all available cores - 1)
 #' @param output.format The format of the output. If set to "dataframe", a dataframe is returned. If set to "AntibodyForests", the metrics are added to the AntibodyForests-object. (default "dataframe")
 #' @return Returns either a dataframe where the rows are trees and the columns are metrics or an AntibodyForests-object with the metrics added to trees
+#' @importFrom magrittr %>%
 #' @export
 #' @examples
-#' 
+#' metric_df <- Af_metrics(input = AntibodyForests::small_af,
+#'                         metrics = c("mean.depth", "sackin.index"),
+#'                         min.nodes = 8)
+#' head(metric_df)
 
 Af_metrics <- function(input,
                                     min.nodes,
@@ -211,7 +215,6 @@ Af_metrics <- function(input,
         cells <- sum(unlist(lapply(clonotype$nodes, function(x){length(x$barcodes)})))
         metrics_vector["nr.cells"] <- cells
       }
-      
       return(metrics_vector)
     }else{
       return(NA)

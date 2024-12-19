@@ -23,6 +23,11 @@
 #' @return - list - A list with boxplots per metric
 #' @export
 #' @examples
+#' plot <- Af_cluster_metrics(input = AntibodyForests::small_af,
+#'                             clusters = AntibodyForests::compare_repertoire[["clustering"]],
+#'                             metrics = "mean.depth",
+#'                             min.nodes = 8)
+#' plot$mean.depth
 
 Af_cluster_metrics <- function(input,
                                      clusters,
@@ -53,9 +58,7 @@ Af_cluster_metrics <- function(input,
                                        parallel = parallel,
                                        min.nodes = min.nodes,
                                        metrics = metrics)
-  #Remove the sample columns from the dataframe
-  metric_df <- metric_df[,!(colnames(metric_df) %in% c("sample"))]
-  
+
   #Check if clonotypes are the same between metric_df and clusters
   if (nrow(metric_df) < length(clusters)){stop("Make sure that min.nodes threshold is not higher then min.nodes used when running Af_compare_within_repertoires().")}
   #Af_metrics sometimes adds an X in front of the rownames, if this happenend remove it.
@@ -67,7 +70,7 @@ Af_cluster_metrics <- function(input,
   cluster_df <- merge(metric_df, as.data.frame(clusters), by = "row.names")
   
   #Get the calculated metrics
-  metrics <- colnames(cluster_df)[!(colnames(cluster_df) %in% c("Row.names", "clusters"))]
+  metrics <- colnames(cluster_df)[!(colnames(cluster_df) %in% c("Row.names", "clusters", "sample"))]
   
   #Make a plot for each metric and store in a list
   output_list <- list()

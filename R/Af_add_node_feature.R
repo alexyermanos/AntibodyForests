@@ -5,6 +5,10 @@
 #' @param feature.names Character vector with the names of the features to be added.
 #' @return Returns an AntibodyForests-object with the features added to the nodes.
 #' @export
+#' @examples
+#' af <- Af_add_node_feature(AntibodyForests::small_af, 
+#'                           feature.df = AntibodyForests::small_vdj, 
+#'                           feature.names = c("VDJ_dgene", "VDJ_jgene"))
 
 Af_add_node_feature <- function(AntibodyForests_object,
                                              feature.df,

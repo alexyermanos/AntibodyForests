@@ -16,9 +16,10 @@
 #' @param point.size The size of the points in the scatterplot. Default is 1.
 #' @param output.file string - specifies the path to the output file (PNG of PDF). Defaults to NULL.
 #' @export
+#' @importFrom dplyr .data
 #' @examples
-#' Af_distance_scatterplot(AntibodyForests_object = AntibodyForests_OVA_default, 
-#'  node.features = "SHM_count",
+#' Af_distance_scatterplot(AntibodyForests_object = AntibodyForests::small_af,
+#'  node.features = "size",
 #'  distance = "edge.length",
 #'  min.nodes = 5,
 #'  color.by = "sample",
@@ -39,7 +40,7 @@ Af_distance_scatterplot <- function(AntibodyForests_object,
                                                  ylabel,
                                                  point.size,
                                                  output.file){
-  
+
   #Set defaults and check for missing input
   if(missing(AntibodyForests_object)){stop("Please provide an AntibodyForests-object as input.")}
   if(missing(node.features)){stop("Please provide a node feature to compare.")}
@@ -47,9 +48,9 @@ Af_distance_scatterplot <- function(AntibodyForests_object,
   # # If the node.features could not be found for all nodes, a message is returned and execution is stopped
   # for(feature in node.features){
   #   if(!(all(
-  #     sapply(names(AntibodyForests_object[[sample]][[clonotype]][["nodes"]])[!names(AntibodyForests_object[[sample]][[clonotype]][["nodes"]]) == "germline"], 
+  #     sapply(names(AntibodyForests_object[[sample]][[clonotype]][["nodes"]])[!names(AntibodyForests_object[[sample]][[clonotype]][["nodes"]]) == "germline"],
   #            function(x) feature %in% names(AntibodyForests_object[[sample]][[clonotype]][["nodes"]][[x]]))))){
-  #     stop("The feature specified with the 'node.features' parameter could not be found for all nodes.")}}  
+  #     stop("The feature specified with the 'node.features' parameter could not be found for all nodes.")}}
   if(missing(min.nodes)){min.nodes <- 2}
   if(missing(color.by)){color.by <- "none"}
   # If the color.by feature could not be found for all nodes, a message is returned and execution is stopped
@@ -64,7 +65,12 @@ Af_distance_scatterplot <- function(AntibodyForests_object,
   if(missing(output.file)){output.file <- NULL}
   if(missing(geom_smooth.method)){geom_smooth.method <- "none"}
   if(!(geom_smooth.method %in% c("none", "lm", "loess"))){stop("Please provide a valid geom_smooth method ('none', 'lm', or 'loess').")}
-  
+
+  #Global variable definitions for CRAN checks
+  png <- NULL
+  pdf <- NULL
+  germline <- NULL
+
   #Create input for ggplot
   #Create empty dataframe
   df <- data.frame()
@@ -73,7 +79,7 @@ Af_distance_scatterplot <- function(AntibodyForests_object,
     for (clonotype in names(AntibodyForests_object[[sample]])){
       #Get the igraph object of the tree
       tree <- AntibodyForests_object[[sample]][[clonotype]][["igraph"]]
-      
+
       if (igraph::vcount(tree) >= min.nodes){
         #Calculate distances to germline
         if(distance == "edge.length"){
@@ -88,15 +94,15 @@ Af_distance_scatterplot <- function(AntibodyForests_object,
                                               to = igraph::V(tree)[names(igraph::V(tree)) != "germline"],
                                               mode = "out"))
         }
-        
+
         #Add sample name, clonotype, and node number
-        distances_df <- cbind(distances_df, sample = replicate(nrow(distances_df), sample), 
+        distances_df <- cbind(distances_df, sample = replicate(nrow(distances_df), sample),
                               clonotype = replicate(nrow(distances_df), clonotype),
                               node = rownames(distances_df))
-        
+
         #Add color.by to the node features
         if (!color.by %in% c("none", "sample")){adding.features <- c(node.features, color.by)}else{adding.features <- node.features}
-        
+
         #Add the node features to the distances dataframe
         for (feature in adding.features){
           #Get the node feature
@@ -107,31 +113,31 @@ Af_distance_scatterplot <- function(AntibodyForests_object,
           feature_list <- feature_list[which(names(feature_list) != "germline")]
           feature_df <- t(as.data.frame(feature_list))
           colnames(feature_df) <- feature
-          feature_df <- cbind(feature_df, sample = replicate(nrow(feature_df), sample), 
+          feature_df <- cbind(feature_df, sample = replicate(nrow(feature_df), sample),
                               clonotype = replicate(nrow(feature_df), clonotype),
                               node = rownames(feature_df))
-          
+
           #Merge the feature dataframe with the distances dataframe
           distances_df <- dplyr::left_join(as.data.frame(distances_df), as.data.frame(feature_df), by = c("sample", "clonotype", "node"))
         }
-        
+
         #Add to the final dataframe
         df <- rbind(df, distances_df)
-        
+
         #Make the node features numerical
         if(length(node.features) > 1){df[, node.features] <- apply(df[, node.features], 2, function(x) as.numeric(as.character(x)))}
         else if (length(node.features == 1)){df[, node.features] <- as.numeric(as.character(df[,node.features]))}
-        
-        
+
+
         #Make the color.by feature numerical
         if(color.by.numeric){df[, color.by] <- as.numeric(as.character(df[[color.by]]))}
       }
     }
   }
 
-  
+
   #Create the plots
-  shuffled_data= df[sample(1:nrow(df)), ] 
+  shuffled_data= df[sample(1:nrow(df)), ]
   count = 0
   for(feature in node.features){
     count = count + 1
@@ -139,14 +145,14 @@ Af_distance_scatterplot <- function(AntibodyForests_object,
     p <- ggplot2::ggplot(shuffled_data, ggplot2::aes(x = as.numeric(germline), y = .data[[feature]])) +
       ggplot2::theme_classic() +
       ggplot2::theme(text = ggplot2::element_text(size = font.size))
-    
+
     if (distance == "edge.length"){p <- p + ggplot2::xlab("Distance to germline")}
     else if (distance == "node.depth"){p <- p + ggplot2::xlab("Number of edges to the germline")}
-    
+
     #Add y-axis label
     if (!is.null(ylabel)){
       p <- p + ggplot2::ylab(ylabel[count])}
-    
+
     #Color by color.by feature
     if (color.by != "none"){
       p <- p + ggplot2::geom_point(size = point.size) +
@@ -154,7 +160,7 @@ Af_distance_scatterplot <- function(AntibodyForests_object,
     }else{
       p <- p + ggplot2::geom_point(size = point.size, color = "black")
     }
-    
+
     #If color.palette is provided, use that
     if(!is.null(color.palette)){
       #If the color.by is numeric, create a gradient between the two color.palette colors
@@ -173,19 +179,19 @@ Af_distance_scatterplot <- function(AntibodyForests_object,
     if (geom_smooth.method != "none"){
       p <- p + ggplot2::geom_smooth(method = geom_smooth.method, color = "black")
     }
-    
+
     if(!is.null(output.file)){
       # Check if the output.file is png or pdf
       if (grepl(pattern = ".png$", output.file)){
         png(file = output.file)
         print(p)
-        dev.off()
+        grDevices::dev.off()
       }else if (grepl(pattern = ".pdf$", output.file)){
         pdf(file = output.file)
         print(p)
-        dev.off()
+        grDevices::dev.off()
       }
-    }else{print(p)}
+    }else{suppressWarnings(print(p))}
   }
-  
+
 }

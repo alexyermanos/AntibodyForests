@@ -4,7 +4,7 @@
 #' @param min.nodes - integer - The minimum number of nodes in a tree to include in the comparison
 #' @param distance.method - string - The method to calculate distance (default ...)
 #' 'none'           : No distance metric, analyze similarity directly from distance.metrics
-#' 'euclidean'      : 
+#' 'euclidean'      :
 #' 'jensen-shannon' : Jensen-Shannon distance between spectral density profiles of trees.
 #' @param distance.metrics - string - If distance.method is "none" or "euclidean", these metrics will be used to calculate clusters and PCA/MDS dimensions and are used for plotting. (Default is mean.depth and nr.nodes)
 #' 'nr.nodes'         : The total number of nodes
@@ -33,6 +33,14 @@
 #' @return - list - Returns a distance matrix, clustering, and various plots based on visualization.methods
 #' @export
 #' @examples
+#' compare_repertoire <- Af_compare_within_repertoires(input = AntibodyForests::small_af,
+#'                                                     min.nodes = 8,
+#'                                                     distance.method = "euclidean",
+#'                                                     distance.metrics = c("mean.depth", "sackin.index"),
+#'                                                     clustering.method = "mediods",
+#'                                                     visualization.methods = "PCA")
+#' #Plot the PCA clusters
+#' compare_repertoire$plots$PCA_clusters
 
 Af_compare_within_repertoires <- function(input,
                                     min.nodes,
@@ -45,7 +53,7 @@ Af_compare_within_repertoires <- function(input,
                                     point.size = 2,
                                     parallel,
                                     num.cores){
-  
+
   #1. Set defaults and check for missing or incorrect input
   if(missing(input)){stop("Please provide a valid input object.")}
   if (class(input) != "AntibodyForests"){stop("The input is not in the correct format.")}
@@ -66,7 +74,7 @@ Af_compare_within_repertoires <- function(input,
     #save names
     names <- rownames(df)
     #make all columns numeric
-    df <- apply(df, 2, as.numeric)
+    suppressWarnings(df <- apply(df, 2, as.numeric))
     #Add rownames
     rownames(df) <- names
     #calculate euclidean distance on the scaled dataframe
@@ -74,7 +82,7 @@ Af_compare_within_repertoires <- function(input,
 
     return(distance_matrix)
   }
-  
+
   #Calculate principle components
   calculate_PC <- function(df, to.scale){
     #Make sure df is a matrix
@@ -82,7 +90,7 @@ Af_compare_within_repertoires <- function(input,
     #Save names for later
     names <- rownames(df)
     #make all columns numeric
-    df <- apply(df, 2, as.numeric)
+    suppressWarnings(df <- apply(df, 2, as.numeric))
     #Run a PCA and save the PCs in a dataframe
     pca_results <- as.data.frame(stats::prcomp(df, scale. = to.scale)$x)
     #Keep the first two PCs
@@ -92,7 +100,7 @@ Af_compare_within_repertoires <- function(input,
     pca_results$tree <- names
     return(pca_results)
   }
-  
+
   #Multidimensional scaling
   calculate_MDS <- function(df, distance.method){
     names <- rownames(df)
@@ -105,11 +113,11 @@ Af_compare_within_repertoires <- function(input,
     colnames(results) <- c("Dim1", "Dim2")
     #Add tree names to the dataframe
     results$tree <- names
-    
+
     return(results)
   }
-  
-  
+
+
   calculate_JS <- function(af, min.nodes){
     message("Calculating the Jensen-Shannon divergence can have a long runtime for large AntibodyForests-objects.")
     #Convert the igraph trees to phylo trees and store in list
@@ -123,17 +131,17 @@ Af_compare_within_repertoires <- function(input,
         }
       }
     }
-    #Calculate distance 
+    #Calculate distance
     distance_matrix <- RPANDA::JSDtree(phylo = phylo_list, meth = c("normal1"))
     return(distance_matrix)
   }
-  
+
   cluster_mediods <- function(df, distance.method){
     #If distance method is "none", a (euclidean) distance structure should first be computed
     if(distance.method == "none"){
       distance_matrix <- calculate_euclidean(distance_matrix)
     }else{distance_matrix <- df}
-    
+
     #Define the max number of clusters
     max_cluster <- dim(as.matrix(distance_matrix))[1]-1
     #Perform clustering
@@ -143,7 +151,7 @@ Af_compare_within_repertoires <- function(input,
     names(clusters) <- labels(as.matrix(distance_matrix))[[1]]
     return(clusters)
   }
-  
+
   plot <- function(df, color, name, plot.label){
     p <- ggplot2::ggplot(df, ggplot2::aes(x=Dim1,y=Dim2, color=.data[[color]])) +
       ggplot2::geom_point(size=point.size) +
@@ -154,18 +162,18 @@ Af_compare_within_repertoires <- function(input,
                      axis.text.y = ggplot2::element_blank(),
                      axis.ticks.y = ggplot2::element_blank()) +
       ggplot2::ggtitle(name)
-    
+
     if(name == "PCA"){
       p <- p + ggplot2::xlab("PC1") + ggplot2::ylab("PC2")
     }
-    
+
     if(plot.label){
       p <- p + ggrepel::geom_label_repel(ggplot2::aes(label = tree))
     }
-    
+
     return(p)
   }
-  
+
   #Plot a heatmap of the distance matrix
   heatmap <- function(df, clusters){
     #If there are clusters make clustered heatmap
@@ -182,17 +190,17 @@ Af_compare_within_repertoires <- function(input,
     }
     #If there are no clusters
     else{p <- pheatmap::pheatmap(as.matrix(df), silent = T)}
-    
+
     return(p)
   }
 
   #Create empty list to store the output
   output <- list()
-  
+
   #1. Calculate metrics
   metric_df <- Af_metrics(input = input, min.nodes = min.nodes, metrics = distance.metrics,
                           parallel = parallel, num.cores = num.cores)
-  
+
   #1. Distance matrix
   #If distance.method is "none", metric dataframe will be used directly for visualization
   if (distance.method == "none"){
@@ -215,35 +223,35 @@ Af_compare_within_repertoires <- function(input,
   }
   #Store distance matrix (or metric dataframe when distance.method is "none") in the final output
   output[["distance_matrix"]] <- distance_matrix
-  
-  
+
+
   #2. Dimension reduction
   #Create empty list to store dimension reduction results
   results_list <- list()
-  
+
   if ("PCA" %in% visualization.methods){
     #Calculate the principal components
     results <- calculate_PC(distance_matrix, to.scale = T)
     #Store results
     results_list[["PCA"]] <- results
     }
-  
+
   if ("MDS" %in% visualization.methods){
     #Calculate the principal components
     results <- calculate_MDS(distance_matrix, distance.method)
     #Store results
     results_list[["MDS"]] <- results
     }
-  
+
   #3. Clustering
   if (clustering.method != "none"){
     if (clustering.method == "mediods"){
       clusters <- cluster_mediods(distance_matrix, distance.method)
     }
-    
+
     output[["clustering"]] <- clusters
   }
-  
+
   #4. Plotting
   #Create empty list to store plots
   plot_list <- list()
@@ -252,9 +260,9 @@ Af_compare_within_repertoires <- function(input,
     if(method == "heatmap" && clustering.method == "none"){
       plot_list[[paste0(method, "_default")]] <- heatmap(distance_matrix, cluster = NULL)
     }else if(method != "heatmap"){
-      plot_list[[paste0(method, "_default")]] <- plot(results_list[[method]], color = "tree", name = method, plot.label) 
+      plot_list[[paste0(method, "_default")]] <- plot(results_list[[method]], color = "tree", name = method, plot.label)
     }
-    
+
     #Plot the clustering
     if (clustering.method != "none"){
       if(method == "heatmap"){
@@ -269,7 +277,7 @@ Af_compare_within_repertoires <- function(input,
         #Plot the samples
         plot_list[[paste0(method, "_samples")]] <- plot(cluster_df, color = "sample", name = method, plot.label)
 
-        
+
         #Exchange spectral.density for specific density metrics
         if ("spectral.density" %in% distance.metrics){
           #remove spectral.density
@@ -289,10 +297,10 @@ Af_compare_within_repertoires <- function(input,
       }
     }
   }
-  
+
   #Add the plot list to the output
   output[["plots"]] <- plot_list
-  
+
   #return output
   return(output)
 

@@ -23,6 +23,13 @@
 #' @return a dataframe with the sample, clonotype, node numbers, number of substitutions, and edge RMSD
 #' @export
 #' @examples
+#' \dontrun{
+#' rmsd_df <- Af_edge_RMSD(AntibodyForests::small_af,
+#'                        VDJ = AntibodyForests::small_vdj,
+#'                        pdb.dir = "~/path/PDBS_superimposed/",
+#'                        file.df = files,
+#'                        sequence.region = "full.sequence",
+#'                        chain = "HC+LC")}
 
 
 Af_edge_RMSD <- function(AntibodyForests_object,
@@ -36,7 +43,7 @@ Af_edge_RMSD <- function(AntibodyForests_object,
                          point.size,
                          color,
                          output.file){
-  
+
   if(missing(AntibodyForests_object)){stop("Please provide an AntibodyForests object")}
   if(missing(VDJ)){stop("Please provide the VDJ dataframe")}
   if(!any(c("sample_id", "clonotype_id", "barcode") %in% colnames(VDJ))){stop("VDJ dataframe must contain columns sample_id, clonotype_id, barcode")}
@@ -56,18 +63,27 @@ Af_edge_RMSD <- function(AntibodyForests_object,
   if(missing(point.size)){point.size = 1}
   if(missing(output.file)){output.file = NULL}
   if(missing(color)){color = "black"}
-  
+
+  #Global variable definitions for CRAN checks
+  resno <- NULL
+  resid <- NULL
+  str_count <- NULL
+  n_subs <- NULL
+  edge_RMSD <- NULL
+  png <- NULL
+  pdf <- NULL
+
   output_df <- data.frame(sample = character(), clonotype = character(), node1 = character(), node2 = character(),
                           n_subs = numeric(), edge_RMSD = numeric())
-  
-  
+
+
   #Set the chains
   if(chain == "HC+LC"){chains = c("A", "B")}
   if(chain == "HC"){chains = "A"}
   if(chain == "LC"){chains = "B"}
   if(chain == "AG"){chains = "C"}
   if(chain == "whole.complex"){chains = c("A", "B", "C")}
-  
+
   #Adapted from Lucas' Structure_utils.py
   #Function to get the binding site residues in a PDB file
   #* pdb object
@@ -90,7 +106,7 @@ Af_edge_RMSD <- function(AntibodyForests_object,
     bs_res_ligand <- unique(atoms_ligand[colSums(dist_mat_bin) >= 1, "resno"])
     return(c(bs_res_binder, bs_res_ligand))
   }
-  
+
   #Get the resnos from a subsequences in the PDB file
   get_subseq_res <- function(pdb, sub_seq, CHAIN){
     #Get the residues in the PDB file
@@ -105,46 +121,46 @@ Af_edge_RMSD <- function(AntibodyForests_object,
     ind <- which(strsplit(aligned_subseq, "")[[1]] != "-")
     #Get the corresponding resnos
     resnos <- resids_df$resno[ind]
-    
+
     return(as.numeric(resnos))
   }
-  
+
   SHM_per_alignment <- function(seq_1, seq_2){
     alignment <- pwalign::pairwiseAlignment(seq_1, seq_2)
     seq_1 <- as.character(alignment@pattern)
     seq_2 <- as.character(alignment@subject)
-    
-    hamming_dist <- stringdist(seq_1,seq_2, method = "hamming")
+
+    hamming_dist <- stringdist::stringdist(seq_1,seq_2, method = "hamming")
     gaps_1 <- str_count(seq_1,"-")
     gaps_2 <- str_count(seq_2,"-")
-    
-    
+
+
     return(hamming_dist - gaps_1 - gaps_2)
-    
-  } 
-  
+
+  }
+
   #Create dataframe per clonotype
   df_per_clone <- function(sample, clonotype){
     #Igraph object
     tree <- AntibodyForests_object[[sample]][[clonotype]][["igraph"]]
-    
+
     #Get edgelist
     edges <- igraph::as_edgelist(tree, names = T)
     edges <- as.data.frame(edges)
-    
+
     #Remove germline from the edge list
     edges <- edges[edges$V1 != "germline" & edges$V1 != "germline",]
     colnames(edges) <- c("node1", "node2")
-    
+
     #If there are not enough edges, return NA
     if (nrow(edges) > 0){
       #Get the sequences
       nodes <- AntibodyForests_object[[sample]][[clonotype]][["nodes"]]
-      
+
       #Initiate output dataframe
       clonotype_df <- data.frame(sample = character(), clonotype = character(), node1 = character(), node2 = character(),
                                  n_subs = numeric(), edge_RMSD = numeric())
-      
+
       for (row in 1:nrow(edges)){
         node1 <- edges[row, "node1"]
         node2 <- edges[row, "node2"]
@@ -153,15 +169,15 @@ Af_edge_RMSD <- function(AntibodyForests_object,
         #If multiple barcodes, take the first one
         if (length(barcode1) > 1){barcode1 <- barcode1[1]}
         if (length(barcode2) > 1){barcode2 <- barcode2[1]}
-        
-        
-        
+
+
+
         #Read in the pdb file
         file1 <- file.df[file.df$sequence == barcode1,"file_name"]
         file2 <- file.df[file.df$sequence == barcode2,"file_name"]
         pdb1 <- bio3d::read.pdb(paste0(pdb.dir, file1))
         pdb2 <- bio3d::read.pdb(paste0(pdb.dir, file2))
-        
+
         #Get the residues for RMSD calculations
         if(sequence.region == "full.sequence"){
           resnos1 <- unique(pdb1$atom[pdb1$atom$chain %in% chains, ]$resno)
@@ -178,24 +194,24 @@ Af_edge_RMSD <- function(AntibodyForests_object,
           resnos1 <- get_subseq_res(pdb1, sub_seq1, chains)
           resnos2 <- get_subseq_res(pdb2, sub_seq2, chains)
         }
-        
+
         #Get the mutating positions
         total_subs = 0
         for (i in chains){
-          seq1 <- paste(pdb1$atom |> dplyr::filter(chain == i) |> dplyr::filter(resno %in% resnos1) |> 
+          seq1 <- paste(pdb1$atom |> dplyr::filter(chain == i) |> dplyr::filter(resno %in% resnos1) |>
                           dplyr::distinct(resno, .keep_all = T) |> dplyr::pull(resid) |> stringr::str_to_title() |> seqinr::a(), collapse = "")
           seq2 <- paste(pdb2$atom |> dplyr::filter(chain == i) |> dplyr::filter(resno %in% resnos2) |>
                           dplyr::distinct(resno, .keep_all = T) |> dplyr::pull(resid) |> stringr::str_to_title() |> seqinr::a(), collapse = "")
           n_subs <- SHM_per_alignment(seq1, seq2)
           total_subs <- total_subs + n_subs
         }
-        
-        
+
+
         #Get the RMSD between the two sequences
         ca.inds1 <- bio3d::atom.select(pdb1, "calpha", chain = chains, resno = resnos1)
         ca.inds2 <- bio3d::atom.select(pdb2, "calpha", chain = chains, resno = resnos2)
         rmsd <- bio3d::rmsd(pdb1, pdb2, fit = T, a.inds = ca.inds1, b.inds = ca.inds2)
-        
+
         #Add to the output dataframe
         edge_df <- data.frame(sample = sample, clonotype = clonotype, n_subs = total_subs, node1 = node1, node2 = node2, edge_RMSD = rmsd)
         clonotype_df <- rbind(clonotype_df, edge_df)
@@ -206,17 +222,17 @@ Af_edge_RMSD <- function(AntibodyForests_object,
     }
     return(clonotype_df)
   }
-  
+
   for (sample in names(AntibodyForests_object)){
     for (clonotype in names(AntibodyForests_object[[sample]])){
       tree_df <- df_per_clone(sample, clonotype)
       output_df <- rbind(output_df, tree_df)
     }
   }
-  
+
   #Calculate the correlation between number of substitutions and edge RMSD
   cor <- stats::cor.test(as.numeric(output_df$n_subs), output_df$edge_RMSD, method = "pearson", exact = F)
-  
+
   p <- ggplot2::ggplot(output_df, ggplot2::aes(x = as.numeric(n_subs), y = edge_RMSD)) +
     ggplot2::geom_point(size = point.size, color = color) +
     ggplot2::theme_classic() +
@@ -224,23 +240,23 @@ Af_edge_RMSD <- function(AntibodyForests_object,
     ggplot2::geom_smooth(method = "lm", color = "black") +
     ggplot2::ylab("Edge RMSD") + ggplot2::xlab("Number of substitutions") +
     ggplot2::ggtitle(paste0("R\u00b2 = ", round(cor$estimate, digits = 2)))
-  
+
   if(!is.null(output.file)){
     # Check if the output.file is png or pdf
     if (grepl(pattern = ".png$", output.file)){
       png(file = output.file)
       print(p)
-      dev.off()
+      grDevices::dev.off()
     }else if (grepl(pattern = ".pdf$", output.file)){
       pdf(file = output.file)
       print(p)
-      dev.off()
+      grDevices::dev.off()
     }
   }else{print(p)}
-  
+
   return(output_df)
-  
-  
+
+
 }
 
 
