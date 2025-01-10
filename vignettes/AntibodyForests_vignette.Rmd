@@ -323,7 +323,7 @@ print(knitr::kable(data.frame(divergent.cells = c(360, 295, 79, 183 ,526),
 For illustration, the dummy VDJ dataframe below contains the data of clonotype 1-5 of S1:
 ```{r vdj_build-example-3-df, echo = FALSE}
 # Load the example VDJdataframe
-load("../data/VDJ_OVA_dummy_3.RData")
+load("objects/VDJ_OVA_dummy_3.RData")
 # Print first 10 clonotypes of all samples
 DT::datatable(data = VDJ_OVA_dummy_3,
               rownames = FALSE,
@@ -553,6 +553,8 @@ AntibodyForests_OVA_IgPhyML <- Af_build(VDJ = VDJ_OVA,
 
 The **`Af_plot_tree()`** function retrieves the igraph object from the provided AntibodyForests object for the specified clone within the specified sample and plots the lineage tree using the specified plotting parameters. This visualization offers insights into sequence evolution, enabling the observation of evolutionary processes in relation to sequence distances, clonal expansion, and other attributes such as isotype or evolutionary likelihood, as well as additional features appended to the VDJ dataframe.  
 <br>
+
+</div>
 
 ### Examples {.tabset}
 
