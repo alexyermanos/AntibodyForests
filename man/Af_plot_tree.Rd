@@ -85,11 +85,11 @@ Af_plot_tree(
 
 \item{color.legend.title}{string - specifies the title of the legend showing the color matching. Defaults to the (capitalized) name of the feature specified in the 'color.by' parameter (converted by the 'stringr::str_to_title()' function).}
 
+\item{size.legend.title}{string - specifies the title of the legend showing the node sizes. Defaults to 'Expansion (# cells)'.}
+
 \item{font.size}{float - specifies the font size of the text in the plot. Defaults to 1.}
 
 \item{output.file}{string - specifies the path to the output file (PNG of PDF). Defaults to NULL.}
-
-\item{size.legend.tile}{string - specifies the title of the legend showing the node sizes. Defaults to 'Expansion (# cells)'.}
 }
 \value{
 Plots lineage tree for the specified clonotype.

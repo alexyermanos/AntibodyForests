@@ -9,7 +9,7 @@
 #' 'mean.depth'       : Mean of the number of edges connecting each node to the germline
 #' 'mean.edge.length' : Mean of the edge lengths between each node and the germline
 #' 'group.node.depth'      : Mean of the number of edges connecting each node per group (node.features of the AntibodyForests-object) to the germline. (default FALSE)
-#' 'group.edge.length'    : Mean of the sum of edge length of the shortest path between germline and nodes per group (node.features of the AntibodyForests-object) 
+#' 'group.edge.length'    : Mean of the sum of edge length of the shortest path between germline and nodes per group (node.features of the AntibodyForests-object)
 #' 'sackin.index'     : Sum of the number of nodes between each terminal node and the germline, normalized by the total number of terminal nodes.
 #' 'spectral.density' : Metrics of the spectral density profiles (calculated with package RPANDA)
 #'    - peakedness            : Tree balance
@@ -50,7 +50,7 @@ Af_metrics <- function(input,
   if(missing(output.format)){output.format = "dataframe"}
   #Check if the input is in the correct format.
   #If multiple.objects is TRUE, multiple AntibodyForests-objects should be in the input list, where the third item in the nested AntibodyForest-object should be of class "igraph"
-  if((multiple.objects == F && class(input[[1]][[1]][["igraph"]]) != "igraph")|| (multiple.objects == T && class(input[[1]][[1]][[1]][["igraph"]]) != "igraph")){
+  if((multiple.objects == F && as.character(class(input[[1]][[1]][["igraph"]])) != "igraph")|| (multiple.objects == T && as.character(class(input[[1]][[1]][[1]][["igraph"]])) != "igraph")){
     stop("The input is not in the correct AntibodyForests-object format.")}
   # If 'parallel' is set to TRUE but 'num.cores' is not specified, the number of cores is set to all available cores - 1
   if(parallel == TRUE && missing(num.cores)){num.cores <- parallel::detectCores() -1}
@@ -60,7 +60,7 @@ Af_metrics <- function(input,
   }
   # If 'output.format' is not "AntibodyForests" or "dataframe", an error is thrown
   if(!(output.format %in% c("AntibodyForests", "dataframe"))){stop("Please provide a valid output format ('dataframe' or 'AntibodyForests').")}
-  
+
   #Functions to calculate metrics
   calculate_mean_depth <- function(tree, nodes){
     #Get the shortest paths between each node and the germline
@@ -69,7 +69,7 @@ Af_metrics <- function(input,
     depth <- mean(unlist(lapply(paths$epath, length)))
     return(depth)
   }
-  
+
   calculate_mean_edge_length <- function(tree, nodes){
     #Get the total length of shortest paths between each node and the germline
     distance <- igraph::distances(tree, v = "germline", to = nodes, algorithm = "dijkstra",
@@ -78,9 +78,9 @@ Af_metrics <- function(input,
     distance <- mean(distance)
     return(distance)
   }
-    
-  
-  
+
+
+
   calculate_sackin_index <- function(tree){
     #Identify the leaves
     leaves <- igraph::V(tree)[igraph::degree(tree, mode = "out") == 0]
@@ -94,7 +94,7 @@ Af_metrics <- function(input,
     depth <- depth/length(leaves)
     return(depth)
   }
-  
+
   calculate_spectral_density <- function(tree){
     #transform igraph network into bifurcating phylo tree
     phylo_tree <- igraph_to_phylo(tree, solve_multichotomies = F)
@@ -102,38 +102,38 @@ Af_metrics <- function(input,
     sd <- RPANDA::spectR(phylo_tree, meth = "normal")
     return(sd)
   }
-  
+
   #Calculate the metrics for a clonotype
   calculate_metrics <- function(clonotype, min.nodes, metrics){
-    
+
     if (igraph::vcount(clonotype$igraph) >= min.nodes){
       #Create empty vector to store metrics
       metrics_vector <- c()
-      
+
       if ("mean.depth" %in% metrics){
         #Calculate the mean depth for all nodes except the germline
-        depth <- calculate_mean_depth(clonotype$igraph, 
+        depth <- calculate_mean_depth(clonotype$igraph,
                                       nodes = igraph::V(clonotype$igraph)[names(igraph::V(clonotype$igraph)) != "germline"])
         #Add to the metrics vector
         metrics_vector["mean.depth"] <- depth
       }
-      
-      
+
+
       if ("mean.edge.length" %in% metrics){
-        mean_edge_length <- calculate_mean_edge_length(clonotype$igraph, 
+        mean_edge_length <- calculate_mean_edge_length(clonotype$igraph,
                                                        nodes = igraph::V(clonotype$igraph)[names(igraph::V(clonotype$igraph)) != "germline"])
         #Add to the metrics vector
         metrics_vector["mean.edge.length"] <- mean_edge_length
       }
-      
-      
+
+
       if ("sackin.index" %in% metrics){
         si <- calculate_sackin_index(clonotype$igraph)
         #Add to the metrics vector
         metrics_vector["sackin.index"] <- si
       }
-      
-      
+
+
       if ("spectral.density" %in% metrics){
         if (igraph::vcount(clonotype$igraph) > 3){
           spectr <- calculate_spectral_density(clonotype$igraph)
@@ -151,13 +151,13 @@ Af_metrics <- function(input,
           metrics_vector["modalities"] <-NA
         }
       }
-      
+
       if ("group.node.depth" %in% metrics){
         #Get all the unique elements in this group
         if (multiple.objects){
           groups <- unique(unlist(lapply(input[[1]],function(a){lapply(a,function(b){lapply(b$nodes, function(c){c[[node.feature]]})})})))
         }else{groups <- unique(unlist(lapply(input,function(a){lapply(a,function(b){lapply(b$nodes, function(c){c[[node.feature]]})})})))}
-        
+
         #If group.node.features is specified, check wether they are all present in the node features of the AntibodyForests-object.
         if(!all(is.na(group.node.feature))){
           if(all(group.node.feature %in% groups) == FALSE){stop("The groups are not in the node features of the AntibodyForests-object.")
@@ -177,7 +177,7 @@ Af_metrics <- function(input,
           }
         }
       }
-      
+
       if ("group.edge.length" %in% metrics){
         #Get all the unique elements in this group
         if (multiple.objects){
@@ -188,7 +188,7 @@ Af_metrics <- function(input,
         if(!all(is.na(group.node.feature))){
           if(all(group.node.feature %in% groups) == FALSE){stop("The groups are not in the node features of the AntibodyForests-object.")
           }else{groups <- group.node.feature}}
-          
+
         for (group in groups){
           #Take the nodes have a cell of this group
           nodes <- names(which(lapply(clonotype$nodes, function(x){group %in% x[node.feature]}) == TRUE))
@@ -209,7 +209,7 @@ Af_metrics <- function(input,
         nodes <- igraph::vcount(clonotype$igraph)
         metrics_vector["nr.nodes"] <- nodes
       }
-      
+
       #Total number of cells
       if ("nr.cells" %in% metrics){
         cells <- sum(unlist(lapply(clonotype$nodes, function(x){length(x$barcodes)})))
@@ -220,7 +220,7 @@ Af_metrics <- function(input,
       return(NA)
     }
   }
-  
+
 
 
   # If 'parallel' is set to TRUE, the metric calculation is parallelized across the clonotypes
@@ -263,7 +263,7 @@ Af_metrics <- function(input,
     if(operating_system == "Windows"){
       # Create cluster
       cluster <- parallel::makeCluster(num.cores)
-      
+
       # If the operating system is Linux or Darwin, 'mclapply' is used for parallelization
       if(output.format == "AntibodyForests"){
         #Go over each tree in the AntibodyForests object and add the metrics to the AntibodyForests-object
@@ -296,8 +296,8 @@ Af_metrics <- function(input,
       }
     }
   }
-  
-  
+
+
   # If 'parallel' is set to FALSE, the network inference is not parallelized
   if(!parallel){
     #Go over each tree in the AntibodyForests object and add the metrics to the AntibodyForests-object
@@ -329,10 +329,10 @@ Af_metrics <- function(input,
       metric_df$sample <- gsub(".clonotype(.*)$", "", rownames(metric_df))
       return(metric_df)
     }
-    
+
   }
-  
-  
+
+
 }
 
 

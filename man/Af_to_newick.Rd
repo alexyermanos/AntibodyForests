@@ -18,6 +18,8 @@ Saves an AntibodyForests-object into a newick file. The node labels will have th
 }
 \examples{
 \dontrun{
-Af_to_newick(AntibodyForests_object = AntibodyForests::small_af, min.nodes = 2, output.file = "output.newick")
+Af_to_newick(AntibodyForests_object = AntibodyForests::small_af,
+              min.nodes = 2,
+              output.file = "output.newick")
 }
 }

@@ -9,7 +9,7 @@ igraph_to_phylo(tree, solve_multichotomies)
 \arguments{
 \item{tree}{igraph object}
 
-\item{solve.multichotomies}{boolean - whether to remove multichotomies in the resulting phylogenetic tree using ape::multi2di}
+\item{solve_multichotomies}{boolean - whether to remove multichotomies in the resulting phylogenetic tree using ape::multi2di}
 }
 \value{
 phylogenetic tree

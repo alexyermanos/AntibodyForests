@@ -22,10 +22,12 @@
 #' @return A list with all clonotypes that pass the min.nodes threshold including the distance matrix, possible clustering and visualization
 #' @export
 #' @examples
-#' plot <- Af_compare_methods(input = list("Default" = AntibodyForests::af_default,"MST" = AntibodyForests::af_mst,"NJ" = AntibodyForests::af_nj),
+#' plot <- Af_compare_methods(input = list("Default" = AntibodyForests::af_default,
+#'                                         "MST" = AntibodyForests::af_mst,
+#'                                         "NJ" = AntibodyForests::af_nj),
 #'                            depth = "edge.count",
 #'                            visualization.methods = "heatmap",
-#'                            include.average = T)
+#'                            include.average = TRUE)
 #' plot$average
 
 Af_compare_methods <- function(input,
@@ -37,7 +39,7 @@ Af_compare_methods <- function(input,
                                     visualization.methods,
                                     parallel,
                                     num.cores){
-  
+
   #1. Set defaults and check for missing input
   if(missing(input)){stop("Please provide a valid input object.")}
   if(missing(min.nodes)){min.nodes = 2}
@@ -49,9 +51,9 @@ Af_compare_methods <- function(input,
   if(missing(include.average)){include.average <- FALSE}
   # If 'parallel' is set to TRUE but 'num.cores' is not specified, the number of cores is set to all available cores - 1
   if(parallel == TRUE && missing(num.cores)){num.cores <- parallel::detectCores() -1}
-  
+
   #2. Check if the input is correct
-  if (class(input[[1]][[1]][[1]][["igraph"]]) != "igraph"){stop("The input is not in the correct format.")}
+  if (as.character(class(input[[1]][[1]][[1]][["igraph"]])) != "igraph"){stop("The input is not in the correct format.")}
   if(!(all(equal <- sapply(input, function(x) all.equal(names(x), names(input[[1]])))))){stop("The input list does not contain the same clonotypes.")}
   if(min.nodes > max(unlist(lapply(input, function(x){lapply(x,function(y){lapply(y, function(y){lapply(y$nodes, function(z){z$size})})})})))){
     stop("min.nodes is larger than the biggest clonotype.")}
@@ -59,8 +61,12 @@ Af_compare_methods <- function(input,
   if(!(distance.method %in% c("euclidean", "GBLD"))){stop("Unvalid distance.method argument.")}
   if(!(is.null(clustering.method)) && clustering.method != "mediods"){stop("Unvalid clustering method.")}
   if(!(is.null(visualization.methods)) && all(!(visualization.methods %in% c("PCA", "MDS", "heatmap")))){stop("Unvalid visualization methods.")}
-  
-  
+
+  #Set global variable for CRAN
+  Dim1 <- NULL
+  Dim2 <- NULL
+  tree <- NULL
+
   #3. Define functions
   #Calculate the depths of each node in each tree
   calculate_depth_list <- function(input, min.nodes, parallel, num.cores){
@@ -87,7 +93,7 @@ Af_compare_methods <- function(input,
                   return(NA)
                 }
               }
-              
+
             })
           })
         })
@@ -144,19 +150,19 @@ Af_compare_methods <- function(input,
         })
       })
     }
-    
+
     #Remove NA (clonotypes with less then min.nodes nodes)
     depth_list <- remove_na_entries(depth_list)
     return(depth_list)
   }
-  
+
   #Calculate the number of edges between certain nodes and the germline of a single tree
   calculate_depth <- function(tree, nodes, depth){
     if (depth == "edge.count"){
       #Get the shortest paths between each node and the germline
       paths <- igraph::shortest_paths(tree, from = "germline", to = nodes, output = "both")
       #Set names to the list of vpath
-      names(paths$epath) <- names(unlist(lapply(paths$vpath, function(x){tail(x,n=1)})))
+      names(paths$epath) <- names(unlist(lapply(paths$vpath, function(x){utils::tail(x,n=1)})))
       #Reorder according to node number
       paths$epath <- paths$epath[paste0("node",sort(as.numeric(stringr::str_sub(names(paths$epath), start = 5))))]
       #Get the number of edges along the shortes paths
@@ -175,7 +181,7 @@ Af_compare_methods <- function(input,
     return(depths)
   }
 
-  
+
   #Remove entries from (nested) lists that contain NA
   remove_na_entries <- function(lst) {
     if (!is.list(lst)) {
@@ -186,7 +192,7 @@ Af_compare_methods <- function(input,
       return(cleaned)
     }
   }
-  
+
   #Calculate the euclidean distance between node depth for each clonotype in the depth_list
   calculate_euclidean <- function(depth_list){
     distance_list <- list()
@@ -199,7 +205,7 @@ Af_compare_methods <- function(input,
         nodes <- names(depth_list[[1]][[sample]][[clonotype]])
         depth_df <- matrix(ncol = length(nodes), nrow = 0)
         colnames(depth_df) <- nodes
-        
+
         skip = F
         for (method in names(depth_list)){
           #If the number of columns is not the same, skip this clonotype
@@ -209,18 +215,18 @@ Af_compare_methods <- function(input,
         }
         if(skip){next}
         rownames(depth_df) <- names(depth_list)
-        
+
         #Calculate the euclidean distance between the tree methods for this clonotype
         euclidean_matrix <- as.matrix(stats::dist(depth_df, method = "euclidean", diag = T, upper = T))
-        
+
         #Add distance matrix to the list
         if(any(rowSums(euclidean_matrix) != 0)){distance_list[[paste0(sample,".",clonotype)]] <- euclidean_matrix}
-        
+
       }
     }
     return(distance_list)
   }
-  
+
   cluster_mediods <- function(df){
     distance_matrix <- df
     #Define the max number of clusters
@@ -232,7 +238,7 @@ Af_compare_methods <- function(input,
     names(clusters) <- rownames(df)
     return(clusters)
   }
-  
+
   #Calculate principle components
   calculate_PC <- function(df, to.scale){
     names <- rownames(as.data.frame(df))
@@ -245,7 +251,7 @@ Af_compare_methods <- function(input,
     pca_results$tree <- names
     return(pca_results)
   }
-  
+
   #Multidimensional scaling
   calculate_MDS <- function(df){
     names <- rownames(as.data.frame(df))
@@ -254,10 +260,10 @@ Af_compare_methods <- function(input,
     colnames(results) <- c("Dim1", "Dim2")
     #Add tree names to the dataframe
     results$tree <- names
-    
+
     return(results)
   }
-  
+
   #Plot the first two dimensions of a PCA or MDS
   plot <- function(df, color, name){
     p <- ggplot2::ggplot(as.data.frame(df), ggplot2::aes(x=Dim1,y=Dim2, color=as.factor(.data[[color]]))) +
@@ -268,7 +274,7 @@ Af_compare_methods <- function(input,
       ggplot2::ggtitle(name)
     return(p)
   }
-  
+
   #Plot a heatmap of the distance matrix
   heatmap <- function(df, clusters){
     #If there are clusters make clustered heatmap
@@ -278,7 +284,7 @@ Af_compare_methods <- function(input,
       colnames(clusters) <- "cluster"
       #rownames(clusters) <- labels(df)[[1]]
       clusters$cluster <- as.factor(clusters$cluster)
-      
+
       #print(labels(df)[[1]])
       #print(clusters)
       #Plot the clustered heatmap
@@ -289,11 +295,11 @@ Af_compare_methods <- function(input,
     #If there are no clusters
     else{
       p <- pheatmap::pheatmap(as.matrix(df), silent = T)}
-    
+
     return(p)
   }
-  
-  #For GBLD, Code is derived from https://github.com/tahiri-lab/ClonalTreeClustering/blob/main/src/Python/GBLD_Metric_Final.ipynb 
+
+  #For GBLD, Code is derived from https://github.com/tahiri-lab/ClonalTreeClustering/blob/main/src/Python/GBLD_Metric_Final.ipynb
   #Algorithms Mol Biol 19, 22 (2024). https://doi.org/10.1186/s13015-024-00267-1
   #Calculate the distance (sum of branch lengths) between terminal nodes
   calculate_distances <- function(tree_igraph, method){
@@ -352,7 +358,7 @@ Af_compare_methods <- function(input,
     diff_squared <- diff ^ 2
     sum_diff_squared <- sum(diff_squared)
     root_sum_squared <- sqrt(sum_diff_squared)
-    
+
     return(root_sum_squared / max_nodes)
   }
   #Calculate the penalty of uncommon nodes between two trees
@@ -366,23 +372,23 @@ Af_compare_methods <- function(input,
     all_weights = list()
     all_distances = list()
     all_seq_names = c()
-    
+
     tree_count = 0
-    
+
     for(method in names(AntibodyForests_object)){
       tree_igraph <- AntibodyForests_object[[method]][['igraph']]
       #Only keep trees with a minimum number of nodes (min.nodes)
       if (igraph::vcount(tree_igraph) >= min.nodes){
         #Keep track of the number of trees
         tree_count = tree_count + 1
-        
+
         #Set the tree names
         tree_label = method
-        
+
         #Get the node sizes
         weights = lapply(AntibodyForests_object[[method]][['nodes']], function(x){if (is.null(x$size)){return(1)}else{return(x$size)}})
         #names(weights) <- paste0(method, "_", names(weights))
-        
+
         for(node in names(weights)){
           if(!(node %in% names(all_weights))){
             all_weights[[node]] = rep(0, (tree_count - 1))
@@ -394,7 +400,7 @@ Af_compare_methods <- function(input,
             all_weights[[node]] <- c(all_weights[[node]], rep(0, (tree_count - length(all_weights[[node]]))))
           }
         }
-        
+
         #Calculate the distance (sum of branch lengths) between terminal nodes
         distances <- calculate_distances(tree_igraph, method)
         normalized_distances <- normalize_matrix(distances)
@@ -403,11 +409,11 @@ Af_compare_methods <- function(input,
         all_seq_names <- c(all_seq_names, colnames(normalized_distances))
       }
     }
-    
+
     all_nodes <- sort(names(all_weights))
     original_weights_matrix <- matrix(unlist(all_weights), nrow = length(all_nodes), byrow = T)
     nodes_per_tree <- colSums(original_weights_matrix != 0)
-    
+
     normalized_weights_matrix <- matrix(0, nrow = nrow(original_weights_matrix), ncol = ncol(original_weights_matrix))
     i = 0
     for (node in all_nodes){
@@ -417,30 +423,30 @@ Af_compare_methods <- function(input,
         normalized_weights_matrix[i,j] <- normalized_weights[j]
       }
     }
-    
+
     num_trees = length(all_distances)
     diff_columns = list()
     normalized_diff_sums <- c()
-    
+
     for (i in seq(from = 1, to = num_trees, by = 1)){
       if (i != num_trees){
         for (j in seq(from = i+1, to = num_trees, by = 1)){
           diff <- abs(normalized_weights_matrix[,i] - normalized_weights_matrix[,j])
           diff_columns[[paste0("Diff ", names(all_distances)[i], "-", names(all_distances)[j])]] <- diff
-          
+
           max_nodes <- max(nodes_per_tree[i], nodes_per_tree[j])
           normalized_sum = sum(diff)/max_nodes
           normalized_diff_sums <- c(normalized_diff_sums, normalized_sum)
         }
       }
     }
-    
+
     #Create empty distance matrix
     distance_matrix <- matrix(0, nrow = num_trees, ncol = num_trees)
     #Change dashes and underscores to dots to match the tree names in downstream AntibodyForests functions
-    colnames(distance_matrix) <- gsub("[-_]", ".", names(all_distances)) 
+    colnames(distance_matrix) <- gsub("[-_]", ".", names(all_distances))
     rownames(distance_matrix) <- gsub("[-_]", ".", names(all_distances))
-    
+
     W_values = c()
     for (i in seq(from = 1, to = num_trees, by = 1)){
       if (i != num_trees){
@@ -448,27 +454,27 @@ Af_compare_methods <- function(input,
           #Calculate the distance between the trees
           max_nodes <- max(nodes_per_tree[i], nodes_per_tree[j])
           D = calculate_D(all_distances[[i]], all_distances[[j]], max_nodes)
-          
+
           #Calculate the penalty of uncommon nodes
           P = calculate_penalty(normalized_weights_matrix[,i], normalized_weights_matrix[,j])
-          
+
           #Get the weights of the nodes (abundance)
           W = normalized_diff_sums[length(W_values)+1]
           W_values <- c(W_values, W)
-          
+
           #Calculate the GBLD distance between the trees
           GBLD = P + W + D
-          
+
           #Add the GBLD distance to the distance matrix
           distance_matrix[i, j] <- GBLD
           distance_matrix[j, i] <- GBLD
         }
       }
     }
-    
+
     return(distance_matrix)
   }
-  
+
   #Calculate the GBLD distance between trees for each clonotype per sample
   calculate_GBLD_list <- function(input, min.nodes){
     distance_list <- list()
@@ -481,7 +487,7 @@ Af_compare_methods <- function(input,
         #Create antibodyforests object for this clonotype in every method
         clonotype_antibodyforests <- lapply(names(input), function(x){return(input[[x]][[sample]][[clonotype]])})
         names(clonotype_antibodyforests) <- paste0(methods)
-        
+
         #Check if all trees have at least min.nodes
         pass = T
         for (method in names(clonotype_antibodyforests)){
@@ -495,14 +501,14 @@ Af_compare_methods <- function(input,
                                       error = function(e) {return(NA)})
           #Add to the distance list
           if(is.matrix(distance_matrix)){distance_list[[paste0(sample,".",clonotype)]] <- distance_matrix}
-        } 
+        }
 
 
         }
     }
     return(distance_list)
     }
-  
+
 
 
   #4. Calculate the distance between trees
@@ -518,14 +524,14 @@ Af_compare_methods <- function(input,
     #Calculate the GBLD list between trees for each clonotype per sample
     output_list <- calculate_GBLD_list(input, min.nodes)
   }
-  
+
   #5. Clustering and visualization for each clonotype
   output_list <- lapply(output_list, function(distance_matrix){
     #Create inner list
     temp_list <- list()
     #Add the distance matrix to this list
     temp_list[["distance.matrix"]] <- distance_matrix
-    
+
     #Clustering
     if(!(is.null(clustering.method))){
       #K-mediods clustering
@@ -536,7 +542,7 @@ Af_compare_methods <- function(input,
       #Add to the list
       temp_list[["clusters"]] <- clusters
     }
-    
+
     #Visualization
     if(!(is.null(visualization.methods))){
       #PCA analysis
@@ -597,12 +603,12 @@ Af_compare_methods <- function(input,
         #Add to the list
         temp_list[["Heatmap"]] <- hm
       }
-      
+
     }
-    
+
     return(temp_list)
   })
-  
+
   #6. If include.average is TRUE, calculate the average distance matrix and visualizations
   if(include.average){
     temp_list <- list()
@@ -610,7 +616,7 @@ Af_compare_methods <- function(input,
     distance_list <- lapply(output_list, function(x) as.matrix(x$distance.matrix))
     mean_matrix <- Rcompadre::mat_mean(distance_list)
     temp_list[["distance.matrix"]] <- mean_matrix
-    
+
     #Clustering
     if(!(is.null(clustering.method))){
       #K-mediods clustering
@@ -621,7 +627,7 @@ Af_compare_methods <- function(input,
       #Add to the list
       temp_list[["clusters"]] <- clusters
     }
-    
+
     #Visualization
     if(!(is.null(visualization.methods))){
       #PCA analysis
@@ -672,12 +678,12 @@ Af_compare_methods <- function(input,
         #If there are clusters calculated
         if(!(is.null(clustering.method))){
           #Create plot
-          hm <- heatmap(as.dist(mean_matrix), clusters = clusters)
+          hm <- heatmap(stats::as.dist(mean_matrix), clusters = clusters)
         }
         #If there are no clusters
         else{
           #Create plot
-          hm <- heatmap(as.dist(mean_matrix), clusters = NULL)
+          hm <- heatmap(stats::as.dist(mean_matrix), clusters = NULL)
         }
         #Add to the list
         temp_list[["Heatmap"]] <- hm
@@ -686,7 +692,7 @@ Af_compare_methods <- function(input,
     #Add to the output list
     output_list[["average"]] <- temp_list
   }
-  
+
   return(output_list)
 
 

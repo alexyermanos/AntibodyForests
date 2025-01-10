@@ -52,9 +52,11 @@ A list with all clonotypes that pass the min.nodes threshold including the dista
 Function to compare different trees from the same clonotype to compare various graph construction and phylogenetic reconstruction methods.
 }
 \examples{
-plot <- Af_compare_methods(input = list("Default" = AntibodyForests::af_default,"MST" = AntibodyForests::af_mst,"NJ" = AntibodyForests::af_nj),
+plot <- Af_compare_methods(input = list("Default" = AntibodyForests::af_default,
+                                        "MST" = AntibodyForests::af_mst,
+                                        "NJ" = AntibodyForests::af_nj),
                            depth = "edge.count",
                            visualization.methods = "heatmap",
-                           include.average = T)
+                           include.average = TRUE)
 plot$average
 }

@@ -17,7 +17,7 @@
 #' @param min.nodes The minimum number of nodes for a tree to be included in this analysis (this included the germline). This should be the same as for the Af_compare_within_repertoires() functions.
 #' @param colors - string -  Optionally specific colors for the clusters
 #' @param text.size Font size in the plot (default 20).
-#' @param significane - boolean - If TRUE, the significance of a T test between the groups is plotted (default FALSE)
+#' @param significance - boolean - If TRUE, the significance of a T test between the groups is plotted (default FALSE)
 #' @param parallel If TRUE, the metric calculations are parallelized across clonotypes. (default FALSE)
 #' @param num.cores Number of cores to be used when parallel = TRUE. (Defaults to all available cores - 1)
 #' @return - list - A list with boxplots per metric
@@ -38,7 +38,7 @@ Af_cluster_metrics <- function(input,
                                      significance,
                                      parallel,
                                num.cores){
-  
+
   #Set defaults and check for missing input
   if(missing(input)){stop("Please provide an AntibodyForests-object as input.")}
   if(missing(clusters)){stop("Please provide clusters as input.")}
@@ -52,7 +52,7 @@ Af_cluster_metrics <- function(input,
   if(parallel == TRUE && missing(num.cores)){num.cores <- parallel::detectCores() -1}
   #Check if group are in the metric dataframe
   #if(!(all(groups %in% colnames(metric_df)))){stop("Groups are not in the column names of the metric dataframe.")}
-  
+
   #Calculate the metrics
   metric_df <- Af_metrics(input,
                                        parallel = parallel,
@@ -65,26 +65,26 @@ Af_cluster_metrics <- function(input,
   if(all(gsub("^X", "", rownames(metric_df)) == names(clusters))){rownames(metric_df) <- gsub("^X", "", rownames(metric_df))}
   #Check if the names of the trees are the same
   if (!(all(names(clusters) %in% rownames(metric_df)))){stop("The names of the clonotypes in the AntibodyForests-object and the clusters should be the same.")}
-  
+
   #Add clusters to the metric_df
   cluster_df <- merge(metric_df, as.data.frame(clusters), by = "row.names")
-  
+
   #Get the calculated metrics
   metrics <- colnames(cluster_df)[!(colnames(cluster_df) %in% c("Row.names", "clusters", "sample"))]
-  
+
   #Make a plot for each metric and store in a list
   output_list <- list()
   for (metric in metrics){
     #Plot the grouped boxplots
-    p <- ggplot2::ggplot(cluster_df, ggplot2::aes(x=as.factor(clusters), y=as.numeric(.data[[metric]]), fill=as.factor(clusters))) + 
-      ggplot2::geom_boxplot() + 
+    p <- ggplot2::ggplot(cluster_df, ggplot2::aes(x=as.factor(clusters), y=as.numeric(.data[[metric]]), fill=as.factor(clusters))) +
+      ggplot2::geom_boxplot() +
       ggplot2::geom_jitter(color="black", size=1) +
       ggplot2::scale_fill_manual(values=colors) +
       ggplot2::theme_classic() +
       ggplot2::theme(text = ggplot2::element_text(size = text.size),
                      legend.position = "none") +
       ggplot2::xlab("Cluster") + ggplot2::ylab(metric)
-    
+
     #Add significance to the plot
     if(significance){
       #Get the unique combinations of clusters if there are more than 2 clusters
@@ -96,11 +96,11 @@ Af_cluster_metrics <- function(input,
       #Add to the existing plot
       p <- p + ggsignif::geom_signif(comparisons=combinations_list, step_increase = 0.1, test = "t.test")
     }
-      
+
     #Add to output list
     output_list[[metric]] <- p
   }
-  
+
   #return output list with plots
   return(output_list)
 }

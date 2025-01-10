@@ -34,11 +34,11 @@
 #' @export
 #' @examples
 #' compare_repertoire <- Af_compare_within_repertoires(input = AntibodyForests::small_af,
-#'                                                     min.nodes = 8,
-#'                                                     distance.method = "euclidean",
-#'                                                     distance.metrics = c("mean.depth", "sackin.index"),
-#'                                                     clustering.method = "mediods",
-#'                                                     visualization.methods = "PCA")
+#'                                      min.nodes = 8,
+#'                                      distance.method = "euclidean",
+#'                                      distance.metrics = c("mean.depth", "sackin.index"),
+#'                                      clustering.method = "mediods",
+#'                                      visualization.methods = "PCA")
 #' #Plot the PCA clusters
 #' compare_repertoire$plots$PCA_clusters
 
@@ -56,7 +56,7 @@ Af_compare_within_repertoires <- function(input,
 
   #1. Set defaults and check for missing or incorrect input
   if(missing(input)){stop("Please provide a valid input object.")}
-  if (class(input) != "AntibodyForests"){stop("The input is not in the correct format.")}
+  if (as.character(class(input)) != "AntibodyForests"){stop("The input is not in the correct format.")}
   if(missing(min.nodes)){min.nodes = 2}
   if(missing(visualization.methods)){visualization.methods = "PCA"}
   if(missing(distance.metrics)){distance.metrics = c("mean.depth", "nr.nodes")}
@@ -68,6 +68,11 @@ Af_compare_within_repertoires <- function(input,
   if(missing(parallel)){parallel <- F}
   if(parallel == TRUE && missing(num.cores)){num.cores <- parallel::detectCores() -1}
   if (!distance.method %in% c("none", "euclidean", "jensen-shannon", "GBLD")){stop("Please provide a valid distance method.")}
+
+  #Set global variable for CRAN
+  Dim1 <- NULL
+  Dim2 <- NULL
+  tree <- NULL
 
   #3. Define functions
   calculate_euclidean <- function(df){

@@ -19,13 +19,14 @@
 #'  freqpoly
 #' @param text.size Font size in the plot (default 20).
 #' @param colors Optionally specific colors for the groups. If not provided, the default ggplot2 colors are used.
-#' @param significane If TRUE, the significance of a T test between the groups is plotted in the boxplot (default FALSE)
+#' @param significance If TRUE, the significance of a T test between the groups is plotted in the boxplot (default FALSE)
 #' @param parallel If TRUE, the metric calculations are parallelized (default FALSE)
 #' @param num.cores Number of cores to be used when parallel = TRUE. (Defaults to all available cores - 1)
 #' @return Plots to compare the repertoires on the supplied metrics.
 #' @export
 #' @examples
-#' boxplots <- Af_compare_across_repertoires(list("S1" = AntibodyForests::small_af[1], "S2" = AntibodyForests::small_af[2]),
+#' boxplots <- Af_compare_across_repertoires(list("S1" = AntibodyForests::small_af[1],
+#'             "S2" = AntibodyForests::small_af[2]),
 #'             metrics = c("sackin.index", "betweenness", "degree"),
 #'             plot = "boxplot")
 #' boxplots$betweenness
@@ -54,6 +55,11 @@ Af_compare_across_repertoires <- function(AntibodyForests_list,
   if(missing(parallel)){parallel <- FALSE}
   # If 'parallel' is set to TRUE but 'num.cores' is not specified, the number of cores is set to all available cores - 1
   if(parallel == TRUE && missing(num.cores)){num.cores <- parallel::detectCores() -1}
+
+  #Set global variable for CRAN
+  betweenness <- NULL
+  degree <- NULL
+  group <- NULL
 
   output_plot <- list()
 

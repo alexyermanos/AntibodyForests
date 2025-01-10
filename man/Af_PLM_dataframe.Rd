@@ -21,8 +21,8 @@ Function to create a dataframe of the Protein Language Model probabilities and r
 }
 \examples{
 \dontrun{
-PLM_dataframe <- Af_PLM_dataframe(AntibodyForests_object = AntibodyForests::small_af, 
-                 sequence.name = "VDJ_sequence_aa_trimmed", 
+PLM_dataframe <- Af_PLM_dataframe(AntibodyForests_object = AntibodyForests::small_af,
+                 sequence.name = "VDJ_sequence_aa_trimmed",
                  path_to_probabilities = "/directory/ProbabilityMatrix")
 }
 }

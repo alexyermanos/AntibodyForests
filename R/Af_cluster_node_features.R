@@ -23,7 +23,7 @@ Af_cluster_node_features <- function(input,
                                                 colors,
                                                 text.size,
                                                 significance){
-  
+
   #Stop when no input is provided
   if(missing(input)){stop("Please provide a valid input object.")}
   if(missing(features)){stop("Please provide a valid features object.")}
@@ -35,7 +35,10 @@ Af_cluster_node_features <- function(input,
   #Check if input is valid
   if(!(fill %in% c("unique", "max"))){stop("Please provide a valid fill argument.")}
   if(!all(features %in% names(input[[1]][[1]]$nodes[[1]]))){stop("Features are not present in AntibodyForests-object.")}
-  
+
+  #Set global variable for CRAN
+  count <- NULL
+
   #Function to get the node features for each tree
   get_node_features <- function(clonotype, features, fill){
     node_features <- c()
@@ -52,14 +55,14 @@ Af_cluster_node_features <- function(input,
     names(node_features) <- features
     return(node_features)
   }
-  
+
   #Create a dataframe with the node features for each tree
   df <- t(as.data.frame(lapply(input, function(sample){
     lapply(sample, function(clonotype){
       get_node_features(clonotype, features, fill)
     })
   })))
-  
+
   #Add column to this dataframe with the assigned clusters
   df <- as.data.frame(df)
   df$tree <- gsub("^X", "", rownames(df))
@@ -70,12 +73,12 @@ Af_cluster_node_features <- function(input,
   df <- df[!is.na(df$clusters),]
   #Stop if there is no match
   if(nrow(df) == 0){stop("Tree names of the clusters are not in the AntibodyForests-object.")}
-  
+
   #Create barplots
   output_list <- list()
   for(feature in features){
 
-    
+
     p <- ggplot2::ggplot(df, ggplot2::aes(x=as.factor(clusters), fill=!!rlang::sym(feature))) +
       ggplot2::geom_bar(position = "fill", stat = "count", width = 0.8) +
       ggplot2::theme_classic() +
@@ -103,7 +106,7 @@ Af_cluster_node_features <- function(input,
     #Add to the output list
     output_list[[feature]] <- p
   }
-  
+
   return(output_list)
 
 }

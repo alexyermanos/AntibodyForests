@@ -50,13 +50,13 @@ Af_cluster_metrics(
 
 \item{text.size}{Font size in the plot (default 20).}
 
+\item{significance}{\itemize{
+\item boolean - If TRUE, the significance of a T test between the groups is plotted (default FALSE)
+}}
+
 \item{parallel}{If TRUE, the metric calculations are parallelized across clonotypes. (default FALSE)}
 
 \item{num.cores}{Number of cores to be used when parallel = TRUE. (Defaults to all available cores - 1)}
-
-\item{significane}{\itemize{
-\item boolean - If TRUE, the significance of a T test between the groups is plotted (default FALSE)
-}}
 }
 \value{
 \itemize{

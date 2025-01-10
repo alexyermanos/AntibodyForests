@@ -90,11 +90,11 @@ Function to compare trees of clonotypes.
 }
 \examples{
 compare_repertoire <- Af_compare_within_repertoires(input = AntibodyForests::small_af,
-                                                    min.nodes = 8,
-                                                    distance.method = "euclidean",
-                                                    distance.metrics = c("mean.depth", "sackin.index"),
-                                                    clustering.method = "mediods",
-                                                    visualization.methods = "PCA")
+                                     min.nodes = 8,
+                                     distance.method = "euclidean",
+                                     distance.metrics = c("mean.depth", "sackin.index"),
+                                     clustering.method = "mediods",
+                                     visualization.methods = "PCA")
 #Plot the PCA clusters
 compare_repertoire$plots$PCA_clusters
 }

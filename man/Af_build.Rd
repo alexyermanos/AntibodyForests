@@ -64,12 +64,9 @@ Available codon models: 'M0'.}
 'phylo.network.default': mst-like tree evolutionary network algorithm in which the germline node is positioned at the top of the tree, and nodes with the minimum distance to any existing node in the tree are linked iteratively.
 'phylo.network.mst'    : minimum spanning tree (MST) algorithm from 'ape::mst()' constructs networks with the minimum sum of edge lengths/weights, which involves iteratively adding edges to the network in ascending order of edge weights, while ensuring that no cycles are formed, after which the network is reorganized into a germline-rooted lineage tree.
 'phylo.tree.nj'        : neighbor-joining (NJ) algorithm from 'ape::nj()' constructs phylogenetic trees by joining pairs of nodes with the minimum distance, creating a bifurcating tree consisting of internal nodes (representing unrecovered sequences) and terminal nodes (representing the recovered sequences).
-NB: More information about the use of the 'ape' package is provided in the book 'Analysis of Phylogenetic and Evolution with R' by Emmanual Paradis (https://link.springer.com/book/10.1007/978-1-4614-1743-9).
 'phylo.tree.mp'        : maximum-parsimony (MP) algorithm from 'phangorn::pratchet()' constructs phylogenetic trees by minimizing the total number of edits required to explain the observed differences among sequences.
 'phylo.tree.ml'        : maximum-likelihood (ML) algorithm from 'phangorn::pml_bb()' constructs phylogenetic trees by estimating the tree topology and branch lengths that maximize the likelihood of observing the given sequence data under a specified evolutionary model.
-NB: More information about estimating phylogenetic trees with the 'phangorn' package is provided on the Github page of Klaus Schliep: https://klausvigo.github.io/phangorn/articles/Trees.html.
-'phylo.tree.IgPhyML'   : no trees/network are inferred, but trees are directly imported from
-NB: More information about the IgPhyML tool and the phylogenetic substitution model for antibody lineages is provded by Hoehn et al. (2017): https://doi.org/10.1534/genetics.116.196303.}
+'phylo.tree.IgPhyML'   : no trees/network are inferred, but trees are directly imported from}
 
 \item{IgPhyML.output.file}{string - specifies the path to the IgPhyML output file, from which the trees will be imported (if 'construction.method' is set to 'phylo.tree.IgPhyML').}
 
@@ -112,7 +109,7 @@ An object of class 'AntibodyForests', structured as a nested list where each out
 This function takes a VDJ dataframe and uses the specified sequence columns to build a tree/network for each clonotype and stores them in an AntibodyForests object, together with the sequences and other specified features. These trees/networks provide insights into the evolutionary relationships between B cell sequences from each clonotype. The resulting object of class 'AntibodyForests' can be used for downstream analysis as input for...
 }
 \examples{
-af <- Af_build(VDJ = AntibodyForests::small_vdj, 
+af <- Af_build(VDJ = AntibodyForests::small_vdj,
                 sequence.columns = c("VDJ_sequence_aa_trimmed","VJ_sequence_aa_trimmed"),
                 germline.columns = c("VDJ_germline_aa_trimmed","VJ_germline_aa_trimmed"),
                 node.features = c("VDJ_vgene", "isotype"),

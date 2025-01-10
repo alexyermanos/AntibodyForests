@@ -63,6 +63,7 @@ Af_distance_boxplot <- function(AntibodyForests_object,
   clonotype <- NULL
   png <- NULL
   pdf <- NULL
+  group <- NULL
 
   #Calculate the average distance to the germline per group
   metric_df <- Af_metrics(AntibodyForests_object,
@@ -81,7 +82,7 @@ Af_distance_boxplot <- function(AntibodyForests_object,
   df_all$clonotype <- rownames(df_all)
 
   #Only keep clonotypes that have nodes of all groups
-  df <- as.data.frame(na.omit(df_all))
+  df <- as.data.frame(stats::na.omit(df_all))
 
   #Check if there are clonotypes left after NA removal
   if(nrow(df) == 0){stop("No trees contain nodes from all groups.")}

@@ -42,11 +42,11 @@ freqpoly}
 
 \item{colors}{Optionally specific colors for the groups. If not provided, the default ggplot2 colors are used.}
 
+\item{significance}{If TRUE, the significance of a T test between the groups is plotted in the boxplot (default FALSE)}
+
 \item{parallel}{If TRUE, the metric calculations are parallelized (default FALSE)}
 
 \item{num.cores}{Number of cores to be used when parallel = TRUE. (Defaults to all available cores - 1)}
-
-\item{significane}{If TRUE, the significance of a T test between the groups is plotted in the boxplot (default FALSE)}
 }
 \value{
 Plots to compare the repertoires on the supplied metrics.
@@ -55,7 +55,8 @@ Plots to compare the repertoires on the supplied metrics.
 Compare tree topology metrics across different (groups) of AntibodyForests objects.
 }
 \examples{
-boxplots <- Af_compare_across_repertoires(list("S1" = AntibodyForests::small_af[1], "S2" = AntibodyForests::small_af[2]),
+boxplots <- Af_compare_across_repertoires(list("S1" = AntibodyForests::small_af[1],
+            "S2" = AntibodyForests::small_af[2]),
             metrics = c("sackin.index", "betweenness", "degree"),
             plot = "boxplot")
 boxplots$betweenness
