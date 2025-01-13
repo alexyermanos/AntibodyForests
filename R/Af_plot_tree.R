@@ -24,7 +24,7 @@
 #' @param main.title string - specifies the main title of the plot (to be plotted in a bold font). Defaults to NULL.
 #' @param sub.title string - specifies the sub title of the plot (to be plotted in an italic font below the main title). Defaults to NULL.
 #' @param color.legend.title string - specifies the title of the legend showing the color matching. Defaults to the (capitalized) name of the feature specified in the 'color.by' parameter (converted by the 'stringr::str_to_title()' function).
-#' @param size.legend.tile string - specifies the title of the legend showing the node sizes. Defaults to 'Expansion (# cells)'.
+#' @param size.legend.title string - specifies the title of the legend showing the node sizes. Defaults to 'Expansion (# cells)'.
 #' @param font.size float - specifies the font size of the text in the plot. Defaults to 1.
 #' @param output.file string - specifies the path to the output file (PNG of PDF). Defaults to NULL.
 #' @return Plots lineage tree for the specified clonotype.
@@ -87,7 +87,7 @@ Af_plot_tree <- function(AntibodyForests_object,
     names(node_sizes) <- node_names
 
     # Retrieve the coordinates of nodes when plotted on a graph with both the x and y axis ranging from -1 + 1, and store the coordinates in a dataframe with a x and y column and with the node names as rownames
-    node_coordinates <- as.data.frame(igraph::norm_coords(igraph:::i.postprocess.layout(igraph::layout_as_tree(tree, root = "germline")), xmin = -1, xmax = 1, ymin = -1, ymax = 1))
+    node_coordinates <- as.data.frame(igraph::norm_coords(igraph::layout_as_tree(tree, root = "germline"), xmin = -1, xmax = 1, ymin = -1, ymax = 1))
     rownames(node_coordinates) <- node_names
     colnames(node_coordinates) <- c("x", "y")
 
@@ -150,6 +150,70 @@ Af_plot_tree <- function(AntibodyForests_object,
     }
   }
 
+  # Function to plot a single arrow between two nodes
+  plot_arrow <- function(x0, y0, x1, y1, arrow.size, edge.width, xmax, edge.label, edge.label.color){
+    # Compute shaft and arrowhead properties
+    size <- 0.1 * arrow.size / xmax         # Arrowhead size (relative to shaft length)
+    width <- 0.05 * arrow.size / xmax      # Arrowhead width
+
+    dx <- x1 - x0
+    dy <- y1 - y0
+    length <- sqrt(dx^2 + dy^2)  # Length of the edge
+    unit_dx <- dx / length       # Unit vector x
+    unit_dy <- dy / length       # Unit vector y
+
+    # Arrowhead size and shape
+    arrow_x <- x1 - size * length * unit_dx  # Base of arrowhead (x)
+    arrow_y <- y1 - size * length * unit_dy  # Base of arrowhead (y)
+    perpendicular_x <- -unit_dy * width      # Perpendicular vector x
+    perpendicular_y <- unit_dx * width       # Perpendicular vector y
+
+    # Arrowhead coordinates
+    arrowhead <- rbind(
+      c(x1, y1), # Tip of the arrowhead
+      c(arrow_x + perpendicular_x, arrow_y + perpendicular_y), # One side of base
+      c(arrow_x - perpendicular_x, arrow_y - perpendicular_y)  # Other side of base
+    )
+
+    # Draw the shaft (optional curvature can be added here)
+    segments(
+      x0, y0, x1, y1,
+      col = "darkgrey", lwd = edge.width, lty = 1
+    )
+    # Draw the arrow head
+    polygon(arrowhead, col = "darkgrey", border = "darkgrey", lwd = arrow.size, lty = 1)
+
+    # Plot the edge labes
+    middle.x = (x0 + x1) / 2
+    middle.y = (y0 + y1) / 2
+    text(x = middle.x, y = middle.y, labels = edge.label, col = edge.label.color)
+
+  }
+
+  # Function to draw circle or pie shapes
+  plot_vertex <- function(x, y, shape = "circle", size = 1, circle.col, pie.col, border = "black", slices = NULL) {
+    if (shape == "circle") {
+      # Draw a circle
+      symbols(x, y, circles = size, inches = FALSE, add = TRUE, fg = border, bg = circle.col)
+    } else if (shape == "pie") {
+      # Normalize slices so that their sum is 1
+      slices <- slices / sum(slices)
+      # Draw the pie chart
+      # Angle for each slice
+      angles <- c(0, cumsum(slices) * 2 * pi)
+
+      # Draw each slice as a sector of a circle
+      for (i in 1:(length(slices))) {
+        polygon(
+          c(x, x + size * cos(seq(angles[i], angles[i+1], length.out = 20))),
+          c(y, y + size * sin(seq(angles[i], angles[i+1], length.out = 20))),
+          col = pie.col[i], border = border
+        )
+      }
+
+    }
+  }
+
 
   plot_igraph_object <- function(tree,
                                  xlim,
@@ -158,7 +222,7 @@ Af_plot_tree <- function(AntibodyForests_object,
                                  title,
                                  ...){
 
-    # Plots  (based on the 'igraph::plot.igraph()' function)
+    # Plots
     # Arguments:
     # - tree: igraph object
     # - xlim: vector of integers/floats specifying the limits of the x axis of the plot on which the lineage tree will be plotted (determines the horizontal node spacing)
@@ -166,66 +230,23 @@ Af_plot_tree <- function(AntibodyForests_object,
     # - legend: bool indicating whether (a) legend(s) are to be plotted on the right side of the plot (if so, +1.5 is added to the upper limit of the horizontal axis)
     # - title: bool inidicating whether (a) title(s) are to be plotted on top of the plot (if so, +0.5 is added to the upper limit of the vertical axis)
 
-    # Save input object as 'graph' and ensure that the input object is an igraph object
+    # Save input object as 'graph'
     graph <- tree
-    igraph:::ensure_igraph(graph)
     # Count the number of vertices in the graph
     vc <- igraph::vcount(graph)
-    # Parse through the plot parameters
-    params <- igraph:::i.parse.plot.params(graph, list(...))
     # Retrieve the node size (and divide by 200) and shape
-    vertex.size <- 1/200 * params("vertex", "size")
-    shape <- igraph:::igraph.check.shapes(params("vertex", "shape"))
-    # Retrieve the color palette to use for vertex color (if provided)
-    palette <- params("plot", "palette")
-    if(!is.null(palette)){old_palette <- palette(palette); on.exit(palette(old_palette), add = TRUE)}
-    # Retrieve the node label properties
-    label.family <- params("vertex", "label.family")
-    label.font <- params("vertex", "label.font")
-    label.cex <- params("vertex", "label.cex")
-    label.degree <- params("vertex", "label.degree")
-    label.color <- params("vertex", "label.color")
-    label.dist <- params("vertex", "label.dist")
-    labels <- params("vertex", "label")
-    # Retrieve the edge properties
-    edge.color <- params("edge", "color")
-    edge.width <- params("edge", "width")
-    edge.lty <- params("edge", "lty")
-    arrow.size <- params("edge", "arrow.size")[1]
-    arrow.width <- params("edge", "arrow.width")[1]
-    edge.labels <- params("edge", "label")
-    loop.angle <- params("edge", "loop.angle")
-    # Retrieve and process the arrows (if present) and their mode/direction
-    arrow.mode <- igraph:::i.get.arrow.mode(graph, params("edge", "arrow.mode"))
-    # Retrieve the edge curvature (if provided)
-    curved <- params("edge", "curved")
-    if(is.function(curved)){curved <- curved(graph)}
-    # Retrieve the edge label properties
-    edge.label.font <- params("edge", "label.font")
-    edge.label.family <- params("edge", "label.family")
-    edge.label.cex <- params("edge", "label.cex")
-    edge.label.color <- params("edge", "label.color")
-    elab.x <- params("edge", "label.x")
-    elab.y <- params("edge", "label.y")
-    # Retrieve and process the tree layout
-    layout <- igraph:::i.postprocess.layout(params("plot", "layout"))
-    # Retrieve other plot parameters (margin, scaling, aspect ratio, and frame)
-    margin <- params("plot", "margin")
-    margin <- rep(margin, length.out = 4)
-    rescale <- params("plot", "rescale")
-    asp <- params("plot", "asp")
-    frame.plot <- params("plot", "frame.plot")
-    # Retrieve titles
-    main <- params("plot", "main")
-    sub <- params("plot", "sub")
-    xlab <- params("plot", "xlab")
-    ylab <- params("plot", "ylab")
-    # Retrieve the maximum vertex size
-    maxv <- max(vertex.size)
-    # If 'rescale' is set to TRUE, rescale the layout to the specified 'xlim' and 'ylim'
-    if(rescale){
-      layout <- igraph::norm_coords(layout, xmin = xlim[1], xmax = xlim[2], ymin = ylim[1], ymax = ylim[2])
-    }
+    vertex.size <- 1/200 * igraph::V(graph)$size
+    shape <- igraph::V(graph)$shape
+    # Retrieve the node and edge label properties
+    label.cex <- igraph::V(graph)$label.cex
+    label.color <- igraph::V(graph)$label.color
+    labels <- igraph::V(graph)$label
+    edge.labels <- igraph::E(graph)$label
+    edge.label.color <- "darkblue"
+    # Arrow mode is 2 for tree layout
+    arrow.mode <- 2
+    # rescale the layout to the specified 'xlim' and 'ylim'
+    layout <- igraph::norm_coords(layout, xmin = xlim[1], xmax = xlim[2], ymin = ylim[1], ymax = ylim[2])
     # If there are no nodes with multiple descendants, make sure that all nodes have 0 as x coordinate
     if(length(unique(layout[,1])) == 1){layout[, 1] <- 0}
     # Add 10% margin to the plot
@@ -239,9 +260,9 @@ Af_plot_tree <- function(AntibodyForests_object,
                    xlim = xlim, ylim = ylim,   # Set the x and y limits
                    axes = FALSE,               # Draw no axes on the plot
                    frame.plot = FALSE,         # Draw no box around the plot
-                   asp = asp,                  # Set the y/x aspect ratio
-                   main = main, sub = sub,     # Specicy the main and sub title of the plot
-                   xlab = xlab, ylab = ylab)   # Specify the axis titles
+                   asp = 1,                  # Set the y/x aspect ratio
+                   main = "", sub = "",     # Specicy the main and sub title of the plot
+                   xlab = "", ylab = "")   # Specify the axis titles
 
     # Retrieve a list of the edges in the graph
     el <- igraph::as_edgelist(graph, names = FALSE)
@@ -254,96 +275,46 @@ Af_plot_tree <- function(AntibodyForests_object,
     edge.coords[, 2] <- layout[, 2][el[, 1]]   # y0 (y top)
     edge.coords[, 3] <- layout[, 1][el[, 2]]   # x1 (x down)
     edge.coords[, 4] <- layout[, 2][el[, 2]]   # y1 (y down)
-    # If all the nodes have the same shape, clip both ends of the edges to the nodes using the function stored in the 'igraph:::.igraph.shapes' object
-    if(length(unique(shape)) == 1){
-      ec <- igraph:::.igraph.shapes[[shape[1]]]$clip(edge.coords, el, params = params, end = "both")
-    }
-    # If not, clip the ends of the edges separately using the different functions stored in the 'igraph:::.igraph.shapes' object
-    else{
-      shape <- rep(shape, length.out = igraph::vcount(graph))
-      ec <- edge.coords
-      ec[, 1:2] <- t(sapply(seq(length.out = nrow(el)), function(x){
-        igraph:::.igraph.shapes[[shape[el[x, 1]]]]$clip(edge.coords[x, , drop = FALSE], el[x, , drop = FALSE], params = params, end = "from")
-      }))
-      ec[, 3:4] <- t(sapply(seq(length.out = nrow(el)), function(x){
-        igraph:::.igraph.shapes[[shape[el[x, 2]]]]$clip(edge.coords[x, , drop = FALSE], el[x, , drop = FALSE], params = params, end = "to")
-      }))
-    }
+
+    # clip both ends of the edges to the nodes
+    phi <- atan2(edge.coords[, 4] - edge.coords[, 2], edge.coords[, 3] - edge.coords[, 1])
+    r <- sqrt((edge.coords[, 3] - edge.coords[, 1])^2 + (edge.coords[, 4] - edge.coords[, 2])^2)
+    vs.from <- vertex.size[el[, 1]]
+    vs.to <- vertex.size[el[, 2]]
+    ec <- cbind(
+      edge.coords[, 1] + vs.from * cos(phi),
+      edge.coords[, 2] + vs.from * sin(phi),
+      edge.coords[, 1] + (r - vs.to) * cos(phi),
+      edge.coords[, 2] + (r - vs.to) * sin(phi))
+
     # Store the edge coordinates in separate objects ('x0', 'y0', 'x1', and 'y1')
     x0 <- ec[, 1]
     y0 <- ec[, 2]
     x1 <- ec[, 3]
     y1 <- ec[, 4]
-    # Plot edges with the appropriate properties
-    if(length(edge.color) > 1){edge.color <- edge.color}
-    if(length(edge.width) > 1){edge.width <- edge.width}
-    if(length(edge.lty) > 1){edge.lty <- edge.lty}
-    if(length(arrow.mode) > 1){arrow.mode <- arrow.mode}
-    if(length(arrow.size) > 1){arrow.size <- arrow.size}
-    if(length(curved) > 1){curved <- curved}
-    # If the same arrow is to be used for all the edges, plot the edges as this type of arrow with the appropriate properties using the 'igraph:::igraph.Arrows()' function
-    if(length(unique(arrow.mode)) == 1){
-      lc <- igraph:::igraph.Arrows(x0, y0, x1, y1,
-                                   h.col = edge.color, sh.col = edge.color,
-                                   h.lwd = 1, sh.lwd = edge.width,
-                                   open = FALSE,
-                                   code = arrow.mode[1],
-                                   sh.lty = edge.lty, h.lty = 1,
-                                   size = arrow.size, width = arrow.width,
-                                   curved = curved)
-      lc.x <- lc$lab.x
-      lc.y <- lc$lab.y
+
+    # Plot the edges, edge labels, and arrows
+    for(i in 1:nrow(ec)){
+      plot_arrow(x0[i], y0[i], x1[i], y1[i],
+                 arrow.size, edge.width,
+                 xmax = xlim[2],
+                 edge.label = edge.labels[i], edge.label.color = edge.label.color)
     }
-    # If different type of arrows are to be used, plot the arrows separately
-    else{
-      curved <- rep(curved, length.out = igraph::ecount(graph))
-      lc.x <- lc.y <- numeric(length(curved))
-      for(code in 0:3){
-        valid <- arrow.mode == code
-        if(!any(valid)){next}
-        ec <- edge.color
-        if(length(ec) > 1){ec <- ec[valid]}
-        ew <- edge.width
-        if(length(ew) > 1){ew <- ew[valid]}
-        el <- edge.lty
-        if(length(el) > 1){el <- el[valid]}
-        lc <- igraph:::igraph.Arrows(x0[valid], y0[valid], x1[valid], y1[valid],
-                            code = code,
-                            sh.col = ec, h.col = ec,
-                            sh.lwd = ew, h.lwd = 1,
-                            h.lty = 1, sh.lty = el,
-                            open = FALSE,
-                            size = arrow.size, width = arrow.width,
-                            curved = curved[valid])
-        lc.x[valid] <- lc$lab.x
-        lc.y[valid] <- lc$lab.y
-      }
+    # Plot the nodes
+    for(y in 1:vc){
+      plot_vertex(layout[y, 1], layout[y, 2],
+                  shape = shape[y], size = vertex.size[y],
+                  circle.col = igraph::V(graph)$color[y], pie.col = igraph::V(graph)$pie.color[[y]],
+                  slices = igraph::V(graph)$pie[[y]])
     }
-    # Adjust edge label positions (if specified)
-    if(!is.null(elab.x)){lc.x <- ifelse(is.na(elab.x), lc.x, elab.x)}
-    if(!is.null(elab.y)) {lc.y <- ifelse(is.na(elab.y), lc.y, elab.y)}
-    # Plot the edge labels
-    text(x = lc.x, y = lc.y, labels = edge.labels, col = edge.label.color, family = edge.label.family, font = edge.label.font, cex = edge.label.cex)
-    # If all the nodes have the same shape, plot the nodes with the appropriate properties using the function stored in the 'igraph:::.igraph.shapes' object
-    if(length(unique(shape)) == 1){igraph:::.igraph.shapes[[shape[1]]]$plot(layout, params = params)}
-    # If not, plot the nodes differently using the functions stored in the 'igraph:::.igraph.shapes' object
-    else{sapply(seq(length.out = igraph::vcount(graph)), function(x){igraph:::.igraph.shapes[[shape[x]]]$plot(layout[x, , drop = FALSE], v = x, params = params)})}
     # Restore the graphical parameters after function execution
     old_xpd <- graphics::par(xpd = TRUE)
     on.exit(graphics::par(old_xpd), add = TRUE)
     # Define node label positions
     x <- layout[, 1]
     y <- layout[, 2]
-    # If all the node labels have the same font family, plot all the node labels using this font family
-    if(length(label.family) == 1){text(x, y, labels = labels, col = label.color, family = label.family, font = label.font, cex = label.cex)}
-    # If the node labels have different font families, apply these fonts separately
-    else{
-      if1 <- function(vect, idx){
-        if(length(vect) == 1){vect}
-        else{vect[idx]}
-      }
-      sapply(seq_len(igraph::vcount(graph)), function(v){text(x[v], y[v], labels = if1(labels, v), col = if1(label.color, v), family = if1(label.family, v), font = if1(label.font, v), cex = if1(label.cex, v))
-      })}
+    # Plot all the node labels
+    text(x, y, labels = labels, col = label.color, cex = label.cex)
   }
 
 
@@ -410,7 +381,6 @@ Af_plot_tree <- function(AntibodyForests_object,
     # Return the range labels
     return(range_labels)
   }
-
 
   # 1. Retrieve objects from AntibodyForests object and perform input checks
 
@@ -561,7 +531,7 @@ Af_plot_tree <- function(AntibodyForests_object,
   # If 'node.color' is set to 'default' and the 'node.color.gradient' is set to 'none', all unique values in the 'node.feature.list' will get a (random) color from the 'grDevices::rainbow()' function
   if(is.character(node.color)){if(node.color == "default" && all(node.color.gradient == "none") && !all(unique(unlist(node.feature.list)) %in% names(isotype_colors))){node.color.list <- as.list(grDevices::rainbow(length(unique(unlist(node.feature.list))))); names(node.color.list) <- sort(unique(unlist(node.feature.list)))}}
   # If 'node.color' is set to 'default' and the 'node.color.gradient' is not set to 'none', the specified color gradient will be used to assign a color to each numerical value that is present in the 'node.feature.list'
-  if(class(node.color) == "character" && !missing(color.by)){if(node.color == "default" && all(node.color.gradient != "none")){
+  if(as.character(class(node.color)) == "character" && !missing(color.by)){if(node.color == "default" && all(node.color.gradient != "none")){
     # For each node, retrieve the unique numerical values from the 'node.feature.list'
     numerical_values <- as.numeric(unique(c(unlist(node.feature.list)[unlist(node.feature.list) != "unknown"], node.color.range)))
     # Assign a color to each value/node using the 'scale::cscale()' function from a color gradient that is created using the 'scales::pal_seq_gradient()' function with the colors specified in the 'node.color.gradient' vector
@@ -704,7 +674,7 @@ Af_plot_tree <- function(AntibodyForests_object,
 
   # Resize the size of the node labels according to the size of the node itself
   if (node.label.size == "default"){
-    igraph::V(tree)$label.cex <- igraph::V(tree)$size / 10
+    igraph::V(tree)$label.cex <- igraph::V(tree)$size / 15
   }else{
   # If the 'node.label.size' parameter is not default, the size of the node labels is set to this value
     igraph::V(tree)$label.cex <- node.label.size
