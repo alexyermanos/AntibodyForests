@@ -3,14 +3,12 @@ Title: Delineating inter- and intra-antibody repertoire evolution with
     AntibodyForests
 Version: 1.0.0
 Authors@R: c(
-    person("Alexander", "Yermanos", , "ayermanos@gmail.com", role = c("aut", "cre")),
-    person("Daphne", "van Ginneken", role = "ctb"),
+    person("Daphne", "van Ginneken", email = "daphne.v.ginneken@gmail.com", role = c("aut", "cre")),
+    person("Alexander", "Yermanos", role = "ctb"),
     person("Valentijn", "Tromp", role = "ctb"),
-    person("Tudor-Stefan", "Cotet", role = "ctb"),
-    person("Victor", "Kreiner", role = "ctb"),
-    person("Lucas", "Stalder", role = "ctb")
+    person("Tudor-Stefan", "Cotet", role = "ctb")
   )
-Maintainer: Alexander Yermanos <daphne.v.ginneken@gmail.com>
+Maintainer: Daphne van Ginneken <daphne.v.ginneken@gmail.com>
 Description: The generated wealth of immune repertoire sequencing data
     requires software to investigate and quantify inter- and
     intra-antibody repertoire evolution to uncover how B cells evolve

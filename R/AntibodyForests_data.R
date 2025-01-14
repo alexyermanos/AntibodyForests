@@ -22,8 +22,3 @@
 #'
 #' @name af_nj
 'af_nj'
-
-#' Output example from Af_compare_within_repertoires() for function testing purposes
-#'
-#' @name compare_repertoire
-'compare_repertoire'

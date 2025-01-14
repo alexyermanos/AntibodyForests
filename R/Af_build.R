@@ -62,7 +62,7 @@
 #' 'metrics'                  : list of tree metrics that can only be calculated during the construction of the lineage tree, which includes a 'tie.resolving' matrix, indicating which options were used to handle ties (when 'construction.method' is set to 'phylo.network.default'), and a 'model' string, indicating which model was used to infer the maximum likelihood tree (if 'construction.method' is set to 'phylo.tree.ml').
 #' @param parallel bool - if TRUE, the per-clone network inference is executed in parallel (parallelized across samples). Defaults to FALSE.
 #' @param num.cores integer - number of cores to be used when parallel = TRUE. Defaults to all available cores - 1 or the number of samples in the VDJ dataframe (depending which number is smaller).
-#' @return An object of class 'AntibodyForests', structured as a nested list where each outer list represents a sample, and each inner list represents a clonotype. Each clonotype list contains the output objects specified in the 'include' parameter. For example, AntibodyForests[[1]][[2]] contains the list of output objects for the first sample and third clonotype (which would be equivalent to something like AntibodyForests$S1$clonotype3).
+#' @return An object of class 'AntibodyForests', structured as a nested list where each outer list represents a sample, and each inner list represents a clonotype. Each clonotype list contains the output objects specified in the 'include' parameter. For example, \code{AntibodyForests[[1]][[2]]} contains the list of output objects for the first sample and third clonotype (which would be equivalent to something like AntibodyForests$S1$clonotype3).
 #' @export
 #' @examples
 #' af <- Af_build(VDJ = AntibodyForests::small_vdj,

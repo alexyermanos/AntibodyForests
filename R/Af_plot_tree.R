@@ -176,17 +176,17 @@ Af_plot_tree <- function(AntibodyForests_object,
     )
 
     # Draw the shaft (optional curvature can be added here)
-    segments(
+    graphics::segments(
       x0, y0, x1, y1,
       col = "darkgrey", lwd = edge.width, lty = 1
     )
     # Draw the arrow head
-    polygon(arrowhead, col = "darkgrey", border = "darkgrey", lwd = arrow.size, lty = 1)
+    graphics::polygon(arrowhead, col = "darkgrey", border = "darkgrey", lwd = arrow.size, lty = 1)
 
     # Plot the edge labes
     middle.x = (x0 + x1) / 2
     middle.y = (y0 + y1) / 2
-    text(x = middle.x, y = middle.y, labels = edge.label, col = edge.label.color)
+    graphics::text(x = middle.x, y = middle.y, labels = edge.label, col = edge.label.color)
 
   }
 
@@ -194,7 +194,7 @@ Af_plot_tree <- function(AntibodyForests_object,
   plot_vertex <- function(x, y, shape = "circle", size = 1, circle.col, pie.col, border = "black", slices = NULL) {
     if (shape == "circle") {
       # Draw a circle
-      symbols(x, y, circles = size, inches = FALSE, add = TRUE, fg = border, bg = circle.col)
+      graphics::symbols(x, y, circles = size, inches = FALSE, add = TRUE, fg = border, bg = circle.col)
     } else if (shape == "pie") {
       # Normalize slices so that their sum is 1
       slices <- slices / sum(slices)
@@ -204,7 +204,7 @@ Af_plot_tree <- function(AntibodyForests_object,
 
       # Draw each slice as a sector of a circle
       for (i in 1:(length(slices))) {
-        polygon(
+        graphics::polygon(
           c(x, x + size * cos(seq(angles[i], angles[i+1], length.out = 20))),
           c(y, y + size * sin(seq(angles[i], angles[i+1], length.out = 20))),
           col = pie.col[i], border = border
@@ -697,6 +697,12 @@ Af_plot_tree <- function(AntibodyForests_object,
         # Retrieve this sequence for both nodes
         seq1 <- AntibodyForests_object[[sample]][[clonotype]][["nodes"]][[(nodes[1])]][[y]]
         seq2 <- AntibodyForests_object[[sample]][[clonotype]][["nodes"]][[(nodes[2])]][[y]]
+        #Align the sequences for hamming distance to make them equal length
+        if(edge.label == "hamming"){
+          alignment = pwalign::pairwiseAlignment(pattern = seq1, subject = seq2)
+          seq1 = as.character(pwalign::alignedPattern(alignment))
+          seq2 = as.character(pwalign::alignedSubject(alignment))
+        }
         # Return the distance between nodes used the specified distance metric
         return(stringdist::stringdist(seq1, seq2, method = edge.label))
       }))

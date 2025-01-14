@@ -61,6 +61,6 @@ distance = "edge.length",
 min.nodes = 5,
 groups = c("IGHA", "IgG1"),
 node.feature = "isotype",
-unconnected = T)
+unconnected = TRUE)
 
 }

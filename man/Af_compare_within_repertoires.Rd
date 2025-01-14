@@ -89,6 +89,7 @@ Af_compare_within_repertoires(
 Function to compare trees of clonotypes.
 }
 \examples{
+\dontrun{
 compare_repertoire <- Af_compare_within_repertoires(input = AntibodyForests::small_af,
                                      min.nodes = 8,
                                      distance.method = "euclidean",
@@ -97,4 +98,5 @@ compare_repertoire <- Af_compare_within_repertoires(input = AntibodyForests::sma
                                      visualization.methods = "PCA")
 #Plot the PCA clusters
 compare_repertoire$plots$PCA_clusters
+}
 }

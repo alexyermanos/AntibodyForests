@@ -103,7 +103,7 @@ Available codon models: 'M0'.}
 \item{num.cores}{integer - number of cores to be used when parallel = TRUE. Defaults to all available cores - 1 or the number of samples in the VDJ dataframe (depending which number is smaller).}
 }
 \value{
-An object of class 'AntibodyForests', structured as a nested list where each outer list represents a sample, and each inner list represents a clonotype. Each clonotype list contains the output objects specified in the 'include' parameter. For example, AntibodyForests[\link{1}][\link{2}] contains the list of output objects for the first sample and third clonotype (which would be equivalent to something like AntibodyForests$S1$clonotype3).
+An object of class 'AntibodyForests', structured as a nested list where each outer list represents a sample, and each inner list represents a clonotype. Each clonotype list contains the output objects specified in the 'include' parameter. For example, \code{AntibodyForests[[1]][[2]]} contains the list of output objects for the first sample and third clonotype (which would be equivalent to something like AntibodyForests$S1$clonotype3).
 }
 \description{
 This function takes a VDJ dataframe and uses the specified sequence columns to build a tree/network for each clonotype and stores them in an AntibodyForests object, together with the sequences and other specified features. These trees/networks provide insights into the evolutionary relationships between B cell sequences from each clonotype. The resulting object of class 'AntibodyForests' can be used for downstream analysis as input for...

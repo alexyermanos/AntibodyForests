@@ -1,12 +1,12 @@
 ---
-title: 'AntibodyForests vignette: a comprehensive guide for importing 10x single-cell V(D)J sequencing data, building lineage trees, and comparing trees within and across repertoires'
+title: 'AntibodyForests vignette: building and analyzing B-cell lineage trees from 10x sc-V(D)J seq data'
 date: "`r Sys.Date()`"
 output:
   html_vignette:
     highlight: pygments
     toc: true
 vignette: >
-  %\VignetteIndexEntry{AntibodyForests vignette: a comprehensive guide for importing 10x single-cell V(D)J sequencing data, building lineage trees, and comparing trees within and across repertoires}
+  %\VignetteIndexEntry{AntibodyForests vignette: building and analyzing B-cell lineage trees from 10x sc-V(D)J seq data}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}{inputenc}
 ---
@@ -14,7 +14,7 @@ vignette: >
 
 ```{r setup, echo = FALSE, eval = TRUE}
 # Set global options
-knitr::opts_chunk$set(eval = TRUE, include = TRUE, echo = TRUE, message = FALSE, warning = FALSE, error = FALSE)
+knitr::opts_chunk$set(eval = TRUE, include = TRUE, echo = TRUE, message = FALSE, warning = FALSE, error = FALSE, dpi = 72)
 # Define custom hooks for handling errors, warnings, and messages during knitting
 knitr::knit_hooks$set(
    error = function(x, options){
@@ -74,6 +74,7 @@ source("~/Documents/GitHub/AntibodyForests/R/Af_distance_boxplot.R")
 source("~/Documents/GitHub/AntibodyForests/R/Af_compare_across_repertoires.R")
 source("~/Documents/GitHub/AntibodyForests/R/VDJ_3d_properties.R")
 source("~/Documents/GitHub/AntibodyForests/R/Af_edge_RMSD.R")
+source("~/Documents/GitHub/AntibodyForests/R/VDJ_integrate_bulk.R")
 library(magrittr)
 ```
 <br>
@@ -83,10 +84,6 @@ library(magrittr)
 <div class=text-justify>
 
 This vignette provides a detailed explanation of the main functions from the AntibodyForests package, including the `VDJ_build()` function from the [Platypus package](https://github.com/alexyermanos/Platypus). These functions are designed for importing single-cell V(D)J sequencing data from 10x Genomics, constructing lineage trees, comparing the structure of these trees within and across repertoires, and incorporating features of protein structure and evolutionary likelihood from Protein Language Models. Throughout this vignette, the dataset outlined by [Neumeier et al. (2022)](https://doi.org/10.1073/pnas.2113766119) and [Kim et al. (2022)](https://www.nature.com/articles/s41586-022-04527-1) will be used.  
-
-<br>
-
-![](imgs/main/workflow.png){width=100%}
 
 <br>
 </div>
@@ -157,25 +154,13 @@ AntibodyForests_OVA_default <- Af_build(VDJ = VDJ_OVA,
                                           construction.method = "phylo.network.default")
 ```
 
-```{r load-AntibodyForests-objects, include = FALSE}
-# Load preconstructed AntibodyForests objects
-load("objects/AntibodyForests_OVA_default.RData")
-load("objects/AntibodyForests_OVA_mst.RData")
-load("objects/AntibodyForests_OVA_nj.RData")
-load("objects/AntibodyForests_OVA_mp.RData")
-load("objects/AntibodyForests_OVA_ml.RData")
-load("objects/AntibodyForests_OVA_IgPhyML.RData")
-load("objects/quick-start_out.RData")
-load("objects/quick-start_plots.RData")
-```
-
 ```{r, quick-start2, eval = F}
 # Plot one of the lineage trees, constructed with the `phylo.network.default' method
 Af_plot_tree(AntibodyForests_object = AntibodyForests_OVA_default,
                      sample = "S1",
                      clonotype = "clonotype2")
 ```
-![](imgs/trees/quick-start_tree.png){width=80%}
+![](imgs/QuickStart/quick-start_tree.png){width=80%}
 
 ```{r, quick-start3, eval = F}
 # Cluster the trees in the repertoire based on the euclidean distance between various metrics of each tree
@@ -196,14 +181,19 @@ plots <- Af_cluster_metrics(input = AntibodyForests_OVA_default,
 
 ```
 
-```{r, quick-start4, fig.width=4, fig.height=5}
+```{r, quick-start4, eval=FALSE}
 # Plot the PCA colored on the assigned clusters
 out$plots$PCA_clusters
+```
 
+![](imgs/QuickStart/quick-start_PCA2.png){width=50%}
+
+```{r, quick-start5, eval=FALSE}
 # Plot the different number of modalities between the clusters
 plots$modalities
 ```
 
+![](imgs/QuickStart/quick-start_modalities.png){width=50%}
 
 <br>
 </div>
@@ -211,7 +201,7 @@ plots$modalities
 
 ## 1. Import 10x output into VDJ dataframe with the `VDJ_build()` function
 
-### Summary  
+### Summary {.tabset}  
 
 <div class=text-justify>
 
@@ -239,7 +229,7 @@ NOTE: In older versions of Cell Ranger (older than v6), the FWR1-4 and CDR1-3 re
 </div>
 
 
-### Parameters  
+### Parameters {.tabset}  
 
 <div class=text-justify>
 
@@ -320,15 +310,11 @@ print(knitr::kable(data.frame(divergent.cells = c(360, 295, 79, 183 ,526),
 ```
 <br>
 
-For illustration, the dummy VDJ dataframe below contains the data of clonotype 1-5 of S1:
+For illustration, the dummy VDJ dataframe below contains a few columns of the first 10 rows of S1:
 ```{r vdj_build-example-3-df, echo = FALSE}
 # Load the example VDJdataframe
 load("objects/VDJ_OVA_dummy_3.RData")
-# Print first 10 clonotypes of all samples
-DT::datatable(data = VDJ_OVA_dummy_3,
-              rownames = FALSE,
-              options = list(scrollX = TRUE)
-)
+knitr::kable(head(VDJ_OVA_dummy_3[,c("sample_id", "barcode", "isotype", "clonotype_id", "clonotype_frequency", "VDJ_vgene", "VDJ_jgene")], 10))
 ```
 <br>
 
@@ -337,9 +323,9 @@ DT::datatable(data = VDJ_OVA_dummy_3,
 
 ## 2. Construct lineage trees in repertoire-wide manner with the `Af_build()` function
 
-<div class=text-justify>
+### Summary {.tabset}
 
-### Summary  
+<div class=text-justify>
 
 The **`Af_build()`** function infers B/T cell evolutionary networks for all clonotypes in a VDJ dataframe, thereby providing insights into the evolutionary relationships between BCR/TCR sequences from each clonotype. Upon execution, the function generates an AntibodyForests object containing lineage trees, sequences, and other specified features for downstream analyses. The resulting object can be used for visualization, comparison, and further analysis of B cell repertoires.  
 <br>
@@ -348,7 +334,11 @@ For all clonotypes, the unique (combination of) sequences are selected, which wi
 In addition, there is also the option to import pre-constructed lineage trees from an IgPhyML output file into an AntibodyForests object, which enables to comparison of trees created with different construction methods on the same sequencing data in a repertoire-wide manner. IgPhyML is a command-line tool that infers maximum likelihood trees using a phylogenetic codon substitution model specific for antibody lineages, as explained by [Hoehn *et al.* (2017)](https://doi.org/10.1534/genetics.116.196303). Some functions have been included to create the appropriate input files from IgPhyML from 10x Genomics outputs, by running the IgBLAST tool and integrating the output with the VDJ dataframe. These function are discussed in the [supplementary of this vignette](#supplementary-i).
 <br>
 
-### Parameters
+</div>
+
+### Parameters {.tabset}
+
+<div class=text-justify>
 
 `VDJ`
 
@@ -547,12 +537,66 @@ AntibodyForests_OVA_IgPhyML <- Af_build(VDJ = VDJ_OVA,
 
 ## 3. Visualize lineage trees with the `Af_plot_tree()` function
 
-### Summary  
+### Summary {.tabset}
 
 <div class=text-justify>
 
 The **`Af_plot_tree()`** function retrieves the igraph object from the provided AntibodyForests object for the specified clone within the specified sample and plots the lineage tree using the specified plotting parameters. This visualization offers insights into sequence evolution, enabling the observation of evolutionary processes in relation to sequence distances, clonal expansion, and other attributes such as isotype or evolutionary likelihood, as well as additional features appended to the VDJ dataframe.  
 <br>
+
+</div>
+
+### Parameters {.tabset}
+
+<div class=text-justify>
+
+`AntibodyForests_object`
+
+* **Description:** A list of AntibodyForests objects as obtained from the **`Af_build()`** function.  
+* **Example:** `list("Default" = AntibodyForests_OVA_default, "MST" = AntibodyForests_OVA_mst, "IgPhyML" = AntibodyForests_OVA_IgPhyML)`  
+* **Default:** *None*  
+<br>
+
+`sample`
+
+* **Description:** The sample name for which the lineage tree should be plotted.
+* **Example:** `"S1"`
+* **Default:** *None*
+<br>
+
+`clonotype`
+
+* **Description:** The clonotype name for which the lineage tree should be plotted.
+* **Example:** `"clonotype1"`
+* **Default:** *None*
+<br>
+
+`label.by`
+
+* **Description:** Specifies the label to plot on the nodes. Options include:
+  + **`"name"`**  
+  The node names are displayed on the nodes.  
+  + **`"size"`**
+  The number of cells per node are displayed.
+  + **`"none"`**  
+  No labels are displayed on the nodes.
+* **Default:** `"name"`
+<br>
+
+`color.by`
+
+* **Description:** Specifies the node feature to color the nodes.
+* **Example:** `"celltype"`
+* **Default:** `"isotype"` or `NULL` (if isotype is not present)
+<br>
+
+`edge.label`
+
+* **Description:** Specifies the label to be plotted on the edges. Options include:
+  + **`"original"`**  
+  The distance that is stored in the igraph object.
+  + **`"none"`**  
+  No labels are displayed on the edges.
 
 </div>
 
@@ -580,9 +624,9 @@ create_image_carousel <- function(image_sources){
 }
 ```
 
-#### 1. Default {.tabset}
+#### 1. Default
 
-In the carousel below, the lineage trees for the first 10 clonotypes of all samples are displayed, constructed using the `phylo.network.default` algorithm (`AntibodyForests_object = AntibodyForests_OVA_default`. This specific example demonstrates plotting the lineage tree for clonotype1 (`clonotype = "clonotype1"`) from sample S1 (`sample = "S1"`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`), and edges are annotated with the Levenshtein distances between the connected nodes (`edge.label = "lv"`). Node sizes reflect clonal expansion (`node.size = "expansion"`), ranging from 10 to 20 on a scale (`node.size.scale = c(10, 20)`). The plot is titled `"Lineage tree - Default algorithm"`, with a subtitle indicating the sample and clonotype information. This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
+The lineage tree for the second clonotype of S1 is displayed, constructed using the `phylo.network.default` algorithm (`AntibodyForests_object = AntibodyForests_OVA_default`. This specific example demonstrates plotting the lineage tree for clonotype1 (`clonotype = "clonotype1"`) from sample S1 (`sample = "S1"`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`), and edges are annotated with the Levenshtein distances between the connected nodes (`edge.label = "lv"`). Node sizes reflect clonal expansion (`node.size = "expansion"`), ranging from 10 to 20 on a scale (`node.size.scale = c(10, 20)`). The plot is titled `"Lineage tree - Default algorithm"`, with a subtitle indicating the sample and clonotype information. This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
 ```{r AntibodyForests_plot_default_example, eval = FALSE}
 # Plot lineage tree, constructed with the `phylo.network.default' method
 Af_plot_tree(AntibodyForests_object = AntibodyForests_OVA_default,
@@ -596,35 +640,14 @@ Af_plot_tree(AntibodyForests_object = AntibodyForests_OVA_default,
                      main.title = "Lineage tree - Default algorithm",
                      sub.title = "OVA - S1 - clonotype1")
 ```
-
-
-```{r AntibodyForests_plot_default, eval = FALSE, include = FALSE}
-# Generate plots for the first 10 clonotypes of all samples 
-for(sample in paste0("S", 1:5)){
-  for(clonotype in paste0("clonotype", 1:10)){
-    if(!is.null(AntibodyForests_OVA_default[[sample]][[clonotype]])){
-      Af_plot_tree(AntibodyForests_object = AntibodyForests_OVA_default,
-                         sample = sample,
-                         clonotype = clonotype,
-                         edge.label = "lv",
-                         main.title = "Lineage tree - Default algorithm",
-                         sub.title = paste0("OVA - ", sample, " - ", clonotype))
-    }
-  }
-}
-```
-
-```{r AntibodyForests_plot_default_S1, echo = FALSE}
-# Display all plots of S1 in an image carousel
-create_image_carousel(list.files("imgs/trees/default/S1", full.names = TRUE))
-```
+![](imgs/trees/default/S1/clonotype2.png){width=50%}
 <br>
 
-#### 2. ML {.tabset}
+#### 2. ML
 
-##### Without internal nodes {.tabset}
+##### Without internal nodes
 
-In the carousel below, the lineage trees for the first 10 clonotypes of all samples are displayed, constructed using the `phylo.tree.ml` algorithm (`AntibodyForests_object = AntibodyForests_OVA_ml`. This specific example demonstrates plotting the lineage tree for clonotype1 (`clonotype = "clonotype1"`) from sample S1 (`sample = "S1"`), without the internal nodes (`show.inner.nodes = FALSE`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`), and edges are annotated with the Levenshtein distances between the connected nodes (`edge.label = "lv"`). Node sizes reflect clonal expansion (`node.size = "expansion"`), ranging from 10 to 20 on a scale (`node.size.scale = c(10, 20)`). The plot is titled `"Lineage tree - ML algorithm"`, with a subtitle indicating the sample and clonotype information. This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
+The lineage tree for the second clonotype of S1 is displayed, constructed using the `phylo.tree.ml` algorithm (`AntibodyForests_object = AntibodyForests_OVA_ml`. This specific example demonstrates plotting the lineage tree for clonotype1 (`clonotype = "clonotype1"`) from sample S1 (`sample = "S1"`), without the internal nodes (`show.inner.nodes = FALSE`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`), and edges are annotated with the Levenshtein distances between the connected nodes (`edge.label = "lv"`). Node sizes reflect clonal expansion (`node.size = "expansion"`), ranging from 10 to 20 on a scale (`node.size.scale = c(10, 20)`). The plot is titled `"Lineage tree - ML algorithm"`, with a subtitle indicating the sample and clonotype information. This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
 ```{r AntibodyForests_plot_ml_without_IN_example, eval = FALSE}
 # Plot lineage tree, constructed with the `phylo.tree.ml' method, without internal nodes
 Af_plot_tree(AntibodyForests_object = AntibodyForests_OVA_ml,
@@ -640,35 +663,14 @@ Af_plot_tree(AntibodyForests_object = AntibodyForests_OVA_ml,
                      sub.title = "OVA - S1 - clonotype1")
 ```
 
-```{r AntibodyForests_plot_ml_without_IN, eval = FALSE, include = FALSE}
-# Generate plot of lineage trees created with the ML algorithm of the first 10 clonotypes of all samples (without internal nodes)
-for(sample in paste0("S", 1:5)){
-  for(clonotype in paste0("clonotype", 1:10)){
-    if(!is.null(AntibodyForests_OVA_ml[[sample]][[clonotype]][["igraph"]])){
-      Af_plot_tree(AntibodyForests_object = AntibodyForests_OVA_ml,
-                           sample = sample,
-                           clonotype = clonotype,
-                           show.inner.nodes = FALSE,
-                           edge.label = "lv",
-                           main.title = "Lineage tree - ML algorithm",
-                           sub.title = paste0("OVA - ", sample, " - ", clonotype),
-                           output.file = paste0("imgs/trees/ml/without_in/", sample, "/", clonotype))
-    }
-  }
-}
-```
-
-```{r AntibodyForests_plot_ml_without_IN_S1, echo = FALSE}
-# Display all plots of S1 in an image carousel
-create_image_carousel(list.files("imgs/trees/ml/without_in/S1", full.names = TRUE))
-```
+![](imgs/trees/ml/without_in/S1/clonotype2.png){width=50%}
 <br>
 
-#### 3. IgPhyML {.tabset} 
+#### 3. IgPhyML  
 
-##### With internal nodes {.tabset}
+##### With internal nodes  
 
-In the carousel below, the lineage trees for the first 10 clonotypes of all samples are displayed, constructed using the `phylo.tree.IgPhyML` algorithm (`AntibodyForests_object = AntibodyForests_OVA_IgPhyML`. This specific example demonstrates plotting the lineage tree for clonotype1 (`clonotype = "clonotype1"`) from sample S1 (`sample = "S1"`), with the internal nodes (`show.inner.nodes = TRUE`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`), and edges are annotated with the original calculated distances between the connected nodes (`edge.label = "original"`). Node sizes reflect clonal expansion (`node.size = "expansion"`), ranging from 10 to 20 on a scale (`node.size.scale = c(10, 20)`). The plot is titled `"Lineage tree - IgPhyML tool"`, with a subtitle indicating the sample and clonotype information. This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
+The lineage tree for the second clonotype of S1 is displayed, constructed using the `phylo.tree.IgPhyML` algorithm (`AntibodyForests_object = AntibodyForests_OVA_IgPhyML`. This specific example demonstrates plotting the lineage tree for clonotype1 (`clonotype = "clonotype1"`) from sample S1 (`sample = "S1"`), with the internal nodes (`show.inner.nodes = TRUE`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`), and edges are annotated with the original calculated distances between the connected nodes (`edge.label = "original"`). Node sizes reflect clonal expansion (`node.size = "expansion"`), ranging from 10 to 20 on a scale (`node.size.scale = c(10, 20)`). The plot is titled `"Lineage tree - IgPhyML tool"`, with a subtitle indicating the sample and clonotype information. This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
 ```{r AntibodyForests_plot_IgPhyML_with_IN_example, eval = FALSE}
 # Plot lineage tree, constructed with the `phylo.tree.IgPhyML' method, with internal nodes
 Af_plot_tree(AntibodyForests_object = AntibodyForests_OVA_IgPhyML,
@@ -684,34 +686,13 @@ Af_plot_tree(AntibodyForests_object = AntibodyForests_OVA_IgPhyML,
                      sub.title = "OVA - S1 - clonotype1")
 ```
 
-```{r AntibodyForests_plot_IgPhyML_with_IN, eval = FALSE, include = FALSE}
-# Generate plot of lineage trees created with the IgPhyML tool of the first 10 clonotypes of all samples (with internal nodes)
-for(sample in paste0("S", 1:5)){
-  for(clonotype in paste0("clonotype", 1:10)){
-    if(!is.null(AntibodyForests_OVA_IgPhyML[[sample]][[clonotype]][["igraph.with.inner.nodes"]])){
-      Af_plot_tree(AntibodyForests_object = AntibodyForests_OVA_IgPhyML,
-                           sample = sample,
-                           clonotype = clonotype,
-                           edge.label = "original",
-                           show.inner.nodes = TRUE,
-                           main.title = "Lineage tree - IgPhyML tool",
-                           sub.title = paste0("OVA - ", sample, " - ", clonotype),
-                           output.file = paste0("imgs/trees/IgPhyML/with_in/", sample, "/", clonotype))
-    }
-  }
-}
-```
-
-```{r AntibodyForests_plot_IgPhyML_with_IN_S1, echo = FALSE}
-# Display all plots of S1 in an image carousel
-create_image_carousel(list.files("imgs/trees/IgPhyML/with_in/S1", full.names = TRUE))
-```
+![](imgs/trees/IgPhyML/with_in/S1/clonotype2.png){width=50%}
 <br>
 
 
-##### Without internal nodes {.tabset}
+##### Without internal nodes  
 
-In the carousel below, the lineage trees for the first 10 clonotypes of all samples are displayed, constructed using the `phylo.tree.ml` algorithm (`AntibodyForests_object = AntibodyForests_OVA_IgPhyML`. This specific example demonstrates plotting the lineage tree for clonotype1 (`clonotype = "clonotype1"`) from sample S1 (`sample = "S1"`), without the internal nodes (`show.inner.nodes = FALSE`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`), and edges are annotated with the Levenshtein distances between the connected nodes (`edge.label = "lv"`). Node sizes reflect clonal expansion (`node.size = "expansion"`), ranging from 10 to 20 on a scale (`node.size.scale = c(10, 20)`). The plot is titled `"Lineage tree - IgPhyML tool"`, with a subtitle indicating the sample and clonotype information. This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
+The lineage tree for the second clonotype of S1 is displayed, constructed using the `phylo.tree.ml` algorithm (`AntibodyForests_object = AntibodyForests_OVA_IgPhyML`. This specific example demonstrates plotting the lineage tree for clonotype1 (`clonotype = "clonotype1"`) from sample S1 (`sample = "S1"`), without the internal nodes (`show.inner.nodes = FALSE`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`), and edges are annotated with the Levenshtein distances between the connected nodes (`edge.label = "lv"`). Node sizes reflect clonal expansion (`node.size = "expansion"`), ranging from 10 to 20 on a scale (`node.size.scale = c(10, 20)`). The plot is titled `"Lineage tree - IgPhyML tool"`, with a subtitle indicating the sample and clonotype information. This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
 ```{r AntibodyForests_plot_IgPhyML_without_IN_example, eval = FALSE}
 # Plot lineage tree, constructed with the `phylo.tree.ml' method, without internal nodes
 Af_plot_tree(AntibodyForests_object = AntibodyForests_OVA_IgPhyML,
@@ -727,28 +708,7 @@ Af_plot_tree(AntibodyForests_object = AntibodyForests_OVA_IgPhyML,
                      sub.title = "OVA - S1 - clonotype1")
 ```
 
-```{r AntibodyForests_plot_IgPhyML_without_IN, eval = FALSE, include = FALSE}
-# Generate plot of lineage trees created with the IgPhyML tool of the first 10 clonotypes of all samples (without internal nodes)
-for(sample in paste0("S", 1:5)){
-  for(clonotype in paste0("clonotype", 1:10)){
-    if(!is.null(AntibodyForests_OVA_IgPhyML[[sample]][[clonotype]][["igraph"]])){
-      Af_plot_tree(AntibodyForests_object = AntibodyForests_OVA_IgPhyML,
-                           sample = sample,
-                           clonotype = clonotype,
-                           show.inner.nodes = FALSE,
-                           edge.label = "lv",
-                           main.title = "Lineage tree - IgPhyML tool",
-                           sub.title = paste0("OVA - ", sample, " - ", clonotype),
-                           output.file = paste0("imgs/trees/IgPhyML/without_in/", sample, "/", clonotype))
-    }
-  }
-}
-```
-
-```{r AntibodyForests_plot_IgPhyML_without_IN_S1, echo = FALSE}
-# Display all plots of S1 in an image carousel
-create_image_carousel(list.files("imgs/trees/IgPhyML/without_in/S1", full.names = TRUE))
-```
+![](imgs/trees/IgPhyML/without_in/S1/clonotype2.png){width=50%}
 <br>
 
 </div>
@@ -764,9 +724,11 @@ To investigate the influence of different tree constructions methods on the resu
 When multiple AntibodyForests objects are created from the same VDJ dataframe and using the same sequence columns, the nodes in the resulting igraph objects should be the same. However, selecting different sequence columns may result in a different number of nodes and different node names. Additionally, the IgPhyML tool does not label the nodes according to their size but rather by using barcodes. When comparing tree topologies, having synchronized node names is essential.To achieve this, `the Af_sync_nodes()` function can be used. This function takes one AntibodyForests object as a reference and renames the nodes of all clonotypes within all samples of another AntibodyForests object to match the reference. The function matches the nodes using barcodes. If the barcodes of one node in the reference object are found in multiple nodes in the subject object, the nodes in the subject will get suffixes A, B, etc. (e.g., node4 will become node4A and node4B). Conversely, if the barcodes of multiple nodes in the reference object are found in only one node in the subject object, the node in the subject object will get the concatenated names of the nodes in the reference object (e.g., node2 and node4 will become node2+4). 
 <br>
 
+</div>
+
 ### Parameters
 
-<br>
+<div class=text-justify>
 
 #### **Af_compare_methods()**
 
@@ -821,7 +783,7 @@ When multiple AntibodyForests objects are created from the same VDJ dataframe an
 
 First, node labels need to be synchronized between the different AntibodyForests objects. This can be done using the **`Af_sync_nodes()`** function. Here, the nodes of the AntibodyForests objects created with the IgPhyML tool, MST, NJ, and ML algorithms are synchronized with the nodes of the AntibodyForests object created with the default algorithm.  
 
-```{r Af_sync_nodes}
+```{r Af_sync_nodes, eval= FALSE}
 # Synchronize the nodes of the different AntibodyForests objects
 AntibodyForests_OVA_IgPhyML <- Af_sync_nodes(reference = AntibodyForests_OVA_default,
                                                     subject = AntibodyForests_OVA_IgPhyML)
@@ -838,7 +800,7 @@ AntibodyForests_OVA_ml <- Af_sync_nodes(reference = AntibodyForests_OVA_default,
 Now we can calculate the distance between the trees of the different AntibodyForests objects using the **`Af_compare_methods()`** function using the Generalized Branch Length Distance.
 
 
-```{r, compare_methods_example2, results = 'hide'}
+```{r, compare_methods_example2, eval = FALSE}
 # Calculate the euclidean distance between different trees based on the GBLD
 out <- Af_compare_methods(input = list("Default" = AntibodyForests_OVA_default,
                                        "MST" = AntibodyForests_OVA_mst,
@@ -853,6 +815,8 @@ out <- Af_compare_methods(input = list("Default" = AntibodyForests_OVA_default,
 # Plot the average heatmap
 out$average$Heatmap
 ```
+
+![](imgs/heatmap_4.png){width=50%}
 
 <br>
 
@@ -871,8 +835,11 @@ The function **`Af_metrics()`** is used internally in different AntibodyForests 
 The functions **`Af_distance_boxplot()`** and [**`Af_distance_scatterplot`**]({#distance_scatterplot}) can be used to observe patterns between the distance to the germline and various node features in the AntibodyForests object.
 <br>
 
+</div>
 
 ### Parameters
+
+<div class=text-justify>
 
 #### **Af_metrics()**
 
@@ -1043,12 +1010,19 @@ The functions **`Af_distance_boxplot()`** and [**`Af_distance_scatterplot`**]({#
 
 As an example, we calculate the metric dataframe of an AntibodyForests object for trees with at least 10 nodes. The rownames include the sample ID, followed by the clonotype ID.
 
-```{r, metric_dataframe}
+```{r, metric_dataframe1, eval = FALSE}
 # Calculate the metric dataframe for the AntibodyForests object
 metric_df <- Af_metrics(input = AntibodyForests_OVA_default,
                         min.nodes = 10,
                         metrics = c("mean.depth", "sackin.index", "spectral.density"))
 
+```
+
+```{r, metric_dataframe2}
+load("objects/metric_df.RData")
+```
+
+```{r, metric_dataframe3}
 # Print the dataframe
 DT::datatable(data = metric_df,
               rownames = TRUE,
@@ -1057,7 +1031,7 @@ DT::datatable(data = metric_df,
 
 We also investigate if nodes from the IgA isotype are closer to the germline in these trees than nodes from the IgG isotype. We visualize the results in a boxplot and observe no significant difference.
 
-```{r, compare_distance_isotype, fig.width=4, fig.height=5}
+```{r, compare_distance_isotype, eval=FALSE}
 # Cluster the trees in the repertoire based on the euclidean distance between various metrics of each tree
 Af_distance_boxplot(AntibodyForests_object = AntibodyForests_OVA_default,
                     node.feature = "isotype",
@@ -1068,13 +1042,13 @@ Af_distance_boxplot(AntibodyForests_object = AntibodyForests_OVA_default,
                     unconnected = T,
                     significance = T)
 ```
+![](imgs/distance_boxplot.png){width=50%}
 
-
-#### 1. Euclidean distance {.tabset}
+#### 1. Euclidean distance
 
 Now we cluster the trees in this AntibodyForests object based on the euclidean distance between these metrics. We visualize the results in a PCA plot and observe three clusters.
 
-```{r, compare_within_repertoire_example1}
+```{r, compare_within_repertoire_example1, eval = FALSE}
 # Cluster the trees in the repertoire based on the euclidean distance between various metrics of each tree
 out <- Af_compare_within_repertoires(input = AntibodyForests_OVA_default,
                                      min.nodes = 8,
@@ -1086,9 +1060,11 @@ out <- Af_compare_within_repertoires(input = AntibodyForests_OVA_default,
 out$plots$PCA_clusters
 ```
 
+![](imgs/pca.png){width=50%}
+
 Next, we analyze the difference between the clusters with the functions **`Af_cluster_metrics()`** and **`Af_cluster_node_features()`**. Here, we observe that cluster 1 contains trees with a relatively high sackin index and a low number of spectral density modalities. Cluster 2 contains trees with a low sackin index and a high number of spectral density modalities. Cluster 3 contains trees with a low sackin index and a low number of spectral density modalities. And cluster 3 contains trees with a low sackin index and a high number of spectral density modalities. Moreover, there is no significant difference in isotype distribution between the clusters.
 
-```{r, cluster_metrics_example1, fig.width=4, fig.height=5}
+```{r, cluster_metrics_example1, eval = FALSE}
 # Analyze the difference between the clusters based on the calculated sackin.index
 plots <- Af_cluster_metrics(input = AntibodyForests_OVA_default,
                    clusters = out$clustering,
@@ -1100,7 +1076,10 @@ plots$sackin.index
 plots$modalities
 ```
 
-```{r, cluster_node_features_example1, fig.width=4, fig.height=5}
+![](imgs/clusters_sackin.png){width=50%}
+![](imgs/clusters_modalities.png){width=50%}
+
+```{r, cluster_node_features_example1, eval = FALSE}
 # Analyze the difference between the clusters based on the calculated sackin.index
 plots <- Af_cluster_node_features(input = AntibodyForests_OVA_default,
                    clusters = out$clustering,
@@ -1111,13 +1090,16 @@ plots <- Af_cluster_node_features(input = AntibodyForests_OVA_default,
 plots$isotype
 ```
 
+![](imgs/clusters_isotype.png){width=50%}
+
 <br>
 
-#### 2. Laplacian Spectral Density {.tabset}
+
+#### 2. Laplacian Spectral Density
 
 Now we cluster the trees in this AntibodyForests object based on the Jensen-Shannon divergence between the Spectral Density profiles. We visualize the results in a heatmap and observe two clusters.
 
-```{r, compare_within_repertoire_example2, fig.width=8, fig.height=10}
+```{r, compare_within_repertoire_example2, eval = FALSE}
 # Cluster the trees in the repertoire based on the Jensen-Shannon divergence between the Spectral Density profiles
 out <- Af_compare_within_repertoires(input = AntibodyForests_OVA_default,
                                      min.nodes = 8,
@@ -1128,9 +1110,11 @@ out <- Af_compare_within_repertoires(input = AntibodyForests_OVA_default,
 out$plots$heatmap_clusters
 ```
 
+![](imgs/heatmap5.png){width=80%}
+
 Next, we analyze the difference between the clusters with the functions **`Af_cluster_metrics()`** and **`Af_cluster_node_features()`**. Here, we observe that cluster 1 contains trees with a high spectral asymmetry and a low number of spectral density modalities, and cluster 2 vice versa. Again, we observe no significant difference in isotype distribution between the clusters.
 
-```{r, cluster_metrics_example2, fig.width=4, fig.height=5}
+```{r, cluster_metrics_example2, eval=FALSE}
 # Analyze the difference between the clusters based on the calculated sackin.index
 plots <- Af_cluster_metrics(input = AntibodyForests_OVA_default,
                    clusters = out$clustering,
@@ -1142,7 +1126,10 @@ plots$spectral.asymmetry
 plots$modalities
 ```
 
-```{r, cluster_node_features_example2, fig.width=5, fig.height=4}
+![](imgs/clusters_asymmetry.png){width=50%}
+![](imgs/clusters_modalities2.png){width=50%}
+
+```{r, cluster_node_features_example2, eval=FALSE}
 # Analyze the difference between the clusters based on the calculated sackin.index
 plots <- Af_cluster_node_features(input = AntibodyForests_OVA_default,
                    clusters = out$clustering,
@@ -1152,6 +1139,9 @@ plots <- Af_cluster_node_features(input = AntibodyForests_OVA_default,
 
 plots$isotype
 ```
+
+![](imgs/clusters_isotype2.png){width=50%}
+
 <br>
 
 </div>
@@ -1165,8 +1155,11 @@ plots$isotype
 The quantify different evolutionary patterns between (groups of) repertoires within or across individuals, the AntibodyForests package provides a function, **`Af_compare_across_repertoires()`**, to calculates tree topology metrics of trees and compares them between repertoires. The function included different graph theory metrics such as the edge betweenness or the degree centrality, but it also includes all the metrics available in the **`Af_metrics()`** function. The function can plot these metrics in boxplots or frequency polygons per repertoire and calculates the statistical significance.
 <br>
 
+</div>
 
 ### Parameters
+
+<div class=text-justify>
 
 #### **Af_compare_across_repertoires()**
 
@@ -1198,24 +1191,23 @@ The quantify different evolutionary patterns between (groups of) repertoires wit
 
 <div class=text-justify>
 
-
-```{r, across_repertoire_import, echo = F}
-load("objects/AntibodyForests_example_blood.RData")
-load("objects/AntibodyForests_example_LN.RData")
-```
-
 #### 1. Boxplot {.tabset}
 
 We compare the difference in edge betweenness and degree centrality between B cell repertoires of different samples from blood and lymph nodes. We observe that the lymph node repertoire have a higher betweenness and lower mean depth in comparison to the blood repertoires, meaning more variants emerging from the same node instead of a deeper tree where variants emerge sequentially.
 
-```{r, compare_across_repertoire_example1, fig.width=4, fig.height=5}
+```{r, compare_across_repertoire_example1, eval=FALSE}
 #Calculate the difference between the two groups of repertoires
-boxplots <- Af_compare_across_repertoires(list("Blood" = AntibodyForests_example_blood, "Lymph Nodes" = AntibodyForests_example_LN), metrics = c("betweenness", "mean.depth"), significance = T)
+boxplots <- Af_compare_across_repertoires(list("Blood" = AntibodyForests_example_blood, 
+                                               "Lymph Nodes" = AntibodyForests_example_LN),  
+                                          metrics = c("betweenness", "mean.depth"), significance = T)
 
 #Plot the boxplots
 boxplots$betweenness
 boxplots$mean.depth
 ```
+
+![](imgs/boxplot_betweenness.png){width=50%}
+![](imgs/boxplot_depth.png){width=50%}
 
 <br>
 
@@ -1223,13 +1215,17 @@ boxplots$mean.depth
 
 We compare the difference in spectral density profiles between B cell repertoires of different samples from blood and lymph nodes. We observe that lineage trees from the blood repertoire have an overall higher spectral principal eigenvalue in comparison to trees from the blood repertoires, meaning a lower phylogenetic diversity.
 
-```{r, compare_across_repertoire_example2, fig.width=6, fig.height=5}
+```{r, compare_across_repertoire_example2, eval = FALSE}
 #Calculate the difference between the two groups of repertoires
-freqpoly <- Af_compare_across_repertoires(list("Blood" = AntibodyForests_example_blood, "Lymph Nodes" = AntibodyForests_example_LN), metrics = c("spectral.density"), plot = "freqpoly")
+freqpoly <- Af_compare_across_repertoires(list("Blood" = AntibodyForests_example_blood, 
+                                               "Lymph Nodes" = AntibodyForests_example_LN), 
+                                          metrics = c("spectral.density"), plot = "freqpoly")
 
 #Plot the frequency polygon of the spectral principal eigenvalue
 freqpoly$spectral.principal.eigenvalue
 ```
+
+![](imgs/freqpoly.png){width=50%}
 
 <br>
 
@@ -1253,6 +1249,8 @@ The pseudolikelihoods and probability matrices can be supplied manually, or easi
 </div>
 
 ### Parameters
+
+<div class=text-justify>
 
 #### **Af_PLM_dataframe()**
 
@@ -1307,6 +1305,8 @@ The pseudolikelihoods and probability matrices can be supplied manually, or easi
 * **Default:** Default `ggplot2` colors.  
 <br>
 
+</div>
+
 ### Example1 {.tabset}
 
 <div class=text-justify>
@@ -1320,14 +1320,7 @@ AntibodyForests_OVA_default <- Af_add_node_feature(AntibodyForests_object = Anti
                                                                 feature.names = "pseudolikelihood")
 ```
 
-```{r, load_pseudolikelihood_data, echo=FALSE}
-load("objects/AntibodyForests_example_pseudolikelihood.RData")
-AntibodyForests_OVA_default <- af
-load("objects/VDJ_example_pseudolikelihood.RData")
-VDJ_OVA <- vdj
-```
-
-```{r, plot_pseudolikelihood_example1}
+```{r, plot_pseudolikelihood_example1, eval=FALSE}
 # Plot pseudolikelihood against distance to the germline
 Af_distance_scatterplot(AntibodyForests_object = AntibodyForests_OVA_default, 
                                      node.features = "pseudolikelihood",
@@ -1336,6 +1329,8 @@ Af_distance_scatterplot(AntibodyForests_object = AntibodyForests_OVA_default,
                                      correlation = "pearson",
                                      color.by = "sample")
 ```
+
+![](imgs/plm_scatterplot.png){width=50%}
 
 </div>
 
@@ -1367,52 +1362,57 @@ PLM_dataframe <- Af_PLM_dataframe(AntibodyForests_object = AntibodyForests_OVA_d
 load("objects/PLM_dataframe.RData")
 ```
 
-Below is an example of the PLM dataframe. Each row in this data frame represents an edge between `node1` and `node2` in the lineage tree of `sample` and `clonotype`. The number of mutations along this edge is given by `n_subs`. When there are multiple mutations, the average of the ranks and probabilities are reported.
+Below is an example of the first 20 rows of a PLM dataframe. Each row in this data frame represents an edge between `node1` and `node2` in the lineage tree of `sample` and `clonotype`. The number of mutations along this edge is given by `n_subs`. When there are multiple mutations, the average of the ranks and probabilities are reported.
 
 ```{r vdj_plm-df, echo = FALSE}
-DT::datatable(data = PLM_dataframe,
-              rownames = FALSE,
-              options = list(scrollX = TRUE)
-)
+knitr::kable(PLM_dataframe)
 ```
 
 The `ranks` and `probabilities` of the `original` and `substitution` redisues can be visualized in distribution plots.
  
 #### 1. Substitution Rank {.tabset}
 
-```{r, plot_likelihood_example1, fig.width=5, fig.height=5}
+```{r, plot_likelihood_example1, eval = FALSE}
 # Plot the substitution rank
 Af_plot_PLM(PLM_dataframe = PLM_dataframe, 
                          values = "substitution_rank", 
                          group_by = "sample_id")
 ```
 
+![](imgs/PLM1.png){width=50%}
+
 #### 2. Substitution Probability {.tabset}
 
-```{r, plot_likelihood_example2, fig.width=5, fig.height=5}
+```{r, plot_likelihood_example2, eval = FALSE}
 # Plot the substitution rank
 Af_plot_PLM(PLM_dataframe = PLM_dataframe, 
                          values = "substitution_probability", 
                          group_by = "none")
 ```
 
+![](imgs/PLM2.png){width=50%}
+
 #### 3. Original Rank {.tabset}
 
-```{r, plot_likelihood_example3, fig.width=5, fig.height=5}
+```{r, plot_likelihood_example3, eval = FALSE}
 # Plot the substitution rank
 Af_plot_PLM(PLM_dataframe = PLM_dataframe, 
                          values = "original_rank", 
                          group_by = "none")
 ```
 
+![](imgs/PLM3.png){width=50%}
+
 #### 4. Original Probability {.tabset}
 
-```{r, plot_likelihood_example4, fig.width=5, fig.height=5}
+```{r, plot_likelihood_example4, eval = FALSE}
 # Plot the substitution rank
 Af_plot_PLM(PLM_dataframe = PLM_dataframe, 
                          values = "original_probability", 
                          group_by = "sample_id")
 ```
+
+![](imgs/PLM4.png){width=50%}
 
 </div>
 
@@ -1437,6 +1437,8 @@ The function **`VDJ_3d_properties()`** can be used to calculate various biophysi
 </div>
 
 ### Parameters
+
+<div class=text-justify>
 
 #### **VDJ_3d_properties()**
 
@@ -1549,6 +1551,7 @@ The function **`VDJ_3d_properties()`** can be used to calculate various biophysi
 * **Default:** `12`  
 <br>
 
+</div>
 
 ### Example1 {.tabset}
 
@@ -1690,7 +1693,7 @@ rmsd_df <- Af_edge_RMSD(af,
              sequence.region = "full.sequence",
              chain = "HC+LC")
 ```
-![](imgs/structure_Ab_distance.png){width=60%}
+![](imgs/structure_Ab_distance.png){width=50%}
 
 #### 2. Full Antibody-Antigen complex {.tabset}
 
@@ -1702,7 +1705,7 @@ rmsd_df <- Af_edge_RMSD(af,
              sequence.region = "full.sequence",
              chain = "whole.complex")
 ```
-![](imgs/structure_AbAg_distance.png){width=60%}
+![](imgs/structure_AbAg_distance.png){width=50%}
 
 </div>
 
@@ -1839,10 +1842,39 @@ BuildTrees.py -d ../data/OVA_scRNA-seq_data/VDJ/airr_rearrangement.tsv --collaps
 
 <div class=text-justify>
 
-[...]
-```{r}
+Although the package is designed for single-cell immune repertoire data, the pipeline can also be used with bulk repertoire sequencing data. The bulk RNA-seq data can be integrated in the single-cell VDJ-dataframe with the function `VDJ_integrate_bulk()`. This function reannotates the germline genes of both the bulk and the single-cell data using IgBLAST. Next, a combined VDJ-dataframe is created of both the bulk and single-cell sequences using the IgBLAST germlines. During this step, the FR1 regions can be trimmed from the germline sequences and raw sequences to account for differences in primer design between the sequencing methods. The bulk transcripts are then merged into the existing single-cell clonotypes based on identical CDR3 length, V and J gene usage, and CDR3 sequence similarity. The function returns a combined VDJ-dataframe with the bulk sequences integrated.  
 
+```{r, bulk_example, eval = FALSE}
+# Integrate bulk RNA-seq data into the VDJ dataframe, if multiple clonotypes match the bulk sequence, the bulk transcript is added to all clonotypes (tie.resolvement = "all)
+VDJ_OVA <- VDJ_integrate_bulk(sc.VDJ = VDJ_OVA, 
+                   bulk.tsv = "path/to/bulk/OVA_bulkRNA.tsv", 
+                   bulk.tsv.sequence.column="VDJ_sequence_nt_raw", 
+                   bulk.tsv.sample.column="sample_id", 
+                   bulk.tsv.barcode.column="barcode",
+                   bulk.tsv.isotype.column="isotype",
+                   organism="mouse",
+                   igblast.dir="/path/to/anaconda3/envs/igphyml/share/igblast",
+                   tie.resolvement = "all")
+
+#Create the lineage tree of the integrated VDJ dataframe
+af <- Af_build(VDJ = VDJ_OVA, 
+               sequence.columns = "VDJ_sequence_aa_trimmed", 
+               germline.columns = "VDJ_germline_aa_trimmed",
+               construction.method = "phylo.network.default", 
+               node.features = c("dataset"))
+
+#Plot lineage tree
+Af_plot_tree(af,
+             sample = "S1",
+             clonotype = "clonotype3",
+             color.by = "dataset",
+             label.by = "none",
+             main.title = "OVA S1",
+             sub.title = "clonotype3")
 ```
+
+![](imgs/bulk_tree.png){width=60%}
+
 <br>
 
 </div>
@@ -1860,8 +1892,6 @@ Contributors:
 * Daphne van Ginneken  
 * Valentijn Tromp  
 * Tudor-Stefan Cotet  
-* Victor Kreiner  
-* Lucas Stalder 
 
 
 

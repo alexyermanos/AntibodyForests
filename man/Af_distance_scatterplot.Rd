@@ -60,7 +60,7 @@ Af_distance_scatterplot(AntibodyForests_object = AntibodyForests::small_af,
  distance = "edge.length",
  min.nodes = 5,
  color.by = "sample",
- color.by.numeric = F,
+ color.by.numeric = FALSE,
  geom_smooth.method = "lm",
  correlation = "pearson")
 }

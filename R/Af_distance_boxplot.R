@@ -23,7 +23,7 @@
 #' min.nodes = 5,
 #' groups = c("IGHA", "IgG1"),
 #' node.feature = "isotype",
-#' unconnected = T)
+#' unconnected = TRUE)
 #'
 
 Af_distance_boxplot <- function(AntibodyForests_object,
