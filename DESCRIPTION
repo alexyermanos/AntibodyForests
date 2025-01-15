@@ -1,6 +1,5 @@
 Package: AntibodyForests
-Title: Delineating inter- and intra-antibody repertoire evolution with
-    AntibodyForests
+Title: Delineating Inter- And Intra-Antibody Repertoire Evolution with AntibodyForests
 Version: 1.0.0
 Authors@R: c(
     person("Daphne", "van Ginneken", email = "daphne.v.ginneken@gmail.com", role = c("aut", "cre")),
@@ -43,6 +42,7 @@ Suggests:
     base64enc,
     bio3d,
     combinat,
+    devtools,
     DT,
     fpc,
     ggplot2,

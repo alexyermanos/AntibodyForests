@@ -31,8 +31,7 @@ knitr::knit_hooks$set(
            '</div>', sep = '\n')})
 
 #Load AntibodyForests functions
-library(devtools)
-load_all(".")
+devtools::load_all(".")
 ```
 
 <style>
