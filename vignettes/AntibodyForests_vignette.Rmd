@@ -12,7 +12,7 @@ vignette: >
 ---
 
 
-```{r setup, echo = FALSE, eval = TRUE}
+```{r setup, echo = FALSE, eval = TRUE, include = FALSE}
 # Set global options
 knitr::opts_chunk$set(eval = TRUE, include = TRUE, echo = TRUE, message = FALSE, warning = FALSE, error = FALSE, dpi = 72)
 # Define custom hooks for handling errors, warnings, and messages during knitting
@@ -29,6 +29,10 @@ knitr::knit_hooks$set(
      paste('\n\n<div class="alert alert-info">',
            gsub('##', '\n', x),
            '</div>', sep = '\n')})
+
+#Load AntibodyForests functions
+library(devtools)
+load_all(".")
 ```
 
 <style>
@@ -52,31 +56,6 @@ pre code, pre, code {
 }
 </style>
 
-```{r load-scripts, include = FALSE}
-# Source AntibodyForests scripts
-source("~/Documents/GitHub/AntibodyForests/R/VDJ_import_IgBLAST_annotations.R")
-source("~/Documents/GitHub/AntibodyForests/R/VDJ_to_AIRR.R")
-source("~/Documents/GitHub/AntibodyForests/R/Af_build.R")
-source("~/Documents/GitHub/AntibodyForests/R/Af_sync_nodes.R")
-source("~/Documents/GitHub/AntibodyForests/R/Af_plot_tree.R")
-source("~/Documents/GitHub/AntibodyForests/R/Af_add_node_feature.R")
-source("~/Documents/GitHub/AntibodyForests/R/Af_plot_PLM.R")
-source("~/Documents/GitHub/AntibodyForests/R/Af_PLM_dataframe.R")
-source("~/Documents/GitHub/AntibodyForests/R/Af_distance_scatterplot.R")
-source("~/Documents/GitHub/AntibodyForests/R/Af_get_sequences.R")
-source("~/Documents/GitHub/AntibodyForests/R/Af_compare_methods.R")
-source("~/Documents/GitHub/AntibodyForests/R/Af_compare_within_repertoires.R")
-source("~/Documents/GitHub/AntibodyForests/R/Af_metrics.R")
-source("~/Documents/GitHub/AntibodyForests/R/igraph_to_phylo.R")
-source("~/Documents/GitHub/AntibodyForests/R/Af_cluster_metrics.R")
-source("~/Documents/GitHub/AntibodyForests/R/Af_cluster_node_features.R")
-source("~/Documents/GitHub/AntibodyForests/R/Af_distance_boxplot.R")
-source("~/Documents/GitHub/AntibodyForests/R/Af_compare_across_repertoires.R")
-source("~/Documents/GitHub/AntibodyForests/R/VDJ_3d_properties.R")
-source("~/Documents/GitHub/AntibodyForests/R/Af_edge_RMSD.R")
-source("~/Documents/GitHub/AntibodyForests/R/VDJ_integrate_bulk.R")
-library(magrittr)
-```
 <br>
 
 ## Introduction
@@ -828,7 +807,7 @@ out$average$Heatmap
 
 <div class=text-justify>
 
-The complex process of somatic hypermutation in a repertoire can be analyzed by comparing lineage tree topologies between clonotypes to identify different evolutionary patterns. The AntibodyForests package provides a function, **`Af_compare_within_repertoires()`**, to calculates the distance between all trees in the repertoire. This can be the euclidean distance between various calculated metrics, or the Jensen-Shannon distance between [spectral density profiles](https://academic.oup.com/sysbio/article/65/3/495/2468938) of trees. The function can cluster the trees and visualize the results using a heatmap, MDS, or PCA plot. The function returns a list containing the distance matrix, the assigned clusters, and the visualization. The functions **`Af_cluster_metrics()`** and **`Af_cluster_node_features()`** can be used to analyze the differences between the clusters of trees.  
+The complex process of somatic hypermutation in a repertoire can be analyzed by comparing lineage tree topologies between clonotypes to identify different evolutionary patterns. The AntibodyForests package provides a function, **`Af_compare_within_repertoires()`**, to calculates the distance between all trees in the repertoire. This can be the euclidean distance between various calculated metrics, or the Jensen-Shannon distance between [spectral density profiles](https://doi.org/10.1093/sysbio/syw045) of trees. The function can cluster the trees and visualize the results using a heatmap, MDS, or PCA plot. The function returns a list containing the distance matrix, the assigned clusters, and the visualization. The functions **`Af_cluster_metrics()`** and **`Af_cluster_node_features()`** can be used to analyze the differences between the clusters of trees.  
 <br>
 The function **`Af_metrics()`** is used internally in different AntibodyForests function, but can also be used as standalone function to calculate metrics for each clonotype. Basic metrics such as the average germline-to-node depth, total number of nodes and cells, and sackin index can be calculated, as well as more complex metrics based on the Laplacian Spectrum of the trees. These metrics can be returned in a dataframe, or added to the AntibodyForests object.  
 <br>
@@ -1885,7 +1864,7 @@ Af_plot_tree(af,
 
 <div class=text-justify>
 
-The AntibodyForests package originated from the [Platypus](https://academic.oup.com/bioinformatics/article/39/9/btad553/7264179) ecosystem of packages, where the fundamental function `Af_build()` was initially developed. Subsequently, significant refinements were made, and they were migrated to this standalone package. 
+The AntibodyForests package originated from the [Platypus](https://doi.org/10.1093/bioinformatics/btad553) ecosystem of packages, where the fundamental function `Af_build()` was initially developed. Subsequently, significant refinements were made, and they were migrated to this standalone package. 
 
 Contributors:  
 * Alexander Yermanos  
