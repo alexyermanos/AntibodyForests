@@ -89,33 +89,39 @@ VDJ_3d_properties <- function(VDJ,
 
 
   #Based on Lucas' VDJ_structure_analysis function
-  calculate_charge <- function(pdb, chains, resnos){
+  calculate_charge <- function(pdb, chains, resnos_df){
     df_charge <- data.frame()
     pdb$atom$charge <- NULL
     #Calculate the charge of each residue per chain
     for(CHAIN in chains){
       df_chain <- pdb$atom |> dplyr::filter(chain == CHAIN) |> dplyr::distinct(resno, .keep_all = TRUE) |> dplyr::select(resno, chain)
       df_chain$charge <- pdb$atom |> dplyr::filter(chain == CHAIN) |> dplyr::distinct(resno, .keep_all = TRUE) |> dplyr::pull(resid) |> stringr::str_to_title() |> seqinr::a() |> Peptides::charge()
+      #Select residues
+      resnos <- resnos_df[resnos_df$chain == CHAIN,"resno"]
+      df_chain <- df_chain[df_chain$resno %in% resnos,]
       df_charge <- rbind(df_charge, df_chain)
     }
     pdb$atom <- dplyr::left_join(pdb$atom, df_charge, by = c("resno","chain"))
-    #Calculate the average charge depending on the residues supplied
-    average_charge = mean(stats::na.omit(pdb$atom[pdb$atom$resno %in% resnos,]$charge))
+    #Calculate the average charge
+    average_charge = mean(stats::na.omit(pdb$atom$charge))
     return(average_charge)
   }
 
   #Based on Lucas' VDJ_structure_analysis function
-  calculate_hydrophobicity <- function(pdb, chains, resnos){
+  calculate_hydrophobicity <- function(pdb, chains, resnos_df){
     df_hydph <- data.frame()
     #Calculate the hydrophobicity of each residue per chain
     for(CHAIN in chains){
       df_chain <- pdb$atom |> dplyr::filter(chain == CHAIN) |> dplyr::distinct(resno, .keep_all = T) |> dplyr::select(resno,chain)
       df_chain$hydrophobicity <- pdb$atom |> dplyr::filter(chain == CHAIN) |> dplyr::distinct(resno, .keep_all = T) |> dplyr::pull(resid) |> stringr::str_to_title() |> seqinr::a() |> Peptides::hydrophobicity()
+      #Select residues
+      resnos <- resnos_df[resnos_df$chain == CHAIN,"resno"]
+      df_chain <- df_chain[df_chain$resno %in% resnos,]
       df_hydph <- rbind(df_hydph,df_chain)
     }
     pdb$atom <- dplyr::left_join(pdb$atom, df_hydph, by = c("resno","chain"))
-    #Calculate the average charge depending on the residues supplied
-    average_hydrophobicity = mean(stats::na.omit(pdb$atom[pdb$atom$resno %in% resnos,]$hydrophobicity))
+    #Calculate the average hydrophobicity
+    average_hydrophobicity = mean(stats::na.omit(pdb$atom$hydrophobicity))
     return(average_hydrophobicity)
   }
 
@@ -137,9 +143,9 @@ VDJ_3d_properties <- function(VDJ,
     # Apply cutoff to distance matrix
     dist_mat_bin <- dist_mat <= cutoff
     # Get binding site residues
-    bs_res_binder <- unique(atoms_binder[rowSums(dist_mat_bin) >= 1, "resno"])
-    bs_res_ligand <- unique(atoms_ligand[colSums(dist_mat_bin) >= 1, "resno"])
-    return(c(bs_res_binder, bs_res_ligand))
+    bs_res_binder <- unique(atoms_binder[rowSums(dist_mat_bin) >= 1, c("chain", "resno")])
+    bs_res_ligand <- unique(atoms_ligand[colSums(dist_mat_bin) >= 1, c("chain", "resno")])
+    return(rbind(bs_res_binder, bs_res_ligand))
   }
 
   #Get the resnos from a subsequences in the PDB file
@@ -156,29 +162,13 @@ VDJ_3d_properties <- function(VDJ,
     ind <- which(strsplit(aligned_subseq, "")[[1]] != "-")
     #Get the corresponding resnos
     resnos <- resids_df$resno[ind]
+    resnos <- data.frame(chain = CHAIN, resno = as.numeric(resnos))
 
-    return(as.numeric(resnos))
+    return(resnos)
   }
 
   #From Steropodon
-  get_propka_df <- function(propka_out, filename, chains, resnos){
-
-    start <- grep('SUMMARY OF THIS PREDICTION', propka_out)
-    end <- grep('Free energy of', propka_out)
-    pka <- propka_out[(start+1):(end-3)]
-    pka <- paste(pka, collapse = '\n')
-    tc <- textConnection(pka)
-    df <- utils::read.table(tc, as.is=T, fill=T, blank.lines.skip=F)
-    colnames(df) <- c("aa", "position", "chain", "pKa", "model-pKa")
-    df <- df[2:nrow(df),]
-    df$position <- as.numeric(as.character(df$position))
-
-    #Filter on chain and residues
-    df <- df[df$chain %in% chains & df$position %in% resnos,]
-    return(df)
-  }
-
-  calculate_pKa_shift <- function(propka_out, filename, chains, resnos){
+  calculate_pKa_shift <- function(propka_out, filename, resnos){
     #Create propka dataframe
     start <- grep('SUMMARY OF THIS PREDICTION', propka_out)
     end <- grep('Free energy of', propka_out)
@@ -186,12 +176,12 @@ VDJ_3d_properties <- function(VDJ,
     pka <- paste(pka, collapse = '\n')
     tc <- textConnection(pka)
     df <- utils::read.table(tc, as.is=T, fill=T, blank.lines.skip=F)
-    colnames(df) <- c("aa", "position", "chain", "pKa", "model-pKa")
+    colnames(df) <- c("aa", "resno", "chain", "pKa", "model-pKa")
     df <- df[2:nrow(df),]
-    df$position <- as.numeric(as.character(df$position))
+    df$resno <- as.numeric(as.character(df$resno))
 
     #Filter on chain and residues
-    df <- df[df$chain %in% chains & df$position %in% resnos,]
+    df <- stats::na.omit(dplyr::left_join(resnos, df, by = c("resno" = "resno", "chain" = "chain")))
 
     #Calculate the pKa shift
     df[,c("pKa", "model.pKa")] <- lapply(df[,c("pKa", "model-pKa")], as.numeric)
@@ -213,39 +203,60 @@ VDJ_3d_properties <- function(VDJ,
   }
 
   #Calculate the RMSD to the germline
-  calculate_RMSD_germline <- function(pdb, germline.pdb, chains, resnos){
+  calculate_RMSD_germline <- function(pdb, germline.pdb, chains, resnos_df){
     #Germline pdb and CA indices
     pdb_germline <- bio3d::read.pdb(germline.pdb)
-    ca.inds.germline <- bio3d::atom.select(pdb_germline, "calpha", chain = chains, resno = resnos)
 
+    ca.inds.germline <- c()
+    ca.inds <- c()
+    for(CHAIN in chains){
+      resnos <- resnos_df[resnos_df$chain == CHAIN,"resno"]
+      ca.inds.germline <- bio3d::combine.select(ca.inds.germline,
+                                                bio3d::atom.select(pdb_germline, "calpha", chain = chains, resno = resnos),
+                                                verbose = F)
+      ca.inds <- bio3d::combine.select(ca.inds, bio3d::atom.select(pdb, "calpha", chain = chains, resno = resnos), verbose = F)
+    }
     #Calculate RMSD from germline
-    ca.inds <- bio3d::atom.select(pdb, "calpha", chain = chains, resno = resnos)
     rmsd <- bio3d::rmsd(pdb, pdb_germline, fit = T, a.inds = ca.inds, b.inds = ca.inds.germline)
 
     return(rmsd)
   }
 
   #Calculate the edit distance between the 3di sequences of a node and the germline
-  calculate_3di_distance <- function(foldseek.dir, file.name, germline.df, chains, resnos){
+  calculate_3di_distance <- function(pdb, foldseek.dir, file.name, germline.df, chains, resnos_df, sequence.region, germline.pdb.file){
     #Read the sequence 3Di dataframe
     seqs_3di <- utils::read.table(paste0(foldseek.dir,substr(file.name, 1, nchar(file.name)-4),
                                   ".csv"), header = T, sep = ",")
-    #Paste the chains together
-    seqs_chain_vector <- c()
-    germline_chain_vector <- c()
-    for (chain in chains){
-      seqs_chain_vector <- c(seqs_chain_vector, seqs_3di[seqs_3di$chain == chain,2])
-      germline_chain_vector <- c(germline_chain_vector, germline.df[germline.df$chain == chain,2])
+    #Store the lv distance for each chain
+    distance_chain_vector <- c()
+
+    for (CHAIN in chains){
+      #Get the 3Di subsequence
+      resnos <- resnos_df[resnos_df$chain == CHAIN,"resno"]
+      sub_seqs_3di <- paste0(strsplit(seqs_3di[seqs_3di$chain == CHAIN,2], "")[[1]][resnos], collapse = "")
+      #Get the germline subsequence
+      if(sequence.region == "full.sequence" | sequence.region == "sub.sequence"){
+        sub_gl_3di <- germline.df[germline.df$chain == CHAIN,2]
+      }
+      if(sequence.region == "binding.residues"){
+        germline.pdb <- bio3d::read.pdb(germline.pdb.file)
+        gl_resnos <- get_bs_res(germline.pdb, chains_binder = c("A", "B"), chains_ligand = "C")
+        gl_resnos <- gl_resnos[resnos_df$chain == CHAIN,"resno"]
+        sub_gl_3di <- paste0(strsplit(germline.df[germline.df$chain == CHAIN,2], "")[[1]][gl_resnos], collapse = "")
+      }
+      distance_chain <- stringdist::stringdist(sub_seqs_3di, sub_gl_3di, method = 'lv')
+      distance_chain_vector <- c(distance_chain_vector, distance_chain)
     }
-    pasted_3di <- paste(seqs_chain_vector, collapse = "")
-    germline_pasted_3di <- paste(germline_chain_vector, collapse = "")
-    distance_3di <- stringdist::stringdist(pasted_3di, germline_pasted_3di, method = 'lv')
+    distance_3di <- sum(distance_chain_vector)
     return(distance_3di)
   }
 
   #Add the pLDDT score to the VDJ dataframe, this is stored in the b-factor field of the pdb file (unlike a b-factor, higher pLDDT is better)
   calculate_plddt <- function(pdb, chains, resnos){
-    average_plddt <- mean(pdb$atom[pdb$atom$resno %in% resnos & pdb$atom$chain %in% chains,"b"])
+    #select residues
+    df <- dplyr::left_join(resnos, pdb$atom, by = c("resno" = "resno", "chain" = "chain"))
+    #Calculate average plddt
+    average_plddt <- mean(df$b)
     return(average_plddt)
   }
 
@@ -278,7 +289,7 @@ VDJ_3d_properties <- function(VDJ,
 
       #Get the residues for calculations of average properties
       if(sequence.region == "full.sequence"){
-        resnos <- unique(pdb$atom[pdb$atom$chain %in% chains, ]$resno)
+        resnos <- unique(pdb$atom[pdb$atom$chain %in% chains, c('chain', "resno")])
       }
       if(sequence.region == "binding.residues"){
         resnos <- get_bs_res(pdb, chains_binder = c("A", "B"), chains_ligand = "C")
@@ -319,19 +330,18 @@ VDJ_3d_properties <- function(VDJ,
         })
         if(!is.null(germline_3di)){
           #Calculate the 3di distance to the germline
-          foldseek_germline <- calculate_3di_distance(foldseek.dir, germline.df = germline_3di, file.name = file$file_name,
-                                                      chains, resnos)
+          foldseek_germline <- calculate_3di_distance(pdb, foldseek.dir, germline.df = germline_3di, file.name = file$file_name,
+                                                      chains, resnos, sequence.region, germline.pdb)
           #Add to the VDJ dataframe
           VDJ[VDJ$barcode == file$sequence,"3di_germline"] <- foldseek_germline
         }
       }
       if("pKa_shift" %in% properties | "free_energy" %in% properties){
         #Read in the propka output
-        propka_out <- readLines(paste0(propka.dir, "/", substr(file$file_name, 1, nchar(file$file_name)-4),".pka")
-        )
+        propka_out <- readLines(paste0(propka.dir, "/", substr(file$file_name, 1, nchar(file$file_name)-4),".pka"))
         if("pKa_shift" %in% properties){
           #Calculate the pKa shift
-          average_pKa_shift <- calculate_pKa_shift(propka_out, file$file_name, chains, resnos)
+          average_pKa_shift <- calculate_pKa_shift(propka_out, file$file_name, resnos)
           #Add to the VDJ dataframe
           VDJ[VDJ$barcode == file$sequence,]$average_pKa_shift <- average_pKa_shift
         }
