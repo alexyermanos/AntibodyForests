@@ -10,21 +10,19 @@
 #' @return A list with barplots for each provided feature.
 #' @export
 #' @examples
-#' \dontrun{
 #' plot <- Af_cluster_node_features(input = AntibodyForests::small_af,
-#'                                  clusters = AntibodyForests::compare_repertoire$clustering,
+#'                                  clusters = AntibodyForests::compare_repertoire[["clustering"]],
 #'                                  features = "isotype",
 #'                                  fill = "max")
 #' plot$isotype
-#' }
 
 Af_cluster_node_features <- function(input,
-                                                features,
-                                                clusters,
-                                                fill,
-                                                colors,
-                                                text.size,
-                                                significance){
+                                    features,
+                                    clusters,
+                                    fill,
+                                    colors,
+                                    text.size,
+                                    significance){
 
   #Stop when no input is provided
   if(missing(input)){stop("Please provide a valid input object.")}

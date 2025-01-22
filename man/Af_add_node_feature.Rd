@@ -20,7 +20,7 @@ Returns an AntibodyForests-object with the features added to the nodes.
 Function to add node features to an AntibodyForests-object
 }
 \examples{
-af <- Af_add_node_feature(AntibodyForests::small_af, 
-                          feature.df = AntibodyForests::small_vdj, 
+af <- Af_add_node_feature(AntibodyForests::small_af,
+                          feature.df = AntibodyForests::small_vdj,
                           feature.names = c("VDJ_dgene", "VDJ_jgene"))
 }

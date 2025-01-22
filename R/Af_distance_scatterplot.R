@@ -15,17 +15,18 @@
 #' @param ylabel The labels of the y-axis, in the same order as the node.features. Default is the node.features
 #' @param point.size The size of the points in the scatterplot. Default is 1.
 #' @param output.file string - specifies the path to the output file (PNG of PDF). Defaults to NULL.
+#' @return A ggplot2 object with the scatterplot
 #' @export
 #' @importFrom dplyr .data
 #' @examples
 #' Af_distance_scatterplot(AntibodyForests_object = AntibodyForests::small_af,
-#'  node.features = "size",
-#'  distance = "edge.length",
-#'  min.nodes = 5,
-#'  color.by = "sample",
-#'  color.by.numeric = FALSE,
-#'  geom_smooth.method = "lm",
-#'  correlation = "pearson")
+#'                         node.features = "size",
+#'                         distance = "edge.length",
+#'                         min.nodes = 5,
+#'                         color.by = "sample",
+#'                         color.by.numeric = FALSE,
+#'                         geom_smooth.method = "lm",
+#'                         correlation = "pearson")
 
 Af_distance_scatterplot <- function(AntibodyForests_object,
                                                  node.features,
@@ -191,7 +192,9 @@ Af_distance_scatterplot <- function(AntibodyForests_object,
         print(p)
         grDevices::dev.off()
       }
-    }else{suppressWarnings(print(p))}
+    }
+
+    return(p)
   }
 
 }

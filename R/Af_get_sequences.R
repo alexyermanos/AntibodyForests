@@ -4,7 +4,7 @@
 #' @param sequence.name character, name of the sequence column in the AntibodyForests object (example VDJ_sequence_aa_trimmed)
 #' @param min.nodes integer, minimum number of nodes in the tree (not including germline)
 #' @param min.edges integer, minimum number of edges in the tree (not including edges to the germline)
-#' @return a dataframe with the sequences and sequence identifiers
+#' @return A dataframe with the sequences and sequence identifiers
 #' @export
 #' @examples
 #' sequence_df <- Af_get_sequences(AntibodyForests::small_af,

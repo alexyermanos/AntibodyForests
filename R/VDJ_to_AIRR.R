@@ -1,16 +1,16 @@
 #' Function to convert VDJ dataframe into an AIRR-formatted TSV file.
-#' Authors: Valentijn Tromp, Daphne van Ginneken
-#' @description  Takes a VDJ dataframe, typically obtained from the 'minimal_VDJ()' function in Platypus, along with the imported IgBLAST annotations and alignments, as obtained from the 'import_IgBLAST_annotations()' function in Platypus, and converts it into a tab-separated values (TSV) file formatted according to the AIRR (Adaptive Immune Receptor Repertoire) guidelines.
-#' @param VDJ dataframe - VDJ object as obtained from the 'minimal_VDJ()' function in Platypus, together with the imported IgBLAST annotations and alignments, as obtained from the 'import_IgBLAST_annotations' function in Platypus.
+#' @description  Takes a VDJ dataframe along with the imported IgBLAST annotations and alignments and converts it into a tab-separated values (TSV) file formatted according to the AIRR (Adaptive Immune Receptor Repertoire) guidelines.
+#' @param VDJ dataframe - VDJ object as obtained from the 'VDJ_build()' function in Platypus, together with the imported IgBLAST annotations and alignments, as obtained from the 'import_IgBLAST_annotations' function in AntibodyForests.
 #' @param include list - a nested list specifying the samples and their associated clonotypes to include in the output TSV file. Each sublist represents a sample, where the sublist name is the sample name and the elements within the sublist are the clonotypes of that sample. If not provided, all samples and clonotypes are included.
 #' @param columns list - a list specifying the columns to include in the output TSV file. At minimum, the following columns must be specified: 'sequence_id', 'clone_id', 'sequence', 'sequence_alignment', 'germline_alignment', 'v_call', 'v_sequence_start', 'v_sequence_end', 'v_germline_start', 'v_germline_end', 'j_call', 'j_sequence_start', 'j_sequence_end', 'j_germline_start', and 'j_germline_end'. The items in this list should correspond to the column names in the VDJ dataframe, while the names of the items in this list should refer to the column names of the output TSV file.
 #' @param complete.rows.only bool - if TRUE, only complete rows (without any missing values) are included in the output TSV file. If FALSE, rows with missing values are retained in the output. Defaults to TRUE.
 #' @param filter.rows.with.stop.codons bool - if TRUE, rows containing sequences with stop codons (TAA, TAG, TGA) in the 'sequence_alignment' and 'germline_alignment' columns are filtered out from the output TSV file. Defaults to TRUE.
 #' @param output.file string - string specifying the path to the output file. If no path is specified, the output is written to 'airr_rearrengement.tsv' in the current working directory.
 #' @return None
+#' @export
 #' @examples
 #' \dontrun{
-#' VDJ_to_AIRR(VDJ)
+#' VDJ_to_AIRR(VDJ = VDJ_IgBLAST, output.file = "path/to/output.tsv")
 #'}
 
 
@@ -22,7 +22,7 @@ VDJ_to_AIRR <- function(VDJ,
                         output.file){
 
   # If no 'VDJ' dataframe is provided, a message is returned and execution is stopped
-  if(missing(VDJ)){stop("ERROR: Please provide a VDJ dataframe as obtained from the 'minimal_VDJ()' function in Platypus.")}
+  if(missing(VDJ)){stop("ERROR: Please provide a VDJ dataframe as obtained from the 'VDJ_build()' function in Platypus.")}
   # If the 'include' parameter is not specified, all samples and clonotypes are appended to the 'include' list
   if(missing(include)){include <- lapply(unique(VDJ$sample_id), function(x) unique(VDJ[VDJ$sample_id == x, "clonotype_id"])); names(include) <- unique(VDJ$sample_id)}
   # Set default columns for each required column in the AIRR-formatted TSV file

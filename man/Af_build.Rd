@@ -109,10 +109,12 @@ An object of class 'AntibodyForests', structured as a nested list where each out
 This function takes a VDJ dataframe and uses the specified sequence columns to build a tree/network for each clonotype and stores them in an AntibodyForests object, together with the sequences and other specified features. These trees/networks provide insights into the evolutionary relationships between B cell sequences from each clonotype. The resulting object of class 'AntibodyForests' can be used for downstream analysis as input for...
 }
 \examples{
+\donttest{
 af <- Af_build(VDJ = AntibodyForests::small_vdj,
                 sequence.columns = c("VDJ_sequence_aa_trimmed","VJ_sequence_aa_trimmed"),
                 germline.columns = c("VDJ_germline_aa_trimmed","VJ_germline_aa_trimmed"),
                 node.features = c("VDJ_vgene", "isotype"),
                 string.dist.metric = "lv",
                 construction.method = "phylo.network.default")
+                }
 }

@@ -18,9 +18,10 @@
 #' @param seq.identity sequence identity threshold for clonotype assignment (Default: 0.85)
 #' @return The VDJ dataframe of both the bulk and single-cell data
 #' @importFrom magrittr %>%
+#' @export
 #' @examples
 #' \dontrun{
-#' VDJ <- VDJ_integrate_bulk(sc_VDJ = VDJ,
+#' VDJ <- VDJ_integrate_bulk(sc_VDJ = AntibodyForests::small_vdj,
 #'   bulk_tsv = "bulk_rna.tsv",
 #'   bulk_tsv_sequence_column = "sequence",
 #'   bulk_tsv_sample_column = "sample_id",
@@ -294,7 +295,7 @@ VDJ_integrate_bulk <- function(sc.VDJ,
             if(length(clones_identical_cdr3) == 1){return(clones_identical_cdr3)}
             # If multiple clonotypes remain, perform tie resolvement
             else if(length(clones_identical_cdr3) > 1){
-              if(tie.resolvement == "all"){print(paste0("Multiple clonotypes match: ", bulk_seq_raw));return(paste(clones_identical_cdr3, collapse = "_"))}
+              if(tie.resolvement == "all"){message(paste0("Multiple clonotypes match: ", bulk_seq_raw));return(paste(clones_identical_cdr3, collapse = "_"))}
               else if(tie.resolvement == "none"){return(NA)}
               else if(tie.resolvement == "random"){return(sample(clones_identical_cdr3, 1))}
           }
@@ -340,7 +341,7 @@ VDJ_integrate_bulk <- function(sc.VDJ,
               if(length(clones_identity) == 1){return(clones_identity)}
               # If multiple clonotypes remain, perform tie resolvement
               else if(length(clones_identity) > 1){
-                if(tie.resolvement == "all"){print(paste0("Multiple clonotypes match: ", bulk_seq_raw));return(paste(clones_identity, collapse = "_"))}
+                if(tie.resolvement == "all"){message(paste0("Multiple clonotypes match: ", bulk_seq_raw));return(paste(clones_identity, collapse = "_"))}
                 else if(tie.resolvement == "none"){return(NA)}
                 else if(tie.resolvement == "random"){return(sample(clones_identity, 1))}
               }
@@ -350,7 +351,7 @@ VDJ_integrate_bulk <- function(sc.VDJ,
       }
     })
 
-    print(paste0("No matching clonotypes were found for ", sum(is.na(clonotype_ids)), " out of ", nrow(unique_bulkRNA_sequences)," bulk sequences of sample ", sample))
+    message(paste0("No matching clonotypes were found for ", sum(is.na(clonotype_ids)), " out of ", nrow(unique_bulkRNA_sequences)," bulk sequences of sample ", sample))
 
     # Name the clonotype ID list by the bulk sequences
     names(clonotype_ids) <- unique_bulkRNA_sequences$VDJ_sequence_nt_raw
@@ -432,13 +433,13 @@ VDJ_integrate_bulk <- function(sc.VDJ,
 
    # 2. Run IgBLAST to annotate the single cell and bulk sequences
     #For single-cell data
-    print("Running IgBLAST on the single-cell sequences, this may take several hours for large datasets.")
+    message("Running IgBLAST on the single-cell sequences, this may take several hours for large datasets.")
 
     console_command <- paste0(os_prefix, 'AssignGenes.py igblast -s ', paste0(temp_dir,"/unique_scRNA_seqs.fasta"),
                                 " -b ", igblast.dir," --organism ", organism, " --loci ig --format airr")
     system(console_command)
     #For bulk data
-    print("Running IgBLAST on the bulk sequences, this may take several hours for large datasets.")
+    message("Running IgBLAST on the bulk sequences, this may take several hours for large datasets.")
     console_command <- paste0(os_prefix, 'AssignGenes.py igblast -s ', paste0(temp_dir,"/unique_bulkRNA_seqs.fasta"),
                                 " -b ", igblast.dir," --organism ", organism, " --loci ig --format airr")
     system(console_command)
@@ -458,10 +459,10 @@ VDJ_integrate_bulk <- function(sc.VDJ,
 
   # Combine single-cell and bulk IgBLAST annotations into a single dataframe
   annotations_combined <- unique(rbind(scRNA_seqs_annotations, bulkRNA_seqs_annotations))
-  print(paste0("Start Transform_to_VDJ() ", Sys.time()))
+  message(paste0("Start Transform_to_VDJ() ", Sys.time()))
   VDJ_combined <- Transform_to_VDJ(annotations_combined, sc.VDJ, bulk.tsv, bulk.tsv.sample.column, bulk.tsv.barcode.column,
                                    bulk.tsv.sequence.column, bulk.tsv.isotype.column, trim.FR1)
-  print(paste0("End Transform_to_VDJ() ", Sys.time()))
+  message(paste0("End Transform_to_VDJ() ", Sys.time()))
 
   #4. Append the original clonotype IDs from the single-cell VDJ dataframe to the VDJ_OVA_combined_unfiltered dataframe
   VDJ_combined <- dplyr::left_join(VDJ_combined[,!(colnames(VDJ_combined) %in% c("clonotype_id", "clonotype_frequency"))],
@@ -469,9 +470,9 @@ VDJ_integrate_bulk <- function(sc.VDJ,
                                    by = c("sample_id", "barcode", "VDJ_contig_id"))
 
   #5. Assign the bulk transcript to the single-cell clonotypes
-  print(paste0("Start Bulk_Clonotyping() ", Sys.time()))
+  message(paste0("Start Bulk_Clonotyping() ", Sys.time()))
   VDJ_clonotyped <- Bulk_Clonotyping(VDJ_combined, tie.resolvement, seq.identity)
-  print(paste0("End Bulk_Clonotyping() ", Sys.time()))
+  message(paste0("End Bulk_Clonotyping() ", Sys.time()))
 
   return(VDJ_clonotyped)
 }

@@ -2,13 +2,12 @@
 % Please edit documentation in R/VDJ_import_IgBLAST_annotations.R
 \name{VDJ_import_IgBLAST_annotations}
 \alias{VDJ_import_IgBLAST_annotations}
-\title{Function to import the annotations and alignments from IgBLAST output into the VDJ dataframe.
-Authors: Valentijn Tromp, Daphne van Ginneken}
+\title{Function to import the annotations and alignments from IgBLAST output into the VDJ dataframe.}
 \usage{
 VDJ_import_IgBLAST_annotations(VDJ, VDJ.directory, file.path.list, method)
 }
 \arguments{
-\item{VDJ}{dataframe - VDJ object as obtained from the minimal_VDJ() function in Platypus.}
+\item{VDJ}{dataframe - VDJ object as obtained from the VDJ_build() function in Platypus.}
 
 \item{VDJ.directory}{string - path to parent directory containing the output folders (one folder for each sample) of Cell Ranger. This pipeline assumes that the sample IDs and contigs IDs have not been modified and that the IgBLAST output file names have not been changed from the default changeo settings. Each sample directory should contain a 'filtered_contig_igblast_db-pass.tsv' file.}
 
@@ -26,7 +25,7 @@ Imports the IgBLAST annotations and alignments from IgBLAST output files, stored
 }
 \examples{
 \dontrun{
-VDJ <- import_IgBLAST_annotations <- function(VDJ,
-                                              VDJ.directory)
+VDJ <- VDJ_import_IgBLAST_annotations(VDJ = AntibodyForests::small_vdj,
+                                      VDJ.directory = "path/to/VDJ_directory")
 }
 }

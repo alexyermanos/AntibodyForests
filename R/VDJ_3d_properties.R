@@ -28,12 +28,13 @@
 #' @param foldseek.dir a directory containing dataframes with the Foldseek 3di sequence per chain for each sequence. Filenames should be similar to the PDB filenames and it needs to have column "chain" containing the 'A', 'B', and/or 'C' chain. Default is NULL.
 #' @param germline.pdb PDB filename of the germline. Default is NULL.
 #' @return the input VDJ dataframe with the calculated 3D-structure properties.
+#' @export
 #' @examples
 #' \dontrun{
 #' vdj_structure_antibody <- VDJ_3d_properties(VDJ = AntibodyForests::small_vdj,
 #'                           pdb.dir = "~/path/PDBS_superimposed/",
 #'                           file.df = files,
-#'                           properties = c("charge", "3di_germline", "hydrophobicity")
+#'                           properties = c("charge", "3di_germline", "hydrophobicity"),
 #'                           chain = "HC+LC",
 #'                           sequence.region = "full.sequence",
 #'                           propka.dir = "~/path/Propka_output/",
@@ -325,7 +326,7 @@ VDJ_3d_properties <- function(VDJ,
                                                                     nchar(file.df[file.df$sequence == "germline", "file_name"])-4),".csv"),
                                    header = T, sep = ",")
         }, error = function(e){
-          print(paste0("Sequence ", file$sequence, " not found in foldseek output"))
+          warning(paste0("Sequence ", file$sequence, " not found in foldseek output"))
           germline_3di = NULL
         })
         if(!is.null(germline_3di)){
@@ -359,7 +360,7 @@ VDJ_3d_properties <- function(VDJ,
         VDJ[VDJ$barcode == file$sequence,]$average_pLDDT <- average_pLDDT
       }
     } else {
-      print(paste0("Sequence ", file$sequence, " not found in VDJ dataframe"))
+      warning(paste0("Sequence ", file$sequence, " not found in VDJ dataframe"))
       next
     }
 

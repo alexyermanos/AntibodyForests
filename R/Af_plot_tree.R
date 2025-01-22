@@ -27,16 +27,15 @@
 #' @param size.legend.title string - specifies the title of the legend showing the node sizes. Defaults to 'Expansion (# cells)'.
 #' @param font.size float - specifies the font size of the text in the plot. Defaults to 1.
 #' @param output.file string - specifies the path to the output file (PNG of PDF). Defaults to NULL.
-#' @return Plots lineage tree for the specified clonotype.
+#' @return No value returned, plots the lineage tree for the specified clonotype on the device or saves it to the output.file.
 #' @export
 #' @examples
-#' \dontrun{
 #' Af_plot_tree(AntibodyForests::small_af,
 #'                      sample = "S1",
 #'                      clonotype = "clonotype1",
 #'                      main.title = "Lineage tree",
 #'                      sub.title = "Sample 1 - clonotype 1")
-#'}
+
 
 Af_plot_tree <- function(AntibodyForests_object,
                                  sample,
@@ -307,9 +306,6 @@ Af_plot_tree <- function(AntibodyForests_object,
                   circle.col = igraph::V(graph)$color[y], pie.col = igraph::V(graph)$pie.color[[y]],
                   slices = igraph::V(graph)$pie[[y]])
     }
-    # Restore the graphical parameters after function execution
-    old_xpd <- graphics::par(xpd = TRUE)
-    on.exit(graphics::par(old_xpd), add = TRUE)
     # Define node label positions
     x <- layout[, 1]
     y <- layout[, 2]
@@ -754,6 +750,8 @@ Af_plot_tree <- function(AntibodyForests_object,
     }
 
     # Set the number of lines of margin to 0
+    oldpar <- graphics::par(no.readonly = TRUE)
+    on.exit(graphics::par(oldpar))
     graphics::par(mar = rep(0, 4))
     }
 

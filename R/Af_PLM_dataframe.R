@@ -3,7 +3,8 @@
 #' @param AntibodyForests_object AntibodyForests-object, output from Af_build()
 #' @param sequence.name character, name of the sequence column in the AntibodyForests object (example VDJ_sequence_aa_trimmed)
 #' @param path_to_probabilities character, path to the folder containing probability matrices for all sequences. Probability matrices should be in CSV format and the filename should include sampleID_clonotypeID_nodeNR, matching the AntibodyForests-object.
-#' @return a dataframe with the sample, clonotype, node numbers, number of substitutions, mean substitution rank and mean substitution probability
+#' @return A dataframe with the sample, clonotype, node numbers, number of substitutions, mean substitution rank and mean substitution probability
+#' @export
 #' @examples
 #' \dontrun{
 #' PLM_dataframe <- Af_PLM_dataframe(AntibodyForests_object = AntibodyForests::small_af,
@@ -108,7 +109,7 @@ Af_PLM_dataframe <- function(AntibodyForests_object,
             clonotype_df <- rbind(clonotype_df, edge_df)
           }
           else{
-            print("No probability matrix found for ", paste0(sample,"_",clonotype,"_",node1))
+            message("No probability matrix found for ", paste0(sample,"_",clonotype,"_",node1))
             clonotype_df <- rbind(clonotype_df, data.frame(sample = NA, clonotype = NA, node1 = NA, node2 = NA,
                                  n_subs = NA, mean_substitution_rank = NA, mean_substitution_probability = NA,
                                  mean_original_rank = NA, mean_original_probability = NA))

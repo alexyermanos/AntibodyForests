@@ -16,7 +16,7 @@ Af_get_sequences(AntibodyForests_object, sequence.name, min.nodes, min.edges)
 \item{min.edges}{integer, minimum number of edges in the tree (not including edges to the germline)}
 }
 \value{
-a dataframe with the sequences and sequence identifiers
+A dataframe with the sequences and sequence identifiers
 }
 \description{
 Function to get the sequences from the nodes in an AntibodyForest object

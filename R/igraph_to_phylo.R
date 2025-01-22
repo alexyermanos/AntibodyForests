@@ -1,15 +1,11 @@
 #'Converts an igraph network into a phylogenetic tree as a phylo object.
-
 #'@description Converts an igraph network into a phylogenetic tree as a phylo object.
-
 #' @param tree igraph object
 #' @param solve_multichotomies boolean - whether to remove multichotomies in the resulting phylogenetic tree using ape::multi2di
 #' @return phylogenetic tree
 #' @export
 #' @examples
-#' \dontrun{
-#' AntibodyForests_phylo(tree)
-#'}
+#' igraph_object <- AntibodyForests_phylo(AntibodyForests::small_af[["S1"]][["clonotype1]]$igraph)
 
 igraph_to_phylo <- function(tree,
                            solve_multichotomies){

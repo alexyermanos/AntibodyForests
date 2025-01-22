@@ -51,16 +51,19 @@ Af_distance_scatterplot(
 
 \item{output.file}{string - specifies the path to the output file (PNG of PDF). Defaults to NULL.}
 }
+\value{
+A ggplot2 object with the scatterplot
+}
 \description{
 Function to scatterplot the distance to the germline to a numerical node feature of the AntibodyForests-object
 }
 \examples{
 Af_distance_scatterplot(AntibodyForests_object = AntibodyForests::small_af,
- node.features = "size",
- distance = "edge.length",
- min.nodes = 5,
- color.by = "sample",
- color.by.numeric = FALSE,
- geom_smooth.method = "lm",
- correlation = "pearson")
+                        node.features = "size",
+                        distance = "edge.length",
+                        min.nodes = 5,
+                        color.by = "sample",
+                        color.by.numeric = FALSE,
+                        geom_smooth.method = "lm",
+                        correlation = "pearson")
 }

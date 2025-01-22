@@ -33,7 +33,6 @@
 #' @return - list - Returns a distance matrix, clustering, and various plots based on visualization.methods
 #' @export
 #' @examples
-#' \dontrun{
 #' compare_repertoire <- Af_compare_within_repertoires(input = AntibodyForests::small_af,
 #'                                      min.nodes = 8,
 #'                                      distance.method = "euclidean",
@@ -42,7 +41,7 @@
 #'                                      visualization.methods = "PCA")
 #' #Plot the PCA clusters
 #' compare_repertoire$plots$PCA_clusters
-#' }
+
 
 Af_compare_within_repertoires <- function(input,
                                     min.nodes,

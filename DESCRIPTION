@@ -1,17 +1,17 @@
 Package: AntibodyForests
-Title: Delineating Inter- And Intra-Antibody Repertoire Evolution with AntibodyForests
+Title: Delineating Inter- And Intra-Antibody Repertoire Evolution
 Version: 1.0.0
 Authors@R: c(
     person("Daphne", "van Ginneken", email = "daphne.v.ginneken@gmail.com", role = c("aut", "cre")),
-    person("Alexander", "Yermanos", role = "ctb"),
-    person("Valentijn", "Tromp", role = "ctb"),
+    person("Alexander", "Yermanos", role = "aut"),
+    person("Valentijn", "Tromp", role = "aut"),
     person("Tudor-Stefan", "Cotet", role = "ctb")
   )
 Maintainer: Daphne van Ginneken <daphne.v.ginneken@gmail.com>
 Description: The generated wealth of immune repertoire sequencing data
     requires software to investigate and quantify inter- and
     intra-antibody repertoire evolution to uncover how B cells evolve
-    during immune responses. Here, we present AntibodyForests, a software
+    during immune responses. Here, we present 'AntibodyForests', a software
     to investigate and quantify inter- and intra-antibody repertoire
     evolution.
 License: GPL-2

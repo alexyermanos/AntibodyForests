@@ -55,7 +55,7 @@ Assuming chain "A" is heavy chain, chain "B" is light chain, and possible chain 
 \item{output.file}{string - specifies the path to the output file (PNG of PDF). Defaults to NULL.}
 }
 \value{
-a dataframe with the sample, clonotype, node numbers, number of substitutions, and edge RMSD
+A list with the edge dataframe and a ggplot2 object
 }
 \description{
 This function calculates the RMSD between sequences over each edge in the AntibodyForest object.

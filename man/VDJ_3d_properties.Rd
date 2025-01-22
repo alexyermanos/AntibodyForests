@@ -74,7 +74,7 @@ Function to calculate protein 3D-structure properties of antibodies (or antibody
 vdj_structure_antibody <- VDJ_3d_properties(VDJ = AntibodyForests::small_vdj,
                           pdb.dir = "~/path/PDBS_superimposed/",
                           file.df = files,
-                          properties = c("charge", "3di_germline", "hydrophobicity")
+                          properties = c("charge", "3di_germline", "hydrophobicity"),
                           chain = "HC+LC",
                           sequence.region = "full.sequence",
                           propka.dir = "~/path/Propka_output/",

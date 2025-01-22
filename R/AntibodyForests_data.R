@@ -22,3 +22,13 @@
 #'
 #' @name af_nj
 'af_nj'
+
+#' Small PLM dataframe for function testing purposes
+#'
+#' @name PLM_dataframe
+'PLM_dataframe'
+
+#' Example output from Af_compare_within_repertoires() for function testing purposes
+#'
+#' @name compare_repertoire
+'compare_repertoire'

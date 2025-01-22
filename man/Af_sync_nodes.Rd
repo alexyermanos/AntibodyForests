@@ -18,8 +18,6 @@ Returns the subject AntibdoyForests object in which all nodes of each clonotypes
 The nodes of each clonotype within each sample of the subject AntibodyForests object will be named according to the names of the nodes of the clonotypes within the samples of the reference AntibodyForests object. The node names present in all the objects within the  Therefore, the sample IDs and clonotype IDs should be the same. Note: if a node in the reference AntibodyForests object is divided over two nodes in the subject AntibodyForests object, the nodes will get a letter as suffix (for example, 'node2' in the reference object would become 'node2A' and 'node2B' in the subject object). Note: if multiple nodes in the reference AntibodyForests object are together in one node in the subject AntibodyForests object, the number of the nodes are pasted together with a '+' (for example, 'node5' and 'node6' in the reference object would become 'node5+6' in the subject object).
 }
 \examples{
-\dontrun{
-Af_sync_nodes(reference = AntibodyForests::af_default, 
+af_mst <- Af_sync_nodes(reference = AntibodyForests::af_default,
                      subject = AntibodyForests::af_mst)
-}
 }

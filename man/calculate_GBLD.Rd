@@ -20,3 +20,7 @@ A matrix with the GBLD distances between trees in the AntibodyForests object.
 \description{
 Calculate the GBLD distance between trees in an AntibodyForests object. Code is derived from https://github.com/tahiri-lab/ClonalTreeClustering/blob/main/src/Python/GBLD_Metric_Final.ipynb
 }
+\examples{
+GBLD_matrix <- calculate_GBLD(AntibodyForests_object = AntibodyForests::small_af)
+GBLD_matrix[1:5, 1:5]
+}

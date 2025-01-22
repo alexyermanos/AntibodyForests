@@ -92,17 +92,15 @@ Af_plot_tree(
 \item{output.file}{string - specifies the path to the output file (PNG of PDF). Defaults to NULL.}
 }
 \value{
-Plots lineage tree for the specified clonotype.
+No value returned, plots the lineage tree for the specified clonotype on the device or saves it to the output.file.
 }
 \description{
 This function retrieves the igraph object from the provided AntibodyForests object for the specified clone within the specified sample and plots the lineage tree using the specified plotting parameters.
 }
 \examples{
-\dontrun{
 Af_plot_tree(AntibodyForests::small_af,
                      sample = "S1",
                      clonotype = "clonotype1",
                      main.title = "Lineage tree",
                      sub.title = "Sample 1 - clonotype 1")
-}
 }

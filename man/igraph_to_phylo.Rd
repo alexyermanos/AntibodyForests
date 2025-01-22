@@ -17,8 +17,3 @@ phylogenetic tree
 \description{
 Converts an igraph network into a phylogenetic tree as a phylo object.
 }
-\examples{
-\dontrun{
-AntibodyForests_phylo(tree)
-}
-}

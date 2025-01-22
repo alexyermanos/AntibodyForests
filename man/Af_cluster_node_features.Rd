@@ -36,11 +36,9 @@ A list with barplots for each provided feature.
 Function to create a barplot of the cluster composition of selected features from each tree in an AntibodyForests-object
 }
 \examples{
-\dontrun{
 plot <- Af_cluster_node_features(input = AntibodyForests::small_af,
-                                 clusters = AntibodyForests::compare_repertoire$clustering,
+                                 clusters = AntibodyForests::compare_repertoire[["clustering"]],
                                  features = "isotype",
                                  fill = "max")
 plot$isotype
-}
 }

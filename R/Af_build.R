@@ -65,12 +65,14 @@
 #' @return An object of class 'AntibodyForests', structured as a nested list where each outer list represents a sample, and each inner list represents a clonotype. Each clonotype list contains the output objects specified in the 'include' parameter. For example, \code{AntibodyForests[[1]][[2]]} contains the list of output objects for the first sample and third clonotype (which would be equivalent to something like AntibodyForests$S1$clonotype3).
 #' @export
 #' @examples
+#' \donttest{
 #' af <- Af_build(VDJ = AntibodyForests::small_vdj,
 #'                 sequence.columns = c("VDJ_sequence_aa_trimmed","VJ_sequence_aa_trimmed"),
 #'                 germline.columns = c("VDJ_germline_aa_trimmed","VJ_germline_aa_trimmed"),
 #'                 node.features = c("VDJ_vgene", "isotype"),
 #'                 string.dist.metric = "lv",
 #'                 construction.method = "phylo.network.default")
+#'                 }
 
 Af_build <- function(VDJ,
                             sequence.columns,
@@ -570,7 +572,6 @@ Af_build <- function(VDJ,
 
               # Append warning message to 'warnings' list
               warnings <- c(warnings, paste0("Not all ties could be resolved in ", strsplit(clone, split="_")[[1]][2], " of ", strsplit(clone, split="_")[[1]][1], "!"))
-              print("yes")
               # The currently unlinked node is connected to both linked nodes in the tree, thereby creating a cyclic graph
               for(i in node_to_connect_to){
                 edges <- rbind(edges, c(i, node, dist_matrix_backup[i, node]))
@@ -1349,9 +1350,9 @@ Af_build <- function(VDJ,
   partial_function <- function(clone){
 
     # Create a temporary directory for the current clone
+    oldwd <- getwd()
+    on.exit(setwd(oldwd))
     temp_dir <- tempdir()
-
-    # Set this 'temp_dir' as the working directory
     setwd(temp_dir)
 
     # Execute the 'infer_single_network' function for the current clone
@@ -1427,7 +1428,7 @@ Af_build <- function(VDJ,
   })
 
   # Reset the working directory
-  setwd(original_working_directory)
+  on.exit(setwd(original_working_directory))
 
   # Rename the sublists in 'reorganized_output_list' to their original sample ID
   names(reorganized_output_list) <- sample_list

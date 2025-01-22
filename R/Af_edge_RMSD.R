@@ -20,7 +20,7 @@
 #' @param point.size The size of the points in the scatterplot. Default is 1.
 #' @param color The color of the dots in the scatterplot. Default is "black".
 #' @param output.file string - specifies the path to the output file (PNG of PDF). Defaults to NULL.
-#' @return a dataframe with the sample, clonotype, node numbers, number of substitutions, and edge RMSD
+#' @return A list with the edge dataframe and a ggplot2 object
 #' @export
 #' @examples
 #' \dontrun{
@@ -252,9 +252,9 @@ Af_edge_RMSD <- function(AntibodyForests_object,
       print(p)
       grDevices::dev.off()
     }
-  }else{print(p)}
+  }
 
-  return(output_df)
+  return(list(dataframe = output_df, plot = p))
 
 
 }

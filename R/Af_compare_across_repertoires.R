@@ -27,9 +27,10 @@
 #' @examples
 #' boxplots <- Af_compare_across_repertoires(list("S1" = AntibodyForests::small_af[1],
 #'             "S2" = AntibodyForests::small_af[2]),
-#'             metrics = c("sackin.index", "betweenness", "degree"),
+#'             metrics = c("betweenness", "degree"),
 #'             plot = "boxplot")
 #' boxplots$betweenness
+
 
 Af_compare_across_repertoires <- function(AntibodyForests_list,
                                           metrics,

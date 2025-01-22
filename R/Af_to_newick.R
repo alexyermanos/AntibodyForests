@@ -3,9 +3,10 @@
 #' @param AntibodyForests_object AntibodyForests-object, output from Af_build()
 #' @param min.nodes The minimum number of nodes in a tree to calculate metrics (including the germline).
 #' @param output.file string - specifies the path to the output file
+#' @return No value returned, saves the newick format to the output.file
 #' @export
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' Af_to_newick(AntibodyForests_object = AntibodyForests::small_af,
 #'               min.nodes = 2,
 #'               output.file = "output.newick")
@@ -19,9 +20,6 @@ Af_to_newick <- function(AntibodyForests_object,
   if(missing(output.file)){stop("Please provide an output file")}
   if(missing(min.nodes)){min.nodes <- 2}
 
-  #Set global variable for CRAN
-  AntibodyForests_phylo <- NULL
-
   #Delete file if it exists
   if (file.exists(output.file)){file.remove(output.file)}
 
@@ -30,7 +28,7 @@ Af_to_newick <- function(AntibodyForests_object,
     for (tree in names(AntibodyForests_object[[sample]])){
       if(igraph::vcount(AntibodyForests_object[[sample]][[tree]]$igraph) >= min.nodes){
         #Transform igraph into phylo object
-        phylo <- AntibodyForests_phylo(AntibodyForests_object[[sample]][[tree]]$igraph, solve_multichotomies = F)
+        phylo <- igraph_to_phylo(AntibodyForests_object[[sample]][[tree]]$igraph, solve_multichotomies = F)
 
         #Add the node sizes to the tip and node labels
         size_list <- lapply(AntibodyForests_object[[sample]][[tree]]$nodes, function(x){if (is.null(x$size)){return(1)}else{return(x$size)}})

@@ -16,14 +16,15 @@
 #' @param significance If TRUE, the significance of the difference (paired t-test) between the groups is plotted. (default FALSE)
 #' @param parallel If TRUE, the metric calculations are parallelized across clonotypes. (default FALSE)
 #' @param output.file string - specifies the path to the output file (PNG of PDF). Defaults to NULL.
+#' @return A ggplot2 object with the boxplot.
 #' @export
 #' @examples
 #' Af_distance_boxplot(AntibodyForests::small_af,
-#' distance = "edge.length",
-#' min.nodes = 5,
-#' groups = c("IGHA", "IgG1"),
-#' node.feature = "isotype",
-#' unconnected = TRUE)
+#'                     distance = "edge.length",
+#'                     min.nodes = 5,
+#'                     groups = c("IGHA", "IgG1"),
+#'                     node.feature = "isotype",
+#'                     unconnected = TRUE)
 #'
 
 Af_distance_boxplot <- function(AntibodyForests_object,
@@ -56,7 +57,7 @@ Af_distance_boxplot <- function(AntibodyForests_object,
   #Check if group are in the metric dataframe
   #if(!(all(groups %in% colnames(metric_df)))){stop("Groups are not in the column names of the metric dataframe.")}
 
-  print("Warning: This function takes a long runtime if the AntibodyForests-object is large.")
+  message("This function takes a long runtime if the AntibodyForests-object is large.")
 
   #Global variable definitions for CRAN checks
   depth <- NULL
@@ -152,7 +153,9 @@ Af_distance_boxplot <- function(AntibodyForests_object,
       print(p)
       grDevices::dev.off()
     }
-  }else{suppressWarnings(print(p))}
+  }
+
+  return(p)
 
 
 }

@@ -13,11 +13,14 @@ Af_to_newick(AntibodyForests_object, min.nodes, output.file)
 
 \item{output.file}{string - specifies the path to the output file}
 }
+\value{
+No value returned, saves the newick format to the output.file
+}
 \description{
 Saves an AntibodyForests-object into a newick file. The node labels will have the format node\@size where size is the size of the node.
 }
 \examples{
-\dontrun{
+\donttest{
 Af_to_newick(AntibodyForests_object = AntibodyForests::small_af,
               min.nodes = 2,
               output.file = "output.newick")

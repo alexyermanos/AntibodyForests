@@ -23,13 +23,12 @@
 #' @return - list - A list with boxplots per metric
 #' @export
 #' @examples
-#' \dontrun{
 #' plot <- Af_cluster_metrics(input = AntibodyForests::small_af,
-#'                             clusters = compare_repertoire[["clustering"]],
+#'                             clusters = AntibodyForests::compare_repertoire[["clustering"]],
 #'                             metrics = "mean.depth",
 #'                             min.nodes = 8)
 #' plot$mean.depth
-#' }
+
 
 Af_cluster_metrics <- function(input,
                                      clusters,

@@ -2,8 +2,7 @@
 % Please edit documentation in R/VDJ_to_AIRR.R
 \name{VDJ_to_AIRR}
 \alias{VDJ_to_AIRR}
-\title{Function to convert VDJ dataframe into an AIRR-formatted TSV file.
-Authors: Valentijn Tromp, Daphne van Ginneken}
+\title{Function to convert VDJ dataframe into an AIRR-formatted TSV file.}
 \usage{
 VDJ_to_AIRR(
   VDJ,
@@ -15,7 +14,7 @@ VDJ_to_AIRR(
 )
 }
 \arguments{
-\item{VDJ}{dataframe - VDJ object as obtained from the 'minimal_VDJ()' function in Platypus, together with the imported IgBLAST annotations and alignments, as obtained from the 'import_IgBLAST_annotations' function in Platypus.}
+\item{VDJ}{dataframe - VDJ object as obtained from the 'VDJ_build()' function in Platypus, together with the imported IgBLAST annotations and alignments, as obtained from the 'import_IgBLAST_annotations' function in AntibodyForests.}
 
 \item{include}{list - a nested list specifying the samples and their associated clonotypes to include in the output TSV file. Each sublist represents a sample, where the sublist name is the sample name and the elements within the sublist are the clonotypes of that sample. If not provided, all samples and clonotypes are included.}
 
@@ -31,10 +30,10 @@ VDJ_to_AIRR(
 None
 }
 \description{
-Takes a VDJ dataframe, typically obtained from the 'minimal_VDJ()' function in Platypus, along with the imported IgBLAST annotations and alignments, as obtained from the 'import_IgBLAST_annotations()' function in Platypus, and converts it into a tab-separated values (TSV) file formatted according to the AIRR (Adaptive Immune Receptor Repertoire) guidelines.
+Takes a VDJ dataframe along with the imported IgBLAST annotations and alignments and converts it into a tab-separated values (TSV) file formatted according to the AIRR (Adaptive Immune Receptor Repertoire) guidelines.
 }
 \examples{
 \dontrun{
-VDJ_to_AIRR(VDJ)
+VDJ_to_AIRR(VDJ = VDJ_IgBLAST, output.file = "path/to/output.tsv")
 }
 }

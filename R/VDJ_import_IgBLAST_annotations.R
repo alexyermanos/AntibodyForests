@@ -1,17 +1,17 @@
 #' Function to import the annotations and alignments from IgBLAST output into the VDJ dataframe.
-#' Authors: Valentijn Tromp, Daphne van Ginneken
 #' @description  Imports the IgBLAST annotations and alignments from IgBLAST output files, stored in the output folders of Cell Ranger, into a VDJ dataframe obtained from the minimal_VDJ() function in Platypus.
-#' @param VDJ dataframe - VDJ object as obtained from the minimal_VDJ() function in Platypus.
+#' @param VDJ dataframe - VDJ object as obtained from the VDJ_build() function in Platypus.
 #' @param VDJ.directory string - path to parent directory containing the output folders (one folder for each sample) of Cell Ranger. This pipeline assumes that the sample IDs and contigs IDs have not been modified and that the IgBLAST output file names have not been changed from the default changeo settings. Each sample directory should contain a 'filtered_contig_igblast_db-pass.tsv' file.
 #' @param file.path.list list - list containing the paths to the 'filtered_contig_igblast_db-pass.tsv' files, in which the names of each item should refer to an sample ID.
 #' @param method string - denotes the way the IgBLAST germline annotations from the 'filtered_contig_igblast_db-pass.tsv' files should be appended to the VDJ dataframe. Options: 'replace' or 'attach'. Defaults to 'append'.
 #' 'replace'  : The original annotation columns in the VDJ dataframe are replaced with the IgBLAST annotations. The original columns are kept with the suffix '_10x'.
 #' 'append'   : The IgBLAST annotation columns are stored in columns with the suffix '_IgBLAST'.
 #' @return The VDJ dataframe with the appended IgBLAST annotations and alignments.
+#' @export
 #' @examples
 #' \dontrun{
-#' VDJ <- import_IgBLAST_annotations <- function(VDJ,
-#'                                               VDJ.directory)
+#' VDJ <- VDJ_import_IgBLAST_annotations(VDJ = AntibodyForests::small_vdj,
+#'                                       VDJ.directory = "path/to/VDJ_directory")
 #'}
 
 
@@ -294,7 +294,6 @@ VDJ_import_IgBLAST_annotations <- function(VDJ,
 
     # Retrieve the column names from the 'VDJ' dataframe that are not yet included in the 'new_order' vector and add these column names at the end of the vector
     unrecognized_columns <- colnames(VDJ)[!colnames(VDJ) %in% new_order]
-    print(unrecognized_columns)
     new_order <- c(new_order, unrecognized_columns)
 
     # Only keep the columns that are present in the VDJ dataframe

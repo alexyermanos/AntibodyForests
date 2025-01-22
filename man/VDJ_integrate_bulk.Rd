@@ -60,7 +60,7 @@ Integrate bulk and single-cell data by reannotating the germline genes and integ
 }
 \examples{
 \dontrun{
-VDJ <- VDJ_integrate_bulk(sc_VDJ = VDJ,
+VDJ <- VDJ_integrate_bulk(sc_VDJ = AntibodyForests::small_vdj,
   bulk_tsv = "bulk_rna.tsv",
   bulk_tsv_sequence_column = "sequence",
   bulk_tsv_sample_column = "sample_id",

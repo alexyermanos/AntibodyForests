@@ -52,15 +52,18 @@ If you want to compare IgM and IgG for example, groups should be c("IgM, "IgG") 
 
 \item{output.file}{string - specifies the path to the output file (PNG of PDF). Defaults to NULL.}
 }
+\value{
+A ggplot2 object with the boxplot.
+}
 \description{
 Function to compare trees.
 }
 \examples{
 Af_distance_boxplot(AntibodyForests::small_af,
-distance = "edge.length",
-min.nodes = 5,
-groups = c("IGHA", "IgG1"),
-node.feature = "isotype",
-unconnected = TRUE)
+                    distance = "edge.length",
+                    min.nodes = 5,
+                    groups = c("IGHA", "IgG1"),
+                    node.feature = "isotype",
+                    unconnected = TRUE)
 
 }

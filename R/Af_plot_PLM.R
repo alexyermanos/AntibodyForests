@@ -12,14 +12,14 @@
 #' @param colors Color to use for the lines. When group_by = "sample_id": This should be a vector of the same length as the number of samples.
 #' @param font.size Font size for the plot. Default is 16.
 #' @param output.file string - specifies the path to the output file (PNG of PDF). Defaults to NULL.
+#' @return A ggplot2 object of the PLM plot
 #' @export
 #' @importFrom dplyr .data
 #' @examples
-#' \dontrun{
-#' Af_plot_PLM(PLM_dataframe = PLM_dataframe,
+#' Af_plot_PLM(PLM_dataframe = AntibodyForests::PLM_dataframe,
 #'             values = "original_probability",
 #'             group_by = "sample_id")
-#' }
+
 
 Af_plot_PLM <- function(PLM_dataframe,
                                      values,
@@ -104,5 +104,7 @@ Af_plot_PLM <- function(PLM_dataframe,
       print(p)
       grDevices::dev.off()
     }
-  }else{print(p)}
+  }
+
+  return(p)
 }

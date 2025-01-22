@@ -25,13 +25,14 @@ Af_plot_PLM(PLM_dataframe, values, group_by, colors, font.size, output.file)
 
 \item{output.file}{string - specifies the path to the output file (PNG of PDF). Defaults to NULL.}
 }
+\value{
+A ggplot2 object of the PLM plot
+}
 \description{
 Function to create a distribution plot of the Protein Language Model probabilities and ranks of the mutations along the edges of B cell lineage trees.
 }
 \examples{
-\dontrun{
-Af_plot_PLM(PLM_dataframe = PLM_dataframe,
+Af_plot_PLM(PLM_dataframe = AntibodyForests::PLM_dataframe,
             values = "original_probability",
             group_by = "sample_id")
-}
 }

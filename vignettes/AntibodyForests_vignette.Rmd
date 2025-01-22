@@ -35,18 +35,6 @@ devtools::load_all(".")
 ```
 
 <style>
-#TOC::before {
-  content: "";
-  display: block;
-  height: 150px;
-  background-image: url("imgs/main/logo.png");
-  background-size: contain;
-  background-position: center center;
-  background-repeat: no-repeat;
-}
-</style>
-
-<style>
 pre code, pre, code {
   white-space: pre !important;
   overflow-x: scroll !important;
@@ -61,7 +49,7 @@ pre code, pre, code {
 
 <div class=text-justify>
 
-This vignette provides a detailed explanation of the main functions from the AntibodyForests package, including the `VDJ_build()` function from the [Platypus package](https://github.com/alexyermanos/Platypus). These functions are designed for importing single-cell V(D)J sequencing data from 10x Genomics, constructing lineage trees, comparing the structure of these trees within and across repertoires, and incorporating features of protein structure and evolutionary likelihood from Protein Language Models. Throughout this vignette, the dataset outlined by [Neumeier et al. (2022)](https://doi.org/10.1073/pnas.2113766119) and [Kim et al. (2022)](https://www.nature.com/articles/s41586-022-04527-1) will be used.  
+This vignette provides a detailed explanation of the main functions from the AntibodyForests package, including the `VDJ_build()` function from the [Platypus package](https://github.com/alexyermanos/Platypus). These functions are designed for importing single-cell V(D)J sequencing data from 10x Genomics, constructing lineage trees, comparing the structure of these trees within and across repertoires, and incorporating features of protein structure and evolutionary likelihood from Protein Language Models. Throughout this vignette, the dataset outlined by [Neumeier et al. (2022)](https://doi.org/10.1073/pnas.2113766119) and [Kim et al. (2022)](https://doi.org/10.1038/s41586-022-04527-1) will be used.  
 
 <br>
 </div>
@@ -187,7 +175,7 @@ The **`VDJ_build()`** function imports Cell Ranger output into an R dataframe, p
 <br>
 For seamless integration with functions such as the `Af_build()` function (discussed next), it is strongly recommended to set the `remove.divergent.cells` and `complete.cells.only` parameters to TRUE. Cells with more than one VDJ or VJ transcript, referred to as 'divergent cells', typically represent doublets that may arise during the single-cell sorting, or show dual expression of kappa and lambda light chains. Such occurrences are rare, accounting for only 0.2-0.5% of peripheral blood B cells, as reported by [Giachino et al. (1995)](https://doi.org/10.1084/jem.181.3.1245). Cells harboring both a single VDJ and a VJ transcript may be included for comprehensive downstream analyses.  
 <br>
-The output of 10x Genomics contains one output folder per run/sample. In each sample folder, the following files should be present in order to run the `VDJ_build()` function successfully. More information on the outputs of 10x Genomics can be found [on this page](https://www.10xgenomics.com/support/software/cell-ranger/latest/analysis/outputs/cr-5p-outputs-overview-vdj).  
+The output of 10x Genomics contains one output folder per run/sample. In each sample folder, the following files should be present in order to run the `VDJ_build()` function successfully.  
 <br>
 
 * `filtered_contig_annotations.csv`  
@@ -309,7 +297,7 @@ The **`Af_build()`** function infers B/T cell evolutionary networks for all clon
 <br>
 For all clonotypes, the unique (combination of) sequences are selected, which will be nodes in the lineage tree. Until now, five algorithms have been implemented to construct B cell lineage trees from this list of sequences. Three construction algorithms are based on a pairwise distance matrix: 'phylo.network.default', 'phylo.network.mst', and 'phylo.tree.nj'. If the `string.dist.metric` is specified, the distance matrices are calculated using the `stringdist::stringdistmatrix()` function; if the `dna.model` or `aa.model` is specified, the distance matrices are calculated using the `ape::dist.dna()` or `phangorn::dist.ml()` function, respectively. Two construction algorithms are based on a multiple sequence alignment (msa): 'phylo.tree.mp' and 'phylo.tree.ml'. The msa is created with the `msa::msa()` function. The five algorithms are explained in the description of the `construction.method` parameter below.  
 <br>
-In addition, there is also the option to import pre-constructed lineage trees from an IgPhyML output file into an AntibodyForests object, which enables to comparison of trees created with different construction methods on the same sequencing data in a repertoire-wide manner. IgPhyML is a command-line tool that infers maximum likelihood trees using a phylogenetic codon substitution model specific for antibody lineages, as explained by [Hoehn *et al.* (2017)](https://doi.org/10.1534/genetics.116.196303). Some functions have been included to create the appropriate input files from IgPhyML from 10x Genomics outputs, by running the IgBLAST tool and integrating the output with the VDJ dataframe. These function are discussed in the [supplementary of this vignette](#supplementary-i).
+In addition, there is also the option to import pre-constructed lineage trees from an IgPhyML output file into an AntibodyForests object, which enables to comparison of trees created with different construction methods on the same sequencing data in a repertoire-wide manner. IgPhyML is a command-line tool that infers maximum likelihood trees using a phylogenetic codon substitution model specific for antibody lineages, as explained by [Hoehn *et al.* (2017)](https://doi.org/10.1534/genetics.116.196303). Some functions have been included to create the appropriate input files from IgPhyML from 10x Genomics outputs, by running the IgBLAST tool and integrating the output with the VDJ dataframe. These function are discussed in the supplementary of this vignette.
 <br>
 
 </div>
@@ -494,7 +482,7 @@ AntibodyForests_OVA_ml <- Af_build(VDJ = VDJ_OVA,
 ```
 <br>
 
-#### 3. IgPhyML  {#AntibodyForests-example-6-IgPhyML}
+#### 3. IgPhyML
 
 In this final example, it is demonstrated how the construction method `"phylo.tree.IgPhyML"` can be used for compatibility with the IgPhyML tool. Unlike other methods where trees are inferred, this method imports trees directly from the specified IgPhyML output file (`IgPhyML.output.file = "data/OVA_scRNA-seq_data/VDJ/airr_rearrangement_igphyml-pass.tab"`). The IgPhyML tool only accepts VDJ sequences as input, which is why only the `"VDJ_sequence_nt_trimmed"` and `"VDJ_germline_nt_trimmed"` columns are selected. This ensures that the relevant DNA sequences are imported from the VDJ dataframe into the AntibodyForests object. It is important to note that the IgPhyML tool also employs a maximum likelihood algorithm, similar to the `"phylo.tree.ml"` method, but uses a model that is specifically adapted to antibody sequences. This specialized model provides more accurate phylogenetic reconstructions for antibody sequence data. 
 ```{r AntibodyForests-example-IgPhyML, eval = FALSE}
@@ -582,111 +570,46 @@ The **`Af_plot_tree()`** function retrieves the igraph object from the provided 
 
 <div class=text-justify>
 
-```{r create-image-carousel, include = FALSE}
-# Write function that generates an image carousel from a list of PNG files
-create_image_carousel <- function(image_sources){
-  # Filter out non-existing PNG files and order images
-  image_sources <- gtools::mixedsort(image_sources[file.exists(image_sources)])
-  # Convert the image files to Base64-encoded data URIs
-  base64_images <- lapply(image_sources, function(x) base64enc::dataURI(file = x))
-  # Specify the style of images in caroussels 
-  style <- "width: 100%; height: 100%; object-fit: contain;"
-  # Create HTML image tags with the Base64-encoded data URIs and specified style
-  image_tags <- lapply(base64_images, function(uri) htmltools::tags$img(src = uri, style = style))
-  # Pass the list of image tags as individual arguments to the 'swipeRwrapper' function
-  wrapper <- do.call(swipeR::swipeRwrapper, image_tags)
-  # Create the swipeR carousel with specified parameters
-  swipeR::swipeR(wrapper = wrapper, width = "750px", height = "500px",
-                 effect = "flip", rewind = TRUE,
-                 paginationColor = "#2C3E50", navigationColor = "#2C3E50")
-}
-```
-
-#### 1. Default
-
-The lineage tree for the second clonotype of S1 is displayed, constructed using the `phylo.network.default` algorithm (`AntibodyForests_object = AntibodyForests_OVA_default`. This specific example demonstrates plotting the lineage tree for clonotype1 (`clonotype = "clonotype1"`) from sample S1 (`sample = "S1"`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`), and edges are annotated with the Levenshtein distances between the connected nodes (`edge.label = "lv"`). Node sizes reflect clonal expansion (`node.size = "expansion"`), ranging from 10 to 20 on a scale (`node.size.scale = c(10, 20)`). The plot is titled `"Lineage tree - Default algorithm"`, with a subtitle indicating the sample and clonotype information. This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
-```{r AntibodyForests_plot_default_example, eval = FALSE}
-# Plot lineage tree, constructed with the `phylo.network.default' method
-Af_plot_tree(AntibodyForests_object = AntibodyForests_OVA_default,
-                     sample = "S1",
-                     clonotype = "clonotype1",
-                     label.by = "name",
-                     color.by = "isotype",
-                     edge.label = "lv",
-                     node.size = "expansion",
-                     node.size.scale = c(10, 20),
-                     main.title = "Lineage tree - Default algorithm",
-                     sub.title = "OVA - S1 - clonotype1")
-```
-![](imgs/trees/default/S1/clonotype2.png){width=50%}
-<br>
-
-#### 2. ML
-
-##### Without internal nodes
-
-The lineage tree for the second clonotype of S1 is displayed, constructed using the `phylo.tree.ml` algorithm (`AntibodyForests_object = AntibodyForests_OVA_ml`. This specific example demonstrates plotting the lineage tree for clonotype1 (`clonotype = "clonotype1"`) from sample S1 (`sample = "S1"`), without the internal nodes (`show.inner.nodes = FALSE`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`), and edges are annotated with the Levenshtein distances between the connected nodes (`edge.label = "lv"`). Node sizes reflect clonal expansion (`node.size = "expansion"`), ranging from 10 to 20 on a scale (`node.size.scale = c(10, 20)`). The plot is titled `"Lineage tree - ML algorithm"`, with a subtitle indicating the sample and clonotype information. This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
-```{r AntibodyForests_plot_ml_without_IN_example, eval = FALSE}
-# Plot lineage tree, constructed with the `phylo.tree.ml' method, without internal nodes
-Af_plot_tree(AntibodyForests_object = AntibodyForests_OVA_ml,
-                     sample = "S1",
-                     clonotype = "clonotype1",
-                     show.inner.nodes = FALSE,
-                     label.by = "name",
-                     color.by = "isotype",
-                     edge.label = "lv",
-                     node.size = "expansion",
-                     node.size.scale = c(10, 20),
-                     main.title = "Lineage tree - ML algorithm",
-                     sub.title = "OVA - S1 - clonotype1")
-```
-
-![](imgs/trees/ml/without_in/S1/clonotype2.png){width=50%}
-<br>
-
-#### 3. IgPhyML  
+#### Maximum Likelihood
 
 ##### With internal nodes  
 
-The lineage tree for the second clonotype of S1 is displayed, constructed using the `phylo.tree.IgPhyML` algorithm (`AntibodyForests_object = AntibodyForests_OVA_IgPhyML`. This specific example demonstrates plotting the lineage tree for clonotype1 (`clonotype = "clonotype1"`) from sample S1 (`sample = "S1"`), with the internal nodes (`show.inner.nodes = TRUE`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`), and edges are annotated with the original calculated distances between the connected nodes (`edge.label = "original"`). Node sizes reflect clonal expansion (`node.size = "expansion"`), ranging from 10 to 20 on a scale (`node.size.scale = c(10, 20)`). The plot is titled `"Lineage tree - IgPhyML tool"`, with a subtitle indicating the sample and clonotype information. This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
-```{r AntibodyForests_plot_IgPhyML_with_IN_example, eval = FALSE}
-# Plot lineage tree, constructed with the `phylo.tree.IgPhyML' method, with internal nodes
-Af_plot_tree(AntibodyForests_object = AntibodyForests_OVA_IgPhyML,
+The lineage tree for one of the clonotypes of S1 is displayed, constructed using the `phylo.tree.ml` algorithm. This specific example demonstrates plotting the lineage tree with the internal nodes (`show.inner.nodes = TRUE`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`). Node sizes reflect clonal expansion (`node.size = "expansion"`). This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
+
+```{r AntibodyForests_plot_ML_with_IN_example, eval = FALSE}
+# Plot lineage tree, constructed with the `phylo.tree.ml' method, without internal nodes
+Af_plot_tree(AntibodyForests_object = AntibodyForests_OVA_ml,
                      sample = "S1",
-                     clonotype = "clonotype1",
+                     clonotype = "clonotype8",
                      show.inner.nodes = TRUE,
                      label.by = "name",
                      color.by = "isotype",
-                     edge.label = "original",
                      node.size = "expansion",
-                     node.size.scale = c(10, 20),
-                     main.title = "Lineage tree - IgPhyML tool",
-                     sub.title = "OVA - S1 - clonotype1")
+                     main.title = "Lineage tree - ML",
+                     sub.title = "OVA - S1 - clonotype8")
 ```
 
-![](imgs/trees/IgPhyML/with_in/S1/clonotype2.png){width=50%}
+![](imgs/tree_ova_ml_S1CL8_internalnodes.png){width=50%}
 <br>
 
 
 ##### Without internal nodes  
 
-The lineage tree for the second clonotype of S1 is displayed, constructed using the `phylo.tree.ml` algorithm (`AntibodyForests_object = AntibodyForests_OVA_IgPhyML`. This specific example demonstrates plotting the lineage tree for clonotype1 (`clonotype = "clonotype1"`) from sample S1 (`sample = "S1"`), without the internal nodes (`show.inner.nodes = FALSE`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`), and edges are annotated with the Levenshtein distances between the connected nodes (`edge.label = "lv"`). Node sizes reflect clonal expansion (`node.size = "expansion"`), ranging from 10 to 20 on a scale (`node.size.scale = c(10, 20)`). The plot is titled `"Lineage tree - IgPhyML tool"`, with a subtitle indicating the sample and clonotype information. This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
-```{r AntibodyForests_plot_IgPhyML_without_IN_example, eval = FALSE}
+The lineage tree for one of the clonotypes of S1 is displayed, constructed using the `phylo.tree.ml` algorithm. This specific example demonstrates plotting the lineage tree without the internal nodes (`show.inner.nodes = FALSE`). Nodes are labeled with their names (`label.by = "name"`), colored based on isotype (`color.by = "isotype"`). Node sizes reflect clonal expansion (`node.size = "expansion"`). This visualization offers insights into the evolutionary relationships between the sequences found within the clones, in relation to clonal expansion and class-switching.
+```{r AntibodyForests_plot_ML_without_IN_example, eval = FALSE}
 # Plot lineage tree, constructed with the `phylo.tree.ml' method, without internal nodes
-Af_plot_tree(AntibodyForests_object = AntibodyForests_OVA_IgPhyML,
+Af_plot_tree(AntibodyForests_object = AntibodyForests_OVA_ml,
                      sample = "S1",
-                     clonotype = "clonotype1",
+                     clonotype = "clonotype8",
                      show.inner.nodes = FALSE,
                      label.by = "name",
                      color.by = "isotype",
-                     edge.label = "lv",
                      node.size = "expansion",
-                     node.size.scale = c(10, 20),
-                     main.title = "Lineage tree - IgPhyML tool",
-                     sub.title = "OVA - S1 - clonotype1")
+                     main.title = "Lineage tree - ML",
+                     sub.title = "OVA - S1 - clonotype8")
 ```
 
-![](imgs/trees/IgPhyML/without_in/S1/clonotype2.png){width=50%}
+![](imgs/tree_ova_ml_S1CL8.png){width=50%}
 <br>
 
 </div>
@@ -810,7 +733,7 @@ The complex process of somatic hypermutation in a repertoire can be analyzed by 
 <br>
 The function **`Af_metrics()`** is used internally in different AntibodyForests function, but can also be used as standalone function to calculate metrics for each clonotype. Basic metrics such as the average germline-to-node depth, total number of nodes and cells, and sackin index can be calculated, as well as more complex metrics based on the Laplacian Spectrum of the trees. These metrics can be returned in a dataframe, or added to the AntibodyForests object.  
 <br>
-The functions **`Af_distance_boxplot()`** and [**`Af_distance_scatterplot`**]({#distance_scatterplot}) can be used to observe patterns between the distance to the germline and various node features in the AntibodyForests object.
+The functions **`Af_distance_boxplot()`** and **`Af_distance_scatterplot`** can be used to observe patterns between the distance to the germline and various node features in the AntibodyForests object.
 <br>
 
 </div>
@@ -1000,7 +923,7 @@ metric_df <- Af_metrics(input = AntibodyForests_OVA_default,
 load("objects/metric_df.RData")
 ```
 
-```{r, metric_dataframe3}
+```{r, metric_dataframe3, echo=FALSE}
 # Print the dataframe
 DT::datatable(data = metric_df,
               rownames = TRUE,
@@ -1090,7 +1013,7 @@ out$plots$heatmap_clusters
 
 ![](imgs/heatmap5.png){width=80%}
 
-Next, we analyze the difference between the clusters with the functions **`Af_cluster_metrics()`** and **`Af_cluster_node_features()`**. Here, we observe that cluster 1 contains trees with a high spectral asymmetry and a low number of spectral density modalities, and cluster 2 vice versa. Again, we observe no significant difference in isotype distribution between the clusters.
+Next, we analyze the difference between the clusters with the functions **`Af_cluster_metrics()`** and **`Af_cluster_node_features()`**. Here, we observe that cluster 1 contains trees with a high spectral asymmetry and a low number of spectral density modalities, and cluster 2 vice versa.
 
 ```{r, cluster_metrics_example2, eval=FALSE}
 # Analyze the difference between the clusters based on the calculated sackin.index
@@ -1106,19 +1029,6 @@ plots$modalities
 
 ![](imgs/clusters_asymmetry.png){width=50%}
 ![](imgs/clusters_modalities2.png){width=50%}
-
-```{r, cluster_node_features_example2, eval=FALSE}
-# Analyze the difference between the clusters based on the calculated sackin.index
-plots <- Af_cluster_node_features(input = AntibodyForests_OVA_default,
-                   clusters = out$clustering,
-                   features = "isotype",
-                   fill = "max",
-                   significance = T)
-
-plots$isotype
-```
-
-![](imgs/clusters_isotype2.png){width=50%}
 
 <br>
 
@@ -1169,7 +1079,7 @@ The quantify different evolutionary patterns between (groups of) repertoires wit
 
 <div class=text-justify>
 
-#### 1. Boxplot {.tabset}
+#### Boxplot {.tabset}
 
 We compare the difference in edge betweenness and degree centrality between B cell repertoires of different samples from blood and lymph nodes. We observe that the lymph node repertoire have a higher betweenness and lower mean depth in comparison to the blood repertoires, meaning more variants emerging from the same node instead of a deeper tree where variants emerge sequentially.
 
@@ -1189,35 +1099,15 @@ boxplots$mean.depth
 
 <br>
 
-#### 2. Frequency Polygon {.tabset}
-
-We compare the difference in spectral density profiles between B cell repertoires of different samples from blood and lymph nodes. We observe that lineage trees from the blood repertoire have an overall higher spectral principal eigenvalue in comparison to trees from the blood repertoires, meaning a lower phylogenetic diversity.
-
-```{r, compare_across_repertoire_example2, eval = FALSE}
-#Calculate the difference between the two groups of repertoires
-freqpoly <- Af_compare_across_repertoires(list("Blood" = AntibodyForests_example_blood, 
-                                               "Lymph Nodes" = AntibodyForests_example_LN), 
-                                          metrics = c("spectral.density"), plot = "freqpoly")
-
-#Plot the frequency polygon of the spectral principal eigenvalue
-freqpoly$spectral.principal.eigenvalue
-```
-
-![](imgs/freqpoly.png){width=50%}
-
-<br>
-
 </div>
 
 ## 7. Assessing evolutionary likelihood of somatic hypermutation with Protein Language Models (PLM)
-
-![](imgs/main/Pseudolikelihood.png){width=100%}
 
 ### Summary
 
 <div class=text-justify>
 
-PLMs have demonstrated success in understanding the unique features of antibody evolution, [such as germline gene usage and somatic hypermutation (SHM)](https://www.sciencedirect.com/science/article/pii/S2666389922001052?via%3Dihub). The probabilities resulting from PLMs can be used as an estimate for [evolutionary likelihood](https://www.sciencedirect.com/science/article/pii/S2405471222000382?via%3Dihub), both at the per-residue as the per-sequence (pseudolikelihood) level. These likelihoods can be incorporated into AntibodyForests to evaluate patterns in pseudolikelihood and tree topology, and to evaluate mutations along the edges of the trees.  
+PLMs have demonstrated success in understanding the unique features of antibody evolution, [such as germline gene usage and somatic hypermutation (SHM)](https://doi.org/10.1016/j.patter.2022.100513). The probabilities resulting from PLMs can be used as an estimate for [evolutionary likelihood](https://doi.org/10.1016/j.cels.2022.01.003), both at the per-residue as the per-sequence (pseudolikelihood) level. These likelihoods can be incorporated into AntibodyForests to evaluate patterns in pseudolikelihood and tree topology, and to evaluate mutations along the edges of the trees.  
 <br>
 The pseudolikelihoods and probability matrices can be supplied manually, or easily generated using the [PLM-pipeline](https://github.com/dvginneken/PLM-pipeline). Here, a VDJ-dataframe can be used as input CSV file, and the pipeline can generate the pseudolikelihoods and probability matrices of those sequences using different PLMs. The resulting pseudolikelihoods can be incoporates as node feature in the AntibodyForests-object using the **`Af_add_node_feature()`** function. The pseudolikelihoods can be visualized using the **`Af_plot_tree()`** function, and the correlation with distance to the germline can be visualized using the **`Af_distance_scatterplot`** function.  
 <br>
@@ -1348,7 +1238,9 @@ knitr::kable(PLM_dataframe)
 
 The `ranks` and `probabilities` of the `original` and `substitution` redisues can be visualized in distribution plots.
  
-#### 1. Substitution Rank {.tabset}
+#### Substitution Rank {.tabset}
+
+This plot shows us that the mutations along the edges of the trees are among the most likely residues according to the PLM.
 
 ```{r, plot_likelihood_example1, eval = FALSE}
 # Plot the substitution rank
@@ -1359,47 +1251,12 @@ Af_plot_PLM(PLM_dataframe = PLM_dataframe,
 
 ![](imgs/PLM1.png){width=50%}
 
-#### 2. Substitution Probability {.tabset}
-
-```{r, plot_likelihood_example2, eval = FALSE}
-# Plot the substitution rank
-Af_plot_PLM(PLM_dataframe = PLM_dataframe, 
-                         values = "substitution_probability", 
-                         group_by = "none")
-```
-
-![](imgs/PLM2.png){width=50%}
-
-#### 3. Original Rank {.tabset}
-
-```{r, plot_likelihood_example3, eval = FALSE}
-# Plot the substitution rank
-Af_plot_PLM(PLM_dataframe = PLM_dataframe, 
-                         values = "original_rank", 
-                         group_by = "none")
-```
-
-![](imgs/PLM3.png){width=50%}
-
-#### 4. Original Probability {.tabset}
-
-```{r, plot_likelihood_example4, eval = FALSE}
-# Plot the substitution rank
-Af_plot_PLM(PLM_dataframe = PLM_dataframe, 
-                         values = "original_probability", 
-                         group_by = "sample_id")
-```
-
-![](imgs/PLM4.png){width=50%}
 
 </div>
 
 <br>
 
 ## 8. Investigate the evolution of antibody 3D structure along the lineage trees
-
-![](imgs/main/Structure.png){width=100%}
-
 
 ### Summary
 
@@ -1539,68 +1396,13 @@ Protein structures of the antibodies of one of the trees from the OVA dataset we
 
 
 ```{r, load_structure_data, echo=FALSE}
-load("objects/VDJ_structure_antibody.RData") #vdj_structure_antibody
 load("objects/VDJ_ova_structure.RData") #vdj
-load("objects/AntibodyForests_OVA_structure_antibody.RData") #af_structure_antibody
 load("objects/VDJ_structure_AbAg.RData") #vdj_structure_AbAg
 load("objects/AntibodyForests_OVA_structure_AbAg.RData") #af_structure_AbAg
 ```
 
-#### 1. Full antibody sequence {.tabset}
 
-Calculate biophysical properties for the full length heavy and light chain sequences of the nodes in the AntibodyForests object.  
-
-```{r, structure_example1, eval = F}
-#Biophysical properties of the heavy and light chain sequence of the antibodies are calculated
-vdj_structure_antibody <- VDJ_3d_properties(VDJ = vdj,
-                                   pdb.dir = "~/path/PDBS_superimposed/",
-                                   file.df = files,
-                                   properties = c("charge", 
-                                                  "3di_germline", 
-                                                  "hydrophobicity", 
-                                                  "RMSD_germline", 
-                                                  "pKa_shift", 
-                                                  "free_energy", 
-                                                  "pLDDT"),
-                                   chain = "HC+LC",
-                                   sequence.region = "full.sequence",
-                                   propka.dir = "~/path/Propka_output/",
-                                   germline.pdb = "~/path/PDBS_superimposed/germline_5_model_0.pdb",
-                                   foldseek.dir = "~/path/3di_sequences/")
-
-#Add the biophysical properties to the AntibodyForests object
-af_structure_antibody <- Af_add_node_feature(AntibodyForests_object = af,
-                                                 feature.df = vdj_structure_antibody,
-                                                 feature.names = c("average_charge", 
-                                                                   "3di_germline", 
-                                                                   "average_hydrophobicity", 
-                                                                   "RMSD_germline", 
-                                                                   "average_pKa_shift", 
-                                                                   "free_energy", 
-                                                                   "average_pLDDT"))
-```
-
-Plot the average charge of the amino acids on the tree.  
-
-```{r, structure_example1_plot, eval = T, fig.width=5, fig.height=5}
-Af_plot_tree(af_structure_antibody,
-             sample = "S1",
-             clonotype = "clonotype1",
-             color.by = "average_charge")
-```
-
-Plot the correlation between the levenshtein sequence distance to the germline and the levenshtein 3Di distance to the germline, colored on the average pLDDT score of the structure prediction.  
-
-```{r, structure_example2_plot, eval = T, fig.width=5, fig.height=5}
-Af_distance_scatterplot(af_structure_antibody,
-                        node.features = "3di_germline",
-                        correlation = "pearson",
-                        color.by = "average_pLDDT",
-                        color.by.numeric = T,
-                        geom_smooth.method = "lm")
-```
-
-#### 2. Binding residues Antibody-Antigen {.tabset}
+#### Binding residues Antibody-Antigen {.tabset}
 
 Calculate biophysical properties for the binding residues between the antigen and the heavy and light chain sequences of the nodes in the AntibodyForests object.  
 
@@ -1634,14 +1436,6 @@ af_structure_AbAg <- Af_add_node_feature(AntibodyForests_object = af,
                                                                    "average_pLDDT"))
 ```
 
-Plot the average hydrophobicity of the amino acids on the tree.  
-
-```{r, structure_example3_plot, eval = T, fig.width=5, fig.height=5}
-Af_plot_tree(af_structure_AbAg,
-             sample = "S1",
-             clonotype = "clonotype1",
-             color.by = "average_hydrophobicity")
-```
 
 Plot the correlation between the levenshtein sequence distance to the germline and the free energy, colored on the average pLDDT score of the structure prediction.  
 
@@ -1659,38 +1453,27 @@ Af_distance_scatterplot(af_structure_AbAg,
 
 <div class=text-justify>
 
-We investigate the change in protein structure during somatic hypermutation for the heavy and light chain sequences of the antibody, and for the whole Antibody-Antigen complex.
+We investigate the change in protein structure during somatic hypermutation for the heavy and light chain sequences of the antibody.
  
-#### 1. Full antibody {.tabset}
+#### Full antibody {.tabset}
 
 ```{r, plot_structure_example1, eval = F}
-rmsd_df <- Af_edge_RMSD(af,
+rmsd <- Af_edge_RMSD(af,
              VDJ = vdj,
              pdb.dir = "~/path/PDBS_superimposed/",
              file.df = files,
              sequence.region = "full.sequence",
              chain = "HC+LC")
+rmsd$plot
 ```
 ![](imgs/structure_Ab_distance.png){width=50%}
-
-#### 2. Full Antibody-Antigen complex {.tabset}
-
-```{r, plot_structure_example2, eval = F}
-rmsd_df <- Af_edge_RMSD(af,
-             VDJ = vdj,
-             pdb.dir = "~/path/PDBS_superimposed/",
-             file.df = files,
-             sequence.region = "full.sequence",
-             chain = "whole.complex")
-```
-![](imgs/structure_AbAg_distance.png){width=50%}
 
 </div>
 
 <br>
 
 
-## i. Run IgPhyML on VDJ dataframe and import IgPhyML trees into AntibodyForests object {#supplementary-i}
+## i. Run IgPhyML on VDJ dataframe and import IgPhyML trees into AntibodyForests object
 
 <div class=text-justify>
 
@@ -1808,7 +1591,7 @@ VDJ_to_AIRR(VDJ = VDJ_OVA,
 ```
 <br>
 
-After generating the AIRR rearrangement, the input file can be provided to the IgPhyML tool to construct the lineage trees for all clones. IgPhyML is executed through the Change-O program BuildTrees by specifying the `--igphyml` option. The `--collapse` flag is utilized to merge identical sequences, expediting calculations without affecting the likelihood calculations. Furthermore, the `--clean all` flag is employed to remove all intermediate files generated after IgPhyML execution. The resulting trees are saved to a TAB file named `airr_rearrangement_igphyml-pass.tab`, which can be imported into an AntibodyForests object using the `Af_build()` function, as demonstrated [in this example](#AntibodyForests-example-6-IgPhyML).  
+After generating the AIRR rearrangement, the input file can be provided to the IgPhyML tool to construct the lineage trees for all clones. IgPhyML is executed through the Change-O program BuildTrees by specifying the `--igphyml` option. The `--collapse` flag is utilized to merge identical sequences, expediting calculations without affecting the likelihood calculations. Furthermore, the `--clean all` flag is employed to remove all intermediate files generated after IgPhyML execution. The resulting trees are saved to a TAB file named `airr_rearrangement_igphyml-pass.tab`, which can be imported into an AntibodyForests object using the `Af_build()` function.  
 ```{bash execute-IgPhyML, eval = FALSE}
 BuildTrees.py -d ../data/OVA_scRNA-seq_data/VDJ/airr_rearrangement.tsv --collapse --igphyml --clean all
 ```

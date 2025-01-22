@@ -57,7 +57,7 @@ Compare tree topology metrics across different (groups) of AntibodyForests objec
 \examples{
 boxplots <- Af_compare_across_repertoires(list("S1" = AntibodyForests::small_af[1],
             "S2" = AntibodyForests::small_af[2]),
-            metrics = c("sackin.index", "betweenness", "degree"),
+            metrics = c("betweenness", "degree"),
             plot = "boxplot")
 boxplots$betweenness
 }
