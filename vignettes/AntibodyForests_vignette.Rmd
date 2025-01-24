@@ -109,7 +109,7 @@ This quick start gives a short use case of AntibodyForests. 10x output of five m
 
 ```{r quick-start1, eval = FALSE}
 # Import 10x Genomics output files into VDJ dataframe and only keep cells with one VDJ and one VJ transcript
-# For each clone, trim germline sequence and replace CDR3 region in germline with most-frequently observed CDR3 sequence
+# For each clone, trim germline sequence
 VDJ_OVA <- Platypus::VDJ_build(VDJ.directory = "10x_output/VDJ/",
                      remove.divergent.cells = TRUE,
                      complete.cells.only = TRUE,
@@ -124,7 +124,7 @@ AntibodyForests_OVA_default <- Af_build(VDJ = VDJ_OVA,
 # Plot one of the lineage trees, constructed with the `phylo.network.default' method
 Af_plot_tree(AntibodyForests_object = AntibodyForests_OVA_default,
                      sample = "S1",
-                     clonotype = "clonotype2")
+                     clonotype = "clonotype3")
 ```
 ![](imgs/QuickStart/quick-start_tree.png){width=80%}
 
@@ -1016,7 +1016,7 @@ out$plots$heatmap_clusters
 Next, we analyze the difference between the clusters with the functions **`Af_cluster_metrics()`** and **`Af_cluster_node_features()`**. Here, we observe that cluster 1 contains trees with a high spectral asymmetry and a low number of spectral density modalities, and cluster 2 vice versa.
 
 ```{r, cluster_metrics_example2, eval=FALSE}
-# Analyze the difference between the clusters based on the calculated sackin.index
+# Analyze the difference between the clusters
 plots <- Af_cluster_metrics(input = AntibodyForests_OVA_default,
                    clusters = out$clustering,
                    metrics = "spectral.density",
