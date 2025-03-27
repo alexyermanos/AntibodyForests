@@ -8,15 +8,16 @@
 #' 'nr.cells'         : The total number of cells in this clonotype
 #' 'mean.depth'       : Mean of the number of edges connecting each node to the germline
 #' 'mean.edge.length' : Mean of the edge lengths between each node and the germline
-#' 'group.node.depth'      : Mean of the number of edges connecting each node per group (node.features of the AntibodyForests-object) to the germline. (default FALSE)
+#' 'group.node.depth'      : Mean of the number of edges connecting each node per group (node.features of the AntibodyForests-object) to the germline.
 #' 'group.edge.length'    : Mean of the sum of edge length of the shortest path between germline and nodes per group (node.features of the AntibodyForests-object)
+#' 'group.node.size'      : Mean of the node size per group (node.features of the AntibodyForests-object)
 #' 'sackin.index'     : Sum of the number of nodes between each terminal node and the germline, normalized by the total number of terminal nodes.
 #' 'spectral.density' : Metrics of the spectral density profiles (calculated with package RPANDA)
 #'    - peakedness            : Tree balance
 #'    - asymmetry             : Shallow or deep branching events
 #'    - principal eigenvalue  : Phylogenetic diversity
 #'    - modalities            : The number of different structures within the tree
-#' @param node.feature The node feature to be used for the group.edge.length or group.nodes.depth metric.
+#' @param node.feature The node feature to be used for the group.edge.length, group.node.size or group.nodes.depth metric.
 #' @param group.node.feature The groups in the node feature to be plotted. Set to NA if all features should displayed. (default NA)
 #' @param parallel If TRUE, the metric calculations are parallelized (default FALSE)
 #' @param num.cores Number of cores to be used when parallel = TRUE. (Defaults to all available cores - 1)
@@ -55,7 +56,7 @@ Af_metrics <- function(input,
   # If 'parallel' is set to TRUE but 'num.cores' is not specified, the number of cores is set to all available cores - 1
   if(parallel == TRUE && missing(num.cores)){num.cores <- parallel::detectCores() -1}
   #If metric is group.node.depth or group.edge.length, node.features should be provided
-  if("group.node.depth" %in% metrics || "group.edge.length" %in% metrics){
+  if("group.node.depth" %in% metrics || "group.edge.length" %in% metrics || "group.node.size" %in% metrics){
     if(missing(node.feature)){stop("Please provide node features.")}
   }
   # If 'output.format' is not "AntibodyForests" or "dataframe", an error is thrown
@@ -77,6 +78,14 @@ Af_metrics <- function(input,
     #Take the mean of these distances
     distance <- mean(distance)
     return(distance)
+  }
+  
+  calculate_mean_node_size <- function(tree, nodes){
+    #Get the node sizes
+    node.sizes <- unlist(lapply(nodes, function(node){tree$nodes[[node]]$size}))
+    #Take the mean of these node sizes
+    size <- mean(node.sizes)
+    return(size)
   }
 
 
@@ -105,7 +114,6 @@ Af_metrics <- function(input,
 
   #Calculate the metrics for a clonotype
   calculate_metrics <- function(clonotype, min.nodes, metrics){
-
     if (igraph::vcount(clonotype$igraph) >= min.nodes){
       #Create empty vector to store metrics
       metrics_vector <- c()
@@ -165,7 +173,7 @@ Af_metrics <- function(input,
 
         for (group in groups){
           #Take the nodes have a cell of this group
-          nodes <- names(which(lapply(clonotype$nodes, function(x){group %in% x[node.feature]}) == TRUE))
+          nodes <- names(which(lapply(clonotype$nodes, function(x){group %in% unlist(x[node.feature])}) == TRUE))
           if (identical(nodes, character(0))){
             #Add NA to the metrics vector
             metrics_vector[paste0(group,".node.depth")] <- NA
@@ -191,15 +199,45 @@ Af_metrics <- function(input,
 
         for (group in groups){
           #Take the nodes have a cell of this group
-          nodes <- names(which(lapply(clonotype$nodes, function(x){group %in% x[node.feature]}) == TRUE))
+          nodes <- names(which(lapply(clonotype$nodes, function(x){group %in% unlist(x[node.feature])}) == TRUE))
           if (identical(nodes, character(0))){
             #Add NA to the metrics vector
             metrics_vector[paste0(group,".edge.length")] <- NA
           }else{
             #Calcute the mean edge length for the nodes that have this group
-            el <- calculate_mean_edge_length(clonotype$igraph, nodes = igraph::V(clonotype$igraph)[nodes])
+            el <- tryCatch({
+              calculate_mean_edge_length(clonotype$igraph, nodes = igraph::V(clonotype$igraph)[nodes])},
+              error = function(e){NA})
             #Add to the metrics vector
             metrics_vector[paste0(group,".edge.length")] <- el
+          }
+        }
+      }
+      
+      if ("group.node.size" %in% metrics){
+        #Get all the unique elements in this group
+        if (multiple.objects){
+          groups <- unique(unlist(lapply(input[[1]],function(a){lapply(a,function(b){lapply(b$nodes, function(c){c[[node.feature]]})})})))
+        }else{groups <- unique(unlist(lapply(input,function(a){lapply(a,function(b){lapply(b$nodes, function(c){c[[node.feature]]})})})))}
+
+        #If group.node.features is specified, check wether they are all present in the node features of the AntibodyForests-object.
+        if(!all(is.na(group.node.feature))){
+          if(all(group.node.feature %in% groups) == FALSE){stop("The groups are not in the node features of the AntibodyForests-object.")
+          }else{groups <- group.node.feature}}
+        
+        for (group in groups){
+          #Take the nodes have a cell of this group
+          nodes <- names(which(lapply(clonotype$nodes, function(x){group %in% unlist(x[node.feature])}) == TRUE))
+          if (identical(nodes, character(0))){
+            #Add NA to the metrics vector
+            metrics_vector[paste0(group,".node.size")] <- NA
+          }else{
+            #Calcute the mean node size for the nodes that have this group
+            ns <- tryCatch({
+              calculate_mean_node_size(clonotype, nodes = nodes)},
+              error = function(e){NA})
+            #Add to the metrics vector
+            metrics_vector[paste0(group,".node.size")] <- ns
           }
         }
       }
@@ -253,7 +291,7 @@ Af_metrics <- function(input,
         #Transform to dataframe
         metric_df <- as.data.frame(metric_df)
         #Fix columnname if only 1 metric is supplied
-        if(length(metrics) == 1 && !(metrics %in% c('spectral.density', 'group.node.depth', 'group.edge.length'))){colnames(metric_df) <- metrics}
+        if(length(metrics) == 1 && !(metrics %in% c('spectral.density', 'group.node.depth', 'group.edge.length', 'group.node.size'))){colnames(metric_df) <- metrics}
         #Add sample names to the dataframe
         metric_df$sample <- gsub(".clonotype(.*)$", "", rownames(metric_df))
         return(metric_df)
@@ -289,7 +327,7 @@ Af_metrics <- function(input,
         #Transform to dataframe
         metric_df <- as.data.frame(metric_df)
         #Fix columnname if only 1 metric is supplied
-        if(length(metrics) == 1 && !(metrics %in% c('spectral.density','group.node.depth', 'group.edge.length'))){colnames(metric_df) <- metrics}
+        if(length(metrics) == 1 && !(metrics %in% c('spectral.density','group.node.depth', 'group.edge.length', 'group.node.size'))){colnames(metric_df) <- metrics}
         #Add sample names to the dataframe
         metric_df$sample <- gsub(".clonotype(.*)$", "", rownames(metric_df))
         return(metric_df)
@@ -324,7 +362,7 @@ Af_metrics <- function(input,
       #Transform to dataframe
       metric_df <- as.data.frame(metric_df)
       #Fix columnname if only 1 metric is supplied
-      if(length(metrics) == 1 && !(metrics %in% c('spectral.density', 'group.node.depth', 'group.edge.length'))){colnames(metric_df) <- metrics}
+      if(length(metrics) == 1 && !(metrics %in% c('spectral.density', 'group.node.depth', 'group.edge.length', 'group.node.size'))){colnames(metric_df) <- metrics}
       #Add sample names to the dataframe
       metric_df$sample <- gsub(".clonotype(.*)$", "", rownames(metric_df))
       return(metric_df)
