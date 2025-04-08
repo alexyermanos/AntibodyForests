@@ -1,4 +1,4 @@
-#' Function to make a grouped boxplot of the node sizes (number of cells with the exact same sequence) from specific groups of lineage trees constructed with AntibodyForests.
+#' Function to make a grouped boxplot of the normalized average node sizes (number of cells with the exact same sequence) from specific groups of lineage trees constructed with AntibodyForests.
 #' @description Function to compare trees.
 #' @param AntibodyForests_object AntibodyForests-object, output from Af_build()
 #' @param node.feature Node feature in the AntibodyForests-object to compare.
@@ -15,7 +15,7 @@
 #' @return A ggplot2 object with the boxplot.
 #' @export
 #' @examples
-#' Af_distance_boxplot(AntibodyForests::small_af,
+#' Af_node_size_boxplot(AntibodyForests::small_af,
 #'                     min.nodes = 5,
 #'                     groups = c("IGHA", "IgG1"),
 #'                     node.feature = "isotype",
@@ -79,7 +79,7 @@ Af_node_size_boxplot <- function(AntibodyForests_object,
   #Transform dataframe for visualization
   df <- tidyr::pivot_longer(df, cols=colnames(df)[1:ncol(df)-1],
                             names_to='group',
-                            values_to='depth')
+                            values_to='size')
   df$group <- gsub(paste0(".node.size"), "", df$group)
   
   #Select all groups if groups is NA
@@ -92,9 +92,10 @@ Af_node_size_boxplot <- function(AntibodyForests_object,
   if(!all(is.na(group.order))){
     df$group <- factor(df$group, levels = group.order)
   }
+
   
   #Plot the grouped boxplots with lines
-  p <- ggplot2::ggplot(df, ggplot2::aes(x=group, y=depth, fill=group)) +
+  p <- ggplot2::ggplot(df, ggplot2::aes(x=group, y=size, fill=group)) +
     ggplot2::geom_boxplot()+
     ggplot2::scale_fill_manual(values=colors) +
     ggplot2::theme_classic() +
@@ -110,11 +111,11 @@ Af_node_size_boxplot <- function(AntibodyForests_object,
       combinations <- combinat::combn(unique(df$group), 2)
       combinations_list <- split(combinations, col(combinations))
     }else{
-      combinations_list <- list(unique(df$group))
+      combinations_list <- list(unique(as.character(df$group)))
     }
+    print(combinations_list)
     #Add to the existing plot
-    p <- p + ggsignif::geom_signif(comparisons=combinations_list, step_increase = 0.1, test = "t.test",
-                                   test.args = list(paired = T))
+    p <- p + ggsignif::geom_signif(comparisons=combinations_list, step_increase = 0.1, test = "t.test")
   }
   
   if(!is.null(output.file)){

@@ -10,7 +10,7 @@
 #' 'mean.edge.length' : Mean of the edge lengths between each node and the germline
 #' 'group.node.depth'      : Mean of the number of edges connecting each node per group (node.features of the AntibodyForests-object) to the germline.
 #' 'group.edge.length'    : Mean of the sum of edge length of the shortest path between germline and nodes per group (node.features of the AntibodyForests-object)
-#' 'group.node.size'      : Mean of the node size per group (node.features of the AntibodyForests-object)
+#' 'group.node.size'      : Mean of the node size per group normalized by the clone size (node.features of the AntibodyForests-object)
 #' 'sackin.index'     : Sum of the number of nodes between each terminal node and the germline, normalized by the total number of terminal nodes.
 #' 'spectral.density' : Metrics of the spectral density profiles (calculated with package RPANDA)
 #'    - peakedness            : Tree balance
@@ -85,6 +85,9 @@ Af_metrics <- function(input,
     node.sizes <- unlist(lapply(nodes, function(node){tree$nodes[[node]]$size}))
     #Take the mean of these node sizes
     size <- mean(node.sizes)
+    #Normalize for clone size (divide by number of cells in the clone)
+    cells <- sum(unlist(lapply(tree$nodes, function(x){length(x$barcodes)})))
+    size <- size / cells
     return(size)
   }
 
@@ -219,7 +222,6 @@ Af_metrics <- function(input,
         if (multiple.objects){
           groups <- unique(unlist(lapply(input[[1]],function(a){lapply(a,function(b){lapply(b$nodes, function(c){c[[node.feature]]})})})))
         }else{groups <- unique(unlist(lapply(input,function(a){lapply(a,function(b){lapply(b$nodes, function(c){c[[node.feature]]})})})))}
-
         #If group.node.features is specified, check wether they are all present in the node features of the AntibodyForests-object.
         if(!all(is.na(group.node.feature))){
           if(all(group.node.feature %in% groups) == FALSE){stop("The groups are not in the node features of the AntibodyForests-object.")
@@ -287,7 +289,7 @@ Af_metrics <- function(input,
           })
         })))
         #Only keep rows that have enough nodes (nr_nodes != NA)
-        metric_df <- metric_df[which(is.na(metric_df[,ncol(metric_df)]) == FALSE),]
+        metric_df <- metric_df[!apply(is.na(metric_df), 1, all), ]
         #Transform to dataframe
         metric_df <- as.data.frame(metric_df)
         #Fix columnname if only 1 metric is supplied
@@ -323,7 +325,7 @@ Af_metrics <- function(input,
           })
         })))
         #Only keep rows that have enough nodes (nr_nodes != NA)
-        metric_df <- metric_df[which(is.na(metric_df[,ncol(metric_df)]) == FALSE),]
+        metric_df <- metric_df[!apply(is.na(metric_df), 1, all), ]
         #Transform to dataframe
         metric_df <- as.data.frame(metric_df)
         #Fix columnname if only 1 metric is supplied
@@ -357,8 +359,8 @@ Af_metrics <- function(input,
           calculate_metrics(clonotype, min.nodes, metrics)
         })
       })))
-      #Only keep rows that have enough nodes (nr_nodes != NA)
-      metric_df <- metric_df[which(is.na(metric_df[,ncol(metric_df)]) == FALSE),]
+      #Only keep rows that have enough nodes (all columns are NA)
+      metric_df <- metric_df[!apply(is.na(metric_df), 1, all), ]
       #Transform to dataframe
       metric_df <- as.data.frame(metric_df)
       #Fix columnname if only 1 metric is supplied
