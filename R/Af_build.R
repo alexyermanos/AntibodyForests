@@ -467,7 +467,7 @@ Af_build <- function(VDJ,
 
         # Select nodes that have this distance to the germline node
         nodes_to_be_connected <- rownames(dist_matrix)[dist_matrix[, "germline"] == min_distance & !is.na(dist_matrix[, "germline"])]
-
+        
         # Add edge(s) between germline and node(s) with 'min_distance' to the germline to the 'edges' matrix
         for(node in nodes_to_be_connected){
           edges <- rbind(edges, c("germline", node, dist_matrix_backup["germline", node]))
@@ -494,7 +494,7 @@ Af_build <- function(VDJ,
 
             # Select the node(s) in 'already_connected_nodes' that has/have 'min_distance' to the current node
             node_to_connect_to <- unlist(lapply(already_connected_nodes, function(x) if(dist_matrix[x, node] == min_distance){return(x)}))
-
+            
             # If multiple nodes in 'node_to_connect_to' share 'min_distance' to the current node, the 'resolve.ties' options are hierarchically applied to narrow down the candidates for linking the currently unlinked node in the tree to, aiming to select a single node.
             if(length(node_to_connect_to) != 1){
 
@@ -1155,8 +1155,9 @@ Af_build <- function(VDJ,
     # - a (separate) list for all columns selected in 'node.features'
 
     # Retrieve sample ID and clonotype ID from 'clone'
-    sample <- strsplit(clone, split="_")[[1]][1]
-    clonotype <- strsplit(clone, split="_")[[1]][2]
+    sample <- strsplit(clone, split="_")[[1]][1:length(strsplit(clone, split="_")[[1]])-1]
+    if(length(sample) > 1){sample <- paste(sample, collapse = "_")}
+    clonotype <- strsplit(clone, split="_")[[1]][length(strsplit(clone, split="_")[[1]])]
 
     # Store 'sequence.columns' and 'germline.columns' in vectors 'sequence_columns' and 'germline_columns', respectively
     sequence_columns <- sequence.columns
@@ -1298,7 +1299,7 @@ Af_build <- function(VDJ,
 
 
     # 3. Build lineage tree using the objects 'input_dist_matrix' and 'input_msa'
-    message(paste0("Inferring lineage tree of ", strsplit(clone, split = "_")[[1]][2], " of ", strsplit(clone, split = "_")[[1]][1], "."))
+    message(paste0("Inferring lineage tree of ", clonotype, " of ", sample, "."))
     lineage_tree <- build_lineage_tree(clone = clone,
                                        dist.matrix = input_dist_matrix,
                                        msa = input_msa,
