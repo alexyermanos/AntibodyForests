@@ -1,12 +1,12 @@
 #' Function to import the annotations and alignments from IgBLAST output into the VDJ dataframe.
-#' @description  Imports the IgBLAST annotations and alignments from IgBLAST output files, stored in the output folders of Cell Ranger, into a VDJ dataframe obtained from the minimal_VDJ() function in Platypus.
+#' @description  Imports the IgBLAST annotations and alignments from IgBLAST output files, stored in the output folders of Cell Ranger, into a VDJ dataframe obtained from the VDJ_build() function in Platypus.
 #' @param VDJ dataframe - VDJ object as obtained from the VDJ_build() function in Platypus.
 #' @param VDJ.directory string - path to parent directory containing the output folders (one folder for each sample) of Cell Ranger. This pipeline assumes that the sample IDs and contigs IDs have not been modified and that the IgBLAST output file names have not been changed from the default changeo settings. Each sample directory should contain a 'filtered_contig_igblast_db-pass.tsv' file.
 #' @param file.path.list list - list containing the paths to the 'filtered_contig_igblast_db-pass.tsv' files, in which the names of each item should refer to an sample ID.
 #' @param method string - denotes the way the IgBLAST germline annotations from the 'filtered_contig_igblast_db-pass.tsv' files should be appended to the VDJ dataframe. Options: 'replace' or 'attach'. Defaults to 'append'.
 #' 'replace'  : The original annotation columns in the VDJ dataframe are replaced with the IgBLAST annotations. The original columns are kept with the suffix '_10x'.
 #' 'append'   : The IgBLAST annotation columns are stored in columns with the suffix '_IgBLAST'.
-#' @return The VDJ dataframe with the appended IgBLAST annotations and alignments.
+#' @return The VDJ dataframe with the appended or replaced IgBLAST annotations and alignments.
 #' @export
 #' @examples
 #' \dontrun{
@@ -32,12 +32,14 @@ VDJ_import_IgBLAST_annotations <- function(VDJ,
   # Check whether all sample IDs in the VDJ dataframe are present in the 'file.path.list'
   if(!all(unique(VDJ$sample_id) %in% names(file.path.list))){stop("ERROR: The VDJ dataframe contains sample IDs that are not found in the VDJ directory.")}
   # Check whether all files in the 'file.path.list' exist
-  if(!all(file.exists(file.path.list))){stop(paste0("ERROR: The IgBLAST output files could not be found of sample", names(file.path.list)[!file.exists(file.path.list)], "."))}
+  lapply(file.path.list, function(file){
+    if(!file.exists(file)){stop(paste0("ERROR: The IgBLAST output file ", file, " could not be found."))}
+  })
   # If the 'method' parameter is missing, it is set to 'append'
   if(missing(method)){method <- "append"}
   # If the 'method' parameter is not recognized, a message is returned and execution is stopped
   if(!method %in% c("replace", "append")){stop("ERROR: The specified method is not recognized. Please choose from the following options: 'replace' or 'append'.")}
-
+  # If the 'translate.IMGT.sequences' parameter is missing, it is set to NULL
   #Set global variable for CRAN
   translate.IMGT.sequences <- NULL
 
