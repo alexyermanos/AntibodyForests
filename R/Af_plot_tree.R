@@ -390,7 +390,8 @@ Af_plot_tree <- function(AntibodyForests_object,
 
   # Retrieve igraph object from AntibodyForests object
   if(!show.inner.nodes){tree <- AntibodyForests_object[[sample]][[clonotype]][["igraph"]]}
-  if(show.inner.nodes){tree <- AntibodyForests_object[[sample]][[clonotype]][["igraph.with.inner.nodes"]]}
+  if(show.inner.nodes || is.null(AntibodyForests_object[[sample]][[clonotype]][["igraph"]])){tree <- AntibodyForests_object[[sample]][[clonotype]][["igraph.with.inner.nodes"]]}
+  
   # If no tree could be found for the specified clonotype, a message is returned and execution is stopped
   if(is.null(tree) && !show.inner.nodes){stop(paste0("No tree could be found for ", clonotype, " of ", sample, "."))}
   if(is.null(tree) && show.inner.nodes){stop(paste0("No tree with inner nodes could be found for ", clonotype, " of ", sample, "."))}
@@ -404,7 +405,6 @@ Af_plot_tree <- function(AntibodyForests_object,
   # If the 'x.scaling' and/or 'y.scaling' parameters are not set to 'default', and are not set to pair of opposite values, a message is returned and execution is stopped
   if(!(if(is.character(x.scaling)){if(x.scaling == "default"){TRUE}else{FALSE}}else{TRUE}) | !(if(is.numeric(x.scaling)){if(abs(min(x.scaling)) == max(x.scaling)){TRUE}else{FALSE}}else{TRUE})){stop("The 'x.scaling' parameter can be set to 'default', or one numerical value.")}
   if(!(if(is.character(y.scaling)){if(y.scaling == "default"){TRUE}else{FALSE}}else{TRUE}) | !(if(is.numeric(y.scaling)){if(abs(min(y.scaling)) == max(y.scaling)){TRUE}else{FALSE}}else{TRUE})){stop("The 'y.scaling' parameter can be set to 'default', or one numerical value.")}
-
   # If the 'color.by' parameter is not specified, while 'isotype' is present as a feature for all nodes, it is set to 'isotype'
   if(missing(color.by) && all(sapply(names(AntibodyForests_object[[sample]][[clonotype]][["nodes"]])[!names(AntibodyForests_object[[sample]][[clonotype]][["nodes"]]) == "germline"], function(x) "isotype" %in% names(AntibodyForests_object[[sample]][[clonotype]][["nodes"]][[x]])))){color.by <- "isotype"}
   # If the feature specified to use for coloring the nodes could not be found for all nodes, a message is returned and execution is stopped
@@ -413,7 +413,6 @@ Af_plot_tree <- function(AntibodyForests_object,
   if(!missing(color.by)){node.feature.list <- as.list(sapply(names(AntibodyForests_object[[sample]][[clonotype]][["nodes"]])[!names(AntibodyForests_object[[sample]][[clonotype]][["nodes"]]) == "germline"], function(x) AntibodyForests_object[[sample]][[clonotype]][["nodes"]][[x]][[color.by]])); names(node.feature.list) <- names(AntibodyForests_object[[sample]][[clonotype]][["nodes"]])[!names(AntibodyForests_object[[sample]][[clonotype]][["nodes"]]) == "germline"]; for(i in names(node.feature.list)){node.feature.list[[i]][is.na(node.feature.list[[i]])] <- "unknown"}}
   # If no feature is specified by the 'color.by' parameter, all the nodes will receive 'default' in the 'node.feature.list'
   if(missing(color.by)){node.feature.list <- as.list(sapply(names(AntibodyForests_object[[sample]][[clonotype]][["nodes"]])[!names(AntibodyForests_object[[sample]][[clonotype]][["nodes"]]) == "germline"], function(x) "default")); names(node.feature.list) <- names(AntibodyForests_object[[sample]][[clonotype]][["nodes"]])[!names(AntibodyForests_object[[sample]][[clonotype]][["nodes"]]) == "germline"]}
-
   # If the 'label.by' parameter is not specified, it is set to 'name'
   if(missing(label.by)){label.by <- "name"}
   # If the 'label.by' parameter is not recognized, a message is returned and execution is stopped
@@ -463,7 +462,7 @@ Af_plot_tree <- function(AntibodyForests_object,
   if(min(unlist(node.size.list)) < min(node.size.range) | max(unlist(node.size.list)) > max(node.size.range)){stop(paste0(c("The range specified with the 'node.size.range' does not capture all the node sizes. The minimum range should be: from ", min(unlist(node.size.list))*node.size.factor, " to ", max(unlist(node.size.list))*node.size.factor, ".")))}
 
   # If the 'node.size.scale' parameter is not specified and the 'node.size.list' contains only one unique size, the minimum and maximum value of the scale is set to this value
-  if(missing(node.size.scale) && length(unique(node.size.list)) == 1){node.size.scale <- c(unlist(unique(node.size.list)), unlist(unique(node.size.list)))}
+  if(missing(node.size.scale) && length(unique(node.size.list)) == 1){node.size.scale <- c(10, 10)}
   # If the 'node.size.scale' parameter is not specified and the 'node.size.list' contains different sizes, it is set to 'c(10, 20)'
   if(missing(node.size.scale) && length(unique(node.size.list)) > 1){node.size.scale <- c(10, 20)}
   # If the 'node.size.scale' parameter contains non-numerical or negative values, a message is returned and execution is stopped
@@ -568,9 +567,7 @@ Af_plot_tree <- function(AntibodyForests_object,
   # Arrange the nodes by using 'germline' node as the root and by directing the tree downwards using the 'igraph::layout_as_tree()' function
   layout <- igraph::layout_as_tree(tree, root = "germline")
 
-
   # 3. Define the size of the nodes
-
   # Assign the node sizes from the 'node.size.list' to the igraph object
   igraph::V(tree)$size <- sapply(igraph::V(tree)$name, function(x){
     # If the name of the node is present as index in the 'node.size.list', assign this size to the node
@@ -581,7 +578,6 @@ Af_plot_tree <- function(AntibodyForests_object,
 
   # Multiply the node sizes by the 'node.size.factor'
   igraph::V(tree)$size <- igraph::V(tree)$size*node.size.factor
-
   # Scale the node sizes using the 'node.size.scale' and 'node.size.range' parameters
   igraph::V(tree)$size <- sapply(igraph::V(tree)$size, function(x){
     # If the node size equals 0.5, the node is an internal node, and this node will get half the size of the minimum value in the 'node.size.scale' vector
@@ -589,6 +585,7 @@ Af_plot_tree <- function(AntibodyForests_object,
     #
     else{if(min(node.size.range) != max(node.size.range)){return(min(node.size.scale) + ((x - min(node.size.range)) / abs(min(node.size.range) - max(node.size.range)) * abs(diff(node.size.scale))))}else{return(mean(node.size.scale))}}
   })
+
 
 
   # 4. Define the color of the nodes
@@ -772,14 +769,25 @@ Af_plot_tree <- function(AntibodyForests_object,
 
   # If 'show.size.legend' is set to TRUE, add a legend to the plot to show the node sizes
   if(show.size.legend){
-    # Retrieve the labels of the legend from the 'node.size.range' vector
-    legend_labels <- node.size.range
-    # Assign sizes for the legend (dividing the sizes by 200 assures that the node sizes in the legend correspond to the node sizes in the graph, and this factor is retrieved from the source code of the 'igraph::plot.igraph()' function, see line 10)
-    legend_node_sizes <- sapply(legend_labels, function(x) (min(node.size.scale) + (as.numeric(x) - min(node.size.range)) / abs(min(node.size.range) - max(node.size.range)) * abs(diff(node.size.scale))) / 200)
-    # Determine the x coordinates of the nodes/symbols of the legend
-    x_positions <- rep(x.scaling[2]+0.2+max(legend_node_sizes), 3)
-    # Determine the y coordinates of the nodes/symbols of the legend
-    y_positions <- c(-0.20-legend_node_sizes[1], -0.20-legend_node_sizes[1]*2-0.05-legend_node_sizes[2], -0.20-legend_node_sizes[1]*2-0.05-legend_node_sizes[2]*2-0.05-legend_node_sizes[3])
+    if(length(unique(node.size.list)) == 1){
+      # Retrieve the labels of the legend from the 'node.size.range' vector
+      legend_labels <- node.size.range[1]
+      # Assign sizes for the legend (dividing the sizes by 200 assures that the node sizes in the legend correspond to the node sizes in the graph, and this factor is retrieved from the source code of the 'igraph::plot.igraph()' function, see line 10)
+      legend_node_sizes <- sapply(legend_labels, function(x) (min(node.size.scale) + (as.numeric(x) - min(node.size.range)) / abs(min(node.size.range) - max(node.size.range)) * abs(diff(node.size.scale))) / 200)
+      # Determine the x coordinates of the nodes/symbols of the legend
+      x_positions <- x.scaling[2]+0.2+max(legend_node_sizes)
+      # Determine the y coordinates of the nodes/symbols of the legend
+      y_positions <- -0.20-legend_node_sizes
+    }else{
+        # Retrieve the labels of the legend from the 'node.size.range' vector
+        legend_labels <- node.size.range
+        # Assign sizes for the legend (dividing the sizes by 200 assures that the node sizes in the legend correspond to the node sizes in the graph, and this factor is retrieved from the source code of the 'igraph::plot.igraph()' function, see line 10)
+        legend_node_sizes <- sapply(legend_labels, function(x) (min(node.size.scale) + (as.numeric(x) - min(node.size.range)) / abs(min(node.size.range) - max(node.size.range)) * abs(diff(node.size.scale))) / 200)
+        # Determine the x coordinates of the nodes/symbols of the legend
+        x_positions <- rep(x.scaling[2]+0.2+max(legend_node_sizes), 3)
+        # Determine the y coordinates of the nodes/symbols of the legend
+        y_positions <- c(-0.20-legend_node_sizes[1], -0.20-legend_node_sizes[1]*2-0.05-legend_node_sizes[2], -0.20-legend_node_sizes[1]*2-0.05-legend_node_sizes[2]*2-0.05-legend_node_sizes[3])
+    }
     # Plot the title of the size legend
     graphics::text(x = x.scaling[2]+0.2,
                    y = -0.1,
