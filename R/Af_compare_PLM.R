@@ -47,7 +47,7 @@ Af_compare_PLM <- function(PLM_dataframe,
   PLM_dataframe <- stats::na.omit(PLM_dataframe)
   
   # Set the bins
-  if (length(grep("rank", values))!=0){bins <- seq(0, 21, by = 1)}
+  if (length(grep("rank", values))!=0){bins <- seq(0, 22, by = 1)}
   if (length(grep("probability", values))!=0){bins <- seq(0, 1, by = 0.1)}
   
   # Function to create a probability vector from the values

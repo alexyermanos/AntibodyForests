@@ -95,8 +95,8 @@ VDJ_3d_properties <- function(VDJ,
     pdb$atom$charge <- NULL
     #Calculate the charge of each residue per chain
     for(CHAIN in chains){
-      df_chain <- pdb$atom |> dplyr::filter(chain == CHAIN) |> dplyr::distinct(resno, .keep_all = TRUE) |> dplyr::select(resno, chain)
-      df_chain$charge <- pdb$atom |> dplyr::filter(chain == CHAIN) |> dplyr::distinct(resno, .keep_all = TRUE) |> dplyr::pull(resid) |> stringr::str_to_title() |> seqinr::a() |> Peptides::charge()
+      df_chain <- pdb$atom %>% dplyr::filter(chain == CHAIN) %>% dplyr::distinct(resno, .keep_all = TRUE) %>% dplyr::select(resno, chain)
+      df_chain$charge <- pdb$atom %>% dplyr::filter(chain == CHAIN) %>% dplyr::distinct(resno, .keep_all = TRUE) %>% dplyr::pull(resid) %>% stringr::str_to_title() %>% seqinr::a() %>% Peptides::charge()
       #Select residues
       resnos <- resnos_df[resnos_df$chain == CHAIN,"resno"]
       df_chain <- df_chain[df_chain$resno %in% resnos,]
@@ -113,8 +113,8 @@ VDJ_3d_properties <- function(VDJ,
     df_hydph <- data.frame()
     #Calculate the hydrophobicity of each residue per chain
     for(CHAIN in chains){
-      df_chain <- pdb$atom |> dplyr::filter(chain == CHAIN) |> dplyr::distinct(resno, .keep_all = T) |> dplyr::select(resno,chain)
-      df_chain$hydrophobicity <- pdb$atom |> dplyr::filter(chain == CHAIN) |> dplyr::distinct(resno, .keep_all = T) |> dplyr::pull(resid) |> stringr::str_to_title() |> seqinr::a() |> Peptides::hydrophobicity()
+      df_chain <- pdb$atom %>% dplyr::filter(chain == CHAIN) %>% dplyr::distinct(resno, .keep_all = T) %>% dplyr::select(resno,chain)
+      df_chain$hydrophobicity <- pdb$atom %>% dplyr::filter(chain == CHAIN) %>% dplyr::distinct(resno, .keep_all = T) %>% dplyr::pull(resid) %>% stringr::str_to_title() %>% seqinr::a() %>% Peptides::hydrophobicity()
       #Select residues
       resnos <- resnos_df[resnos_df$chain == CHAIN,"resno"]
       df_chain <- df_chain[df_chain$resno %in% resnos,]
@@ -152,7 +152,7 @@ VDJ_3d_properties <- function(VDJ,
   #Get the resnos from a subsequences in the PDB file
   get_subseq_res <- function(pdb, sub_seq, CHAIN){
     #Get the residues in the PDB file
-    pdb$atom |> dplyr::filter(chain %in% CHAIN) |> dplyr::distinct(resno, .keep_all = TRUE) |> dplyr::pull(resid, resno) -> resids
+    pdb$atom %>% dplyr::filter(chain %in% CHAIN) %>% dplyr::distinct(resno, .keep_all = TRUE) %>% dplyr::pull(resid, resno) -> resids
     resids_df <- as.data.frame(resids)
     resids_df$resno <- rownames(resids_df)
     resids_df$resids <- sapply(resids_df$resids, function(x){x <- stringr::str_to_title(x);return(seqinr::a(x))})
