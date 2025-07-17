@@ -21,7 +21,7 @@ Af_metrics(
 
 \item{min.nodes}{The minimum number of nodes in a tree to calculate metrics (including the germline).}
 
-\item{node.feature}{The node feature to be used for the group.edge.length or group.nodes.depth metric.}
+\item{node.feature}{The node feature to be used for the group.edge.length, group.node.size or group.nodes.depth metric.}
 
 \item{group.node.feature}{The groups in the node feature to be plotted. Set to NA if all features should displayed. (default NA)}
 
@@ -32,8 +32,9 @@ Af_metrics(
 'nr.cells'         : The total number of cells in this clonotype
 'mean.depth'       : Mean of the number of edges connecting each node to the germline
 'mean.edge.length' : Mean of the edge lengths between each node and the germline
-'group.node.depth'      : Mean of the number of edges connecting each node per group (node.features of the AntibodyForests-object) to the germline. (default FALSE)
+'group.node.depth'      : Mean of the number of edges connecting each node per group (node.features of the AntibodyForests-object) to the germline.
 'group.edge.length'    : Mean of the sum of edge length of the shortest path between germline and nodes per group (node.features of the AntibodyForests-object)
+'group.node.size'      : Mean of the node size per group normalized by the clone size (node.features of the AntibodyForests-object)
 'sackin.index'     : Sum of the number of nodes between each terminal node and the germline, normalized by the total number of terminal nodes.
 'spectral.density' : Metrics of the spectral density profiles (calculated with package RPANDA)
 \itemize{

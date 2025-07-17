@@ -18,8 +18,7 @@
 #' Af_node_size_boxplot(AntibodyForests::small_af,
 #'                     min.nodes = 5,
 #'                     groups = c("IGHA", "IgG1"),
-#'                     node.feature = "isotype",
-#'                     unconnected = TRUE)
+#'                     node.feature = "isotype")
 #'
 
 Af_node_size_boxplot <- function(AntibodyForests_object,
@@ -56,6 +55,7 @@ Af_node_size_boxplot <- function(AntibodyForests_object,
   png <- NULL
   pdf <- NULL
   group <- NULL
+  size <- NULL
   
   #Calculate the average node size per group
   metric_df <- Af_metrics(AntibodyForests_object,

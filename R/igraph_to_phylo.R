@@ -5,10 +5,11 @@
 #' @return phylogenetic tree
 #' @export
 #' @examples
-#' igraph_object <- AntibodyForests_phylo(AntibodyForests::small_af[["S1"]][["clonotype1]]$igraph)
+#' phylo_object <- igraph_to_phylo(AntibodyForests::small_af[["S1"]][["clonotype1"]]$igraph)
 
 igraph_to_phylo <- function(tree,
                            solve_multichotomies){
+  if(missing(solve_multichotomies)){solve_multichotomies <- TRUE}
 
   #Function taken from the aphylo package as it could not be loaded properly
   phylo_object <- function(edge, tip.label, Nnode, edge.length = NULL, node.label = NULL, root.edge = NULL){

@@ -1,3 +1,4 @@
+#' Function to create a boxplot of the Protein Language Model probabilities
 #' @description Function to create a boxplot of the Protein Language Model probabilities and ranks of the mutating vs. conserved residues along the edges of B cell lineage trees.
 #' @param PLM_dataframe Dataframe resulting from Af_PLM_dataframe(). This contains the Protein Language Model probabilities and ranks of the mutations along the edges of B cell lineage trees.
 #' @param values What values to plot. Can be "rank" (default) or "probability".
@@ -58,6 +59,7 @@ Af_plot_PLM_mut_vs_cons <- function(PLM_dataframe,
   #Set global variables for CRAN check
   png <- NULL
   pdf <- NULL
+  residue <- NULL
   
   PLM_dataframe <- stats::na.omit(PLM_dataframe)
   

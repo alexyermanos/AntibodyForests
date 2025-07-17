@@ -24,6 +24,7 @@ Af_compare_PLM <- function(PLM_dataframe,
   
   #Check input
   if(missing(PLM_dataframe)){stop("Please provide a PLM dataframe resulting from Af_PLM_dataframe function.")}
+  if(length(unique(PLM_dataframe$sample)) < 3){stop("Please provide a PLM dataframe with at least three samples.")}
   if(all(colnames(PLM_dataframe) %in% c("sample", "clonotype", "n_subs", "node1", "node2", "mean_substitution_rank", "
                                   mean_substitution_probability"))){stop("Please provide a PLM dataframe resulting from Af_PLM_dataframe function.")}
   
@@ -51,7 +52,7 @@ Af_compare_PLM <- function(PLM_dataframe,
   
   # Function to create a probability vector from the values
   make_prob_vector <- function(values, bins) {
-    hist_vals <- hist(values, breaks = bins, plot = FALSE)$counts
+    hist_vals <- graphics::hist(unlist(values), breaks = bins, plot = FALSE)$counts
     prob <- hist_vals / sum(hist_vals)
     return(prob)
   }

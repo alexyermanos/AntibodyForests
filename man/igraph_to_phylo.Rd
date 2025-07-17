@@ -17,3 +17,6 @@ phylogenetic tree
 \description{
 Converts an igraph network into a phylogenetic tree as a phylo object.
 }
+\examples{
+phylo_object <- igraph_to_phylo(AntibodyForests::small_af[["S1"]][["clonotype1"]]$igraph)
+}

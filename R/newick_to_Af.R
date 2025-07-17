@@ -1,11 +1,11 @@
 #'Converts files with phylogenetic trees in newick format into an AntibodyForests object.
 #'@description Converts files with phylogenetic trees in newick format into an AntibodyForests object. Make sure that the germline node is called "germline" and that every line represents a new tree in the newick file. All trees in the same file should be from the same sample.
 #' @param file.list list - list of newick files to be converted to AntibodyForests object. Could be a named list where the names correspond to sample IDs.
-#' @param file.directory directory - directory where the newick files are stored. If provided, the function will read all newick files in the directory.
-#' @return phylogenetic tree
+#' @param file.dir directory - directory where the newick files are stored. If provided, the function will read all newick files in the directory.
+#' @return AntibodyForests object
 #' @export
 #' @examples
-#' \donttest{
+#' \dontrun{
 #' af <- newick_to_Af(file.list = list("S1" = "path/to/sample1.nwk", "S2" = "path/to/sample2.nwk"))
 #' }
 

@@ -15,9 +15,10 @@ Af_plot_PLM(PLM_dataframe, values, group_by, colors, font.size, output.file)
 "original_rank" will plot the rank of the original amino acid at the site of mutation along the edge of the tree (Highest probability is rank 1).
 "original_probability" will plot the probability of the original amino acid at the site of mutation along the edge of the tree.}
 
-\item{group_by}{Plot a seperate line per sample or everything together (default).
-"sample_id"
-"none"}
+\item{group_by}{Plot a seperate line per group or everything together (default).
+"sample_id"  per sample
+"n_subs"     number of substitutions
+"none"       no grouping}
 
 \item{colors}{Color to use for the lines. When group_by = "sample_id": This should be a vector of the same length as the number of samples.}
 

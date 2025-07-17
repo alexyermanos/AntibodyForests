@@ -2,7 +2,7 @@
 #' @description Function to scatterplot the distance to the germline to a numerical node feature of the AntibodyForests-object
 #' @param AntibodyForests_object AntibodyForests-object, output from Af_build()
 #' @param node.features Node features in the AntibodyForests-object to compare (needs to be numerical)
-#' @param distance - string - How to calculate the distance to the germline.
+#' @param distance string - How to calculate the distance to the germline.
 #' 'node.depth'     : The sum of edges on the shortest parth between germline and each node
 #' 'edge.length'    : The sum of edge length of the shortest path between germline and each node (Default)
 #' @param min.nodes The minimum number of nodes for a tree to be included in this analysis (this included the germline). Default is 2.
@@ -178,7 +178,7 @@ Af_distance_scatterplot <- function(AntibodyForests_object,
     }
     #Add geom_smooth
     if (geom_smooth.method != "none"){
-      p <- p + ggplot2::geom_smooth(method = geom_smooth.method, color = "black")
+      p <- p + ggplot2::geom_smooth(method = geom_smooth.method, se = F)
     }
 
     if(!is.null(output.file)){
