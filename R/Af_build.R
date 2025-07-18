@@ -467,7 +467,7 @@ Af_build <- function(VDJ,
 
         # Select nodes that have this distance to the germline node
         nodes_to_be_connected <- rownames(dist_matrix)[dist_matrix[, "germline"] == min_distance & !is.na(dist_matrix[, "germline"])]
-
+        
         # Add edge(s) between germline and node(s) with 'min_distance' to the germline to the 'edges' matrix
         for(node in nodes_to_be_connected){
           edges <- rbind(edges, c("germline", node, dist_matrix_backup["germline", node]))
@@ -494,7 +494,7 @@ Af_build <- function(VDJ,
 
             # Select the node(s) in 'already_connected_nodes' that has/have 'min_distance' to the current node
             node_to_connect_to <- unlist(lapply(already_connected_nodes, function(x) if(dist_matrix[x, node] == min_distance){return(x)}))
-
+            
             # If multiple nodes in 'node_to_connect_to' share 'min_distance' to the current node, the 'resolve.ties' options are hierarchically applied to narrow down the candidates for linking the currently unlinked node in the tree to, aiming to select a single node.
             if(length(node_to_connect_to) != 1){
 
@@ -784,6 +784,9 @@ Af_build <- function(VDJ,
 
     # 2.6 If a list of IgPhyML trees is provided, no tree/network construction is taking place, and trees are retrieved from the IgPhyML output file and processed into the AntibodyForests object
     if(approach == "tree" && algorithm == "IgPhyML"){
+      sample <- strsplit(clone, split="_")[[1]][1:length(strsplit(clone, split="_")[[1]])-1]
+      if(length(sample) > 1){sample <- paste(sample, collapse = "_")}
+      clone <- strsplit(clone, split="_")[[1]][length(strsplit(clone, split="_")[[1]])]
 
       # Retrieve tree for the current clonotype
       IgPhyML_igraph_object <- IgPhyML.trees[["trees"]][[clone]]
@@ -803,14 +806,25 @@ Af_build <- function(VDJ,
           # If the node name does not contain 'GERM' and does not refer to a barcode, the node is an intermediate node and the name of the node remains the same
           else if(grepl(pattern = "^[0-9]+$", x)){return(as.vector(1:sum(grepl(pattern = "^[0-9]+$", igraph::V(IgPhyML_igraph_object)$name)))[grep(pattern = "^[0-9]+$", igraph::V(IgPhyML_igraph_object)$name, value = TRUE) == x])}
         })
+        
+        # Check whether all terminal nodes are found once
+        if(all(table(igraph::V(IgPhyML_igraph_object)$name)[unique(grep(pattern = "^node|germline", igraph::V(IgPhyML_igraph_object)$name, value = TRUE))] == 1)){
+          igraph_object_check <- TRUE
+        } else{
+          igraph_object_check <- FALSE
+          warnings <- c(warnings, paste0("Different nodes with identical sequences found in the IgPhyML output file for ", clone, " of ", sample, ". Make sure to use the argument --collapse when running IgPhyML BuildTrees.py."))
+        }
 
+        # Check whether all nodes in the 'nodes.list' could be found in the igraph object
+        if(igraph_object_check && all(names(nodes.list) %in% igraph::V(IgPhyML_igraph_object)$name)){
+          igraph_object_check <- TRUE} 
+        else{igraph_object_check <- FALSE}
+      } else{
+        igraph_object_check <- FALSE
+        # If no igraph object could be found in the 'IgPhyML.trees' object, append warning message to warnings 'list'
+        warnings <- c(warnings, paste(c("The tree of ", clone, " of ", sample, " could not be found in the specified IgPhyML output file!"), collapse = ""))
+      }
 
-        # Check whether all nodes in the 'nodes.list' could be found in the igraph object, and check whether all terminal nodes are found once
-        igraph_object_check <- (all(names(nodes.list) %in% igraph::V(IgPhyML_igraph_object)$name) && all(table(igraph::V(IgPhyML_igraph_object)$name)[unique(grep(pattern = "^node|germline", igraph::V(IgPhyML_igraph_object)$name, value = TRUE))] == 1))
-      } else{igraph_object_check <- FALSE}
-
-      # If no igraph object could be found in the 'IgPhyML.trees' object, append warning message to warnings 'list'
-      warnings <- c(warnings, paste(c("The tree of ", strsplit(clone, split="_")[[1]][2], " of ", strsplit(clone, split="_")[[1]][1], " has only 1 node or could not be found in the specified IgPhyML output file!"), collapse = ""))
 
       # If the igraph object is checked succesfully, onvert the object of class 'igraph' into an object of class 'phylo' using the 'igraph_to_phylo()' function
       if(igraph_object_check){phylo_object <- igraph_to_phylo(IgPhyML_igraph_object)}
@@ -1155,8 +1169,9 @@ Af_build <- function(VDJ,
     # - a (separate) list for all columns selected in 'node.features'
 
     # Retrieve sample ID and clonotype ID from 'clone'
-    sample <- strsplit(clone, split="_")[[1]][1]
-    clonotype <- strsplit(clone, split="_")[[1]][2]
+    sample <- strsplit(clone, split="_")[[1]][1:length(strsplit(clone, split="_")[[1]])-1]
+    if(length(sample) > 1){sample <- paste(sample, collapse = "_")}
+    clonotype <- strsplit(clone, split="_")[[1]][length(strsplit(clone, split="_")[[1]])]
 
     # Store 'sequence.columns' and 'germline.columns' in vectors 'sequence_columns' and 'germline_columns', respectively
     sequence_columns <- sequence.columns
@@ -1298,7 +1313,7 @@ Af_build <- function(VDJ,
 
 
     # 3. Build lineage tree using the objects 'input_dist_matrix' and 'input_msa'
-    message(paste0("Inferring lineage tree of ", strsplit(clone, split = "_")[[1]][2], " of ", strsplit(clone, split = "_")[[1]][1], "."))
+    message(paste0("Inferring lineage tree of ", clonotype, " of ", sample, "."))
     lineage_tree <- build_lineage_tree(clone = clone,
                                        dist.matrix = input_dist_matrix,
                                        msa = input_msa,
@@ -1345,7 +1360,7 @@ Af_build <- function(VDJ,
 
   # If an IgPhyML output file is provided, read in the IgPhyML output file and store in the 'igphyml_trees' list
   if(!missing(IgPhyML.output.file)){IgPhyML_trees <- alakazam::readIgphyml(IgPhyML.output.file)}else{igphyml_trees <- NA}
-
+  
   # Define partial function for to be executed for each clone
   partial_function <- function(clone){
 

@@ -6,7 +6,7 @@
 #' @return No value returned, saves the newick format to the output.file
 #' @export
 #' @examples
-#' \donttest{
+#' \dontrun{
 #' Af_to_newick(AntibodyForests_object = AntibodyForests::small_af,
 #'               min.nodes = 2,
 #'               output.file = "output.newick")

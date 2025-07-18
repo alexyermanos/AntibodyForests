@@ -13,13 +13,13 @@
 #' }
 
 Af_PLM_dataframe <- function(AntibodyForests_object,
-                                          sequence.name,
-                                          path_to_probabilities){
+                             sequence.name,
+                             path_to_probabilities){
 
   if(missing(AntibodyForests_object)){stop("Please provide an AntibodyForests object")}
   if(missing(sequence.name)){stop("Please provide the name of the sequences in the AntibodyForests object")}
   if(missing(path_to_probabilities)){stop("Please provide the path to the folder containing the probability matrices.")}
-
+  
   #Check if probability matrices are present
   prob_matrix_list <- list.files(path_to_probabilities)
   if (length(prob_matrix_list) == 0){stop("No probability matrices found in the specified folder.")}
@@ -47,7 +47,9 @@ Af_PLM_dataframe <- function(AntibodyForests_object,
 
       #Initiate output dataframe
       clonotype_df <- data.frame(sample = character(), clonotype = character(), node1 = character(), node2 = character(),
-                       n_subs = numeric(), mean_substitution_rank = numeric(), mean_substitution_probability = numeric())
+                       n_subs = numeric(), mean_substitution_rank = numeric(), mean_substitution_probability = numeric(),
+                       mean_original_rank = numeric(), mean_original_probability = numeric(), mean_unmutating_rank = numeric(),
+                       mean_unmutating_probability = numeric())
 
       for (row in 1:nrow(edges)){
         node1 <- edges[row, "node1"]
@@ -62,9 +64,13 @@ Af_PLM_dataframe <- function(AntibodyForests_object,
           if (length(prob_file) == 1){
             prob_matrix <- utils::read.csv(paste0(path_to_probabilities, "/", prob_file), header = T)
 
-            #Get the mutating positions
+            #Get the mutating and unmutating positions
             diff_positions <- c()
-            for (k in 1:length(seq1)){if (seq1[k] != seq2[k]){diff_positions <- c(diff_positions, k)}}
+            unmutating_positions <- c()
+            for (k in 1:length(seq1)){
+              if (seq1[k] != seq2[k]){diff_positions <- c(diff_positions, k)}
+              else if (seq1[k] == seq2[k]){unmutating_positions <- c(unmutating_positions, k)}
+              }
 
             #Initiate rank vector and probabilities vector
             substitute_ranks <- c()
@@ -101,18 +107,43 @@ Af_PLM_dataframe <- function(AntibodyForests_object,
             mean_original_rank <- mean(original_ranks)
             mean_substitution_probability <- mean(unlist(substitute_probabilities))
             mean_original_probability <- mean(unlist(original_probabilities))
+            
+            #Loop over the unmutational positions
+            unmutating_ranks <- c()
+            unmutating_probabilities <- c()
+            for (pos in unmutating_positions){
+              #Get the aa probabilities for this position
+              likelihood_values <- prob_matrix[pos,]
+              
+              #Get the rank for each aa
+              ranks <- rank(-likelihood_values)
+              
+              #Get the rank of the residue at this position
+              unmutating_rank <- ranks[seq1[pos]]
+              unmutating_ranks <- c(unmutating_ranks, unmutating_rank)
+              
+              #Get the probability of the original
+              unmutating_probability <- likelihood_values[seq1[pos]]
+              unmutating_probabilities <- c(unmutating_probabilities, unmutating_probability)
+            }
+            # Get the average
+            mean_unmutating_rank <- mean(unmutating_ranks)
+            mean_unmutating_probability <- mean(unlist(unmutating_probabilities))
+
 
             #Add to the output dataframe
             edge_df <- data.frame(sample = sample, clonotype = clonotype, n_subs = length(diff_positions), node1 = node1, node2 = node2,
                                   mean_substitution_rank = mean_substitution_rank, mean_substitution_probability = mean_substitution_probability,
-                                  mean_original_rank = mean_original_rank, mean_original_probability = mean_original_probability)
+                                  mean_original_rank = mean_original_rank, mean_original_probability = mean_original_probability,
+                                  mean_unmutating_rank = mean_unmutating_rank, mean_unmutating_probability = mean_unmutating_probability)
             clonotype_df <- rbind(clonotype_df, edge_df)
           }
           else{
             message("No probability matrix found for ", paste0(sample,"_",clonotype,"_",node1))
             clonotype_df <- rbind(clonotype_df, data.frame(sample = NA, clonotype = NA, node1 = NA, node2 = NA,
                                  n_subs = NA, mean_substitution_rank = NA, mean_substitution_probability = NA,
-                                 mean_original_rank = NA, mean_original_probability = NA))
+                                 mean_original_rank = NA, mean_original_probability = NA, mean_unmutating_rank = NA,
+                                 mean_unmutating_probability = NA))
           }
         }
       }
@@ -120,14 +151,16 @@ Af_PLM_dataframe <- function(AntibodyForests_object,
     else{
       clonotype_df <- data.frame(sample = NA, clonotype = NA, node1 = NA, node2 = NA,
                                  n_subs = NA, mean_substitution_rank = NA, mean_substitution_probability = NA,
-                                 mean_original_rank = NA, mean_original_probability = NA)
+                                 mean_original_rank = NA, mean_original_probability = NA, mean_unmutating_rank = NA,
+                                 mean_unmutating_probability = NA)
     }
     return(clonotype_df)
   }
 
   output_df <- data.frame(sample = character(), clonotype = character(), node1 = character(), node2 = character(),
                           n_subs = numeric(), mean_substitution_rank = numeric(), mean_substitution_probability = numeric(),
-                          mean_original_rank = numeric(), mean_original_probability = numeric())
+                          mean_original_rank = numeric(), mean_original_probability = numeric(), mean_unmutating_rank = numeric(),
+                          mean_unmutating_probability = numeric())
   for (sample in names(AntibodyForests_object)){
     for (clonotype in names(AntibodyForests_object[[sample]])){
       tree_df <- df_per_clone(sample, clonotype)

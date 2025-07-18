@@ -5,7 +5,7 @@
 \alias{PLM_dataframe}
 \title{Small PLM dataframe for function testing purposes}
 \format{
-An object of class \code{data.frame} with 20 rows and 9 columns.
+An object of class \code{tbl_df} (inherits from \code{tbl}, \code{data.frame}) with 60 rows and 11 columns.
 }
 \usage{
 PLM_dataframe

@@ -1,6 +1,6 @@
 Package: AntibodyForests
 Title: Delineating Inter- And Intra-Antibody Repertoire Evolution
-Version: 1.0.0
+Version: 1.1.0
 Authors@R: c(
     person("Daphne", "van Ginneken", email = "daphne.v.ginneken@gmail.com", role = c("aut", "cre")),
     person("Alexander", "Yermanos", role = "aut"),
@@ -53,6 +53,7 @@ Suggests:
     msa,
     phangorn,
     pheatmap,
+    philentropy,
     Peptides,
     Rcompadre,
     rmarkdown,

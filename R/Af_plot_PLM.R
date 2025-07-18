@@ -6,9 +6,10 @@
 #' "substitution_probability" will plot the probability of the mutation along the edge of the tree.
 #' "original_rank" will plot the rank of the original amino acid at the site of mutation along the edge of the tree (Highest probability is rank 1).
 #' "original_probability" will plot the probability of the original amino acid at the site of mutation along the edge of the tree.
-#' @param group_by Plot a seperate line per sample or everything together (default).
-#' "sample_id"
-#' "none"
+#' @param group_by Plot a seperate line per group or everything together (default).
+#' "sample_id"  per sample
+#' "n_subs"     number of substitutions
+#' "none"       no grouping
 #' @param colors Color to use for the lines. When group_by = "sample_id": This should be a vector of the same length as the number of samples.
 #' @param font.size Font size for the plot. Default is 16.
 #' @param output.file string - specifies the path to the output file (PNG of PDF). Defaults to NULL.
@@ -48,6 +49,15 @@ Af_plot_PLM <- function(PLM_dataframe,
   #Set global variables for CRAN check
   png <- NULL
   pdf <- NULL
+  
+  PLM_dataframe <- stats::na.omit(PLM_dataframe)
+  
+  if (group_by == "n_subs"){
+    PLM_dataframe$n_subs <- dplyr::case_match(PLM_dataframe$n_subs,
+                                              1 ~ "1",
+                                              seq(2,max(PLM_dataframe$n_subs)) ~ ">1")
+  }
+  if (group_by == "sample_id"){group_by <- "sample"}
 
 
   #Create the plot
@@ -88,10 +98,10 @@ Af_plot_PLM <- function(PLM_dataframe,
   if (group_by == "none"){
     if(is.null(colors)){colors <- "black"}
     p <- p +  ggplot2::geom_freqpoly(binwidth = bin_width, linewidth = 1, color = colors)}
-  if (group_by == "sample_id"){
-    p <- p +  ggplot2::geom_freqpoly(ggplot2::aes(colour = sample), binwidth = bin_width, linewidth = 1)
+  else{
+    p <- p +  ggplot2::geom_freqpoly(ggplot2::aes(colour = .data[[group_by]]), binwidth = bin_width, linewidth = 1)
     if (!is.null(colors)){p <- p + ggplot2::scale_color_manual(values = colors)}
-    }
+  }
 
   if(!is.null(output.file)){
     # Check if the output.file is png or pdf

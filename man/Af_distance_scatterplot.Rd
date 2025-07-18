@@ -25,11 +25,9 @@ Af_distance_scatterplot(
 
 \item{node.features}{Node features in the AntibodyForests-object to compare (needs to be numerical)}
 
-\item{distance}{\itemize{
-\item string - How to calculate the distance to the germline.
+\item{distance}{string - How to calculate the distance to the germline.
 'node.depth'     : The sum of edges on the shortest parth between germline and each node
-'edge.length'    : The sum of edge length of the shortest path between germline and each node (Default)
-}}
+'edge.length'    : The sum of edge length of the shortest path between germline and each node (Default)}
 
 \item{min.nodes}{The minimum number of nodes for a tree to be included in this analysis (this included the germline). Default is 2.}
 

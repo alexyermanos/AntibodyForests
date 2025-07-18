@@ -110,7 +110,7 @@ Af_edge_RMSD <- function(AntibodyForests_object,
   #Get the resnos from a subsequences in the PDB file
   get_subseq_res <- function(pdb, sub_seq, CHAIN){
     #Get the residues in the PDB file
-    pdb$atom |> dplyr::filter(chain %in% CHAIN) |> dplyr::distinct(resno, .keep_all = TRUE) |> dplyr::pull(resid, resno) -> resids
+    pdb$atom %>% dplyr::filter(chain %in% CHAIN) %>% dplyr::distinct(resno, .keep_all = TRUE) %>% dplyr::pull(resid, resno) -> resids
     resids_df <- as.data.frame(resids)
     resids_df$resno <- rownames(resids_df)
     resids_df$resids <- sapply(resids_df$resids, function(x){x <- stringr::str_to_title(x);return(seqinr::a(x))})
@@ -198,10 +198,10 @@ Af_edge_RMSD <- function(AntibodyForests_object,
         #Get the mutating positions
         total_subs = 0
         for (i in chains){
-          seq1 <- paste(pdb1$atom |> dplyr::filter(chain == i) |> dplyr::filter(resno %in% resnos1) |>
-                          dplyr::distinct(resno, .keep_all = T) |> dplyr::pull(resid) |> stringr::str_to_title() |> seqinr::a(), collapse = "")
-          seq2 <- paste(pdb2$atom |> dplyr::filter(chain == i) |> dplyr::filter(resno %in% resnos2) |>
-                          dplyr::distinct(resno, .keep_all = T) |> dplyr::pull(resid) |> stringr::str_to_title() |> seqinr::a(), collapse = "")
+          seq1 <- paste(pdb1$atom %>% dplyr::filter(chain == i) %>% dplyr::filter(resno %in% resnos1) %>%
+                          dplyr::distinct(resno, .keep_all = T) %>% dplyr::pull(resid) %>% stringr::str_to_title() %>% seqinr::a(), collapse = "")
+          seq2 <- paste(pdb2$atom %>% dplyr::filter(chain == i) %>% dplyr::filter(resno %in% resnos2) %>%
+                          dplyr::distinct(resno, .keep_all = T) %>% dplyr::pull(resid) %>% stringr::str_to_title() %>% seqinr::a(), collapse = "")
           n_subs <- SHM_per_alignment(seq1, seq2)
           total_subs <- total_subs + n_subs
         }

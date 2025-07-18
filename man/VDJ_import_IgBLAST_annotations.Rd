@@ -18,10 +18,10 @@ VDJ_import_IgBLAST_annotations(VDJ, VDJ.directory, file.path.list, method)
 'append'   : The IgBLAST annotation columns are stored in columns with the suffix '_IgBLAST'.}
 }
 \value{
-The VDJ dataframe with the appended IgBLAST annotations and alignments.
+The VDJ dataframe with the appended or replaced IgBLAST annotations and alignments.
 }
 \description{
-Imports the IgBLAST annotations and alignments from IgBLAST output files, stored in the output folders of Cell Ranger, into a VDJ dataframe obtained from the minimal_VDJ() function in Platypus.
+Imports the IgBLAST annotations and alignments from IgBLAST output files, stored in the output folders of Cell Ranger, into a VDJ dataframe obtained from the VDJ_build() function in Platypus.
 }
 \examples{
 \dontrun{
